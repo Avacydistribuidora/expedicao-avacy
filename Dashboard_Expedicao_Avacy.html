@@ -1407,8 +1407,8 @@ function exportAnalitico(){
 // ═══════════════════════════════════════════════════════════
 // SUPABASE SYNC
 // ═══════════════════════════════════════════════════════════
-let SB_URL=localStorage.getItem('avacy_sb_url')||'';
-let SB_KEY=localStorage.getItem('avacy_sb_key')||'';
+let SB_URL=localStorage.getItem('avacy_sb_url')||'https://wureelywtpcdxbmyblqj.supabase.co';
+let SB_KEY=localStorage.getItem('avacy_sb_key')||'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 
 function sbHdr(){return{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}}
 async function sbGet(path){const r=await fetch(SB_URL.replace(/\/+$/,'')+path,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});if(!r.ok)throw new Error(r.status);return r.json()}
