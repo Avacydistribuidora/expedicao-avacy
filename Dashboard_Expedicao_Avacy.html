@@ -11,7 +11,7 @@
   --text:#1a2035;--muted:#6b7a99;
   --blue:#2463cc;--green:#16a34a;--orange:#ea580c;
   --purple:#7c3aed;--red:#dc2626;--teal:#0d9488;--yellow:#d97706;
-  --navy:#0a1628;--darkred:#8b1111;
+  --navy:#0d2167;--darkred:#8b1111;
   --lw:268px;
 }
 html,body{height:100%;overflow:hidden}
@@ -37,7 +37,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',Arial,sans-se
 .btn-login:hover{background:#a41515}
 
 /* ── HEADER ────────────────────────────────────────────────── */
-header{background:#0a1628;border-bottom:2px solid #8b1111;
+header{background:#0d2167;border-bottom:2px solid #8b1111;
   padding:11px 18px;display:flex;align-items:center;gap:12px;
   position:relative;z-index:80;flex-shrink:0}
 .avacy-logo{display:flex;align-items:center;text-decoration:none;flex-shrink:0;
@@ -76,7 +76,7 @@ header{background:#0a1628;border-bottom:2px solid #8b1111;
 .user-menu a.danger-item{color:var(--red)}
 
 /* ── KPI ROW ───────────────────────────────────────────────── */
-.kpi-row{display:grid;grid-template-columns:repeat(8,1fr);gap:9px;
+.kpi-row{display:grid;grid-template-columns:repeat(7,1fr);gap:9px;
   padding:9px 18px;background:#e8edf5;border-bottom:2px solid #8b1111;flex-shrink:0}
 .kpi{background:var(--card);border:1px solid var(--border);border-radius:8px;
   padding:10px 13px;position:relative;overflow:hidden}
@@ -170,10 +170,10 @@ input[type=checkbox]{accent-color:#8b1111;cursor:pointer;width:13px;height:13px}
 .tw{flex:1;overflow:auto}
 table{width:100%;border-collapse:collapse;background:#ffffff}
 thead{position:sticky;top:0;z-index:10}
-th{background:#0a1628;color:#94a3b8;font-size:9px;text-transform:uppercase;
+th{background:#0d2167;color:#94a3b8;font-size:9px;text-transform:uppercase;
   letter-spacing:.07em;padding:9px 10px;text-align:left;border-bottom:2px solid #8b1111;white-space:nowrap}
 th.sortable{cursor:pointer;user-select:none}
-th.sortable:hover{color:#fff;background:#0d1e36}
+th.sortable:hover{color:#fff;background:#1a3480}
 th .si{margin-left:3px;opacity:.4;font-size:9px}
 th.sort-asc .si,th.sort-desc .si{opacity:1;color:#60a5fa}
 tbody tr{border-bottom:1px solid #eaeff8;transition:background .15s}
@@ -219,7 +219,7 @@ td{padding:7px 10px;vertical-align:middle}
 /* Tooltip – shown BELOW badge (fixes first-row clipping by header) */
 .has-tip{position:relative;cursor:default}
 .has-tip .tip{display:none;position:absolute;top:calc(100% + 6px);left:0;bottom:auto;
-  background:#0a1628;border:1px solid #1e3a5f;border-radius:6px;
+  background:#0d2167;border:1px solid #1e3a9f;border-radius:6px;
   padding:7px 11px;font-size:10px;color:#e2e8f0;white-space:nowrap;
   z-index:50;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
 .has-tip:hover .tip{display:block}
@@ -434,10 +434,9 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 
 <!-- KPI ROW -->
 <div class="kpi-row">
-  <div class="kpi c-all"><div class="lbl">TOTAL</div><div class="val" id="k-total">0</div></div>
+  <div class="kpi c-fat"><div class="lbl">Faturado</div><div class="val" id="k-fat" style="color:var(--blue)">0</div></div>
   <div class="kpi c-sep"><div class="lbl">Em Separação</div><div class="val" id="k-sep" style="color:var(--orange)">0</div></div>
   <div class="kpi c-sepd"><div class="lbl">Separado</div><div class="val" id="k-sepd" style="color:var(--purple)">0</div></div>
-  <div class="kpi c-fat"><div class="lbl">Faturado</div><div class="val" id="k-fat" style="color:var(--blue)">0</div></div>
   <div class="kpi c-conf"><div class="lbl">Conferido</div><div class="val" id="k-conf" style="color:var(--teal)">0</div></div>
   <div class="kpi c-exp"><div class="lbl">Expedido</div><div class="val" id="k-exp" style="color:var(--green)">0</div></div>
   <div class="kpi c-pend" style="cursor:pointer" onclick="document.getElementById('sfStatus').value='Pendente';onFilterChange()" title="Ver pendentes"><div class="lbl">Pendente</div><div class="val" id="k-pend" style="color:var(--red)">0</div></div>
@@ -465,6 +464,30 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 
   <main class="right-main">
     <div class="toolbar">
+      <!-- Bipar — primeiro na toolbar -->
+      <button class="btn" onclick="openBipeModal('sep')" title="Bipar → Em Separação"
+              style="border-color:rgba(249,115,22,.55);color:var(--orange);font-weight:700">
+        <svg width="20" height="14" viewBox="0 0 44 28" fill="currentColor">
+          <rect x="0" y="0" width="3" height="28"/><rect x="5" y="0" width="1.5" height="28"/>
+          <rect x="8" y="0" width="4" height="28"/><rect x="14" y="0" width="2" height="28"/>
+          <rect x="18" y="0" width="1" height="28"/><rect x="21" y="0" width="3" height="28"/>
+          <rect x="26" y="0" width="1.5" height="28"/><rect x="29" y="0" width="4" height="28"/>
+          <rect x="35" y="0" width="2" height="28"/><rect x="39" y="0" width="1.5" height="28"/>
+          <rect x="42" y="0" width="2" height="28"/>
+        </svg>
+        Em separação
+      </button>
+      <button class="btn" onclick="openBipeModal('sepd')" title="Bipar → Separado"
+              style="border-color:rgba(163,113,247,.45);color:var(--purple)">
+        <svg width="20" height="14" viewBox="0 0 44 28" fill="currentColor">
+          <rect x="0" y="0" width="3" height="28"/><rect x="5" y="0" width="2" height="28"/>
+          <rect x="9" y="0" width="5" height="28"/><rect x="16" y="0" width="1.5" height="28"/>
+          <rect x="20" y="0" width="3" height="28"/><rect x="25" y="0" width="1" height="28"/>
+          <rect x="28" y="0" width="4" height="28"/><rect x="34" y="0" width="2" height="28"/>
+          <rect x="38" y="0" width="1.5" height="28"/><rect x="41" y="0" width="3" height="28"/>
+        </svg>
+        Separado
+      </button>
       <div class="tb-divider"></div>
       <!-- Busca -->
       <input type="text" id="srch" placeholder="🔍  Nota, cliente, FAT, LOJA…" style="width:188px" oninput="onFilterChange()">
@@ -497,31 +520,6 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
       <div class="spacer"></div>
       <button class="btn-clear-filter" onclick="clearFilters()" title="Limpar todos os filtros">✕ Limpar filtros</button>
       <label class="tog"><input type="checkbox" id="showExp" onchange="onFilterChange()"> Expedidos</label>
-      <div class="tb-divider"></div>
-      <!-- Em separação primeiro, depois Separado -->
-      <button class="btn" onclick="openBipeModal('sep')" title="Bipar → Em Separação"
-              style="border-color:rgba(249,115,22,.55);color:var(--orange);font-weight:700">
-        <svg width="20" height="14" viewBox="0 0 44 28" fill="currentColor">
-          <rect x="0" y="0" width="3" height="28"/><rect x="5" y="0" width="1.5" height="28"/>
-          <rect x="8" y="0" width="4" height="28"/><rect x="14" y="0" width="2" height="28"/>
-          <rect x="18" y="0" width="1" height="28"/><rect x="21" y="0" width="3" height="28"/>
-          <rect x="26" y="0" width="1.5" height="28"/><rect x="29" y="0" width="4" height="28"/>
-          <rect x="35" y="0" width="2" height="28"/><rect x="39" y="0" width="1.5" height="28"/>
-          <rect x="42" y="0" width="2" height="28"/>
-        </svg>
-        Em separação
-      </button>
-      <button class="btn" onclick="openBipeModal('sepd')" title="Bipar → Separado"
-              style="border-color:rgba(163,113,247,.45);color:var(--purple)">
-        <svg width="20" height="14" viewBox="0 0 44 28" fill="currentColor">
-          <rect x="0" y="0" width="3" height="28"/><rect x="5" y="0" width="2" height="28"/>
-          <rect x="9" y="0" width="5" height="28"/><rect x="16" y="0" width="1.5" height="28"/>
-          <rect x="20" y="0" width="3" height="28"/><rect x="25" y="0" width="1" height="28"/>
-          <rect x="28" y="0" width="4" height="28"/><rect x="34" y="0" width="2" height="28"/>
-          <rect x="38" y="0" width="1.5" height="28"/><rect x="41" y="0" width="3" height="28"/>
-        </svg>
-        Separado
-      </button>
     </div>
 
     <div class="tw">
@@ -559,7 +557,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px">
       <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">1. Crie uma conta gratuita em <a href="https://supabase.com" target="_blank" style="color:var(--blue)">supabase.com</a> e crie um projeto</div>
       <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">2. No SQL Editor do Supabase, execute este script:</div>
-      <pre style="background:#0a1628;border:1px solid #1e3a5f;border-radius:6px;padding:12px;font-size:10px;color:#5eead4;overflow-x:auto;line-height:1.6">DROP TABLE IF EXISTS avacy_status;
+      <pre style="background:#0d2167;border:1px solid #1e3a9f;border-radius:6px;padding:12px;font-size:10px;color:#5eead4;overflow-x:auto;line-height:1.6">DROP TABLE IF EXISTS avacy_status;
 DROP TABLE IF EXISTS avacy_records;
 CREATE TABLE avacy_records (
   nota TEXT PRIMARY KEY, fat TEXT, loja TEXT,
@@ -649,17 +647,17 @@ CREATE POLICY "allow_all" ON avacy_users   FOR ALL USING (true) WITH CHECK (true
     <h3>📥 Importar CSV do Protheus</h3>
     <p>Importação <strong>incremental</strong>: novos pedidos adicionados; romaneio e XCONF atualizados. Status manual e OBS preservados.</p>
     <div class="drop-zone" id="dropZone">
-      <input type="file" id="csvFile" accept=".csv,.txt" onchange="onFileSelect(this)">
+      <input type="file" id="csvFile" accept=".csv,.txt,.xls,.xlsx" onchange="onFileSelect(this)">
       <div class="drop-icon">📄</div>
-      <div class="drop-title">Clique para selecionar o CSV</div>
-      <div class="drop-sub">ou arraste aqui · <span>.csv</span> exportado do Protheus</div>
+      <div class="drop-title">Clique para selecionar o arquivo</div>
+      <div class="drop-sub">ou arraste aqui · <span>.csv</span> Protheus &nbsp;|&nbsp; <span>.xls/.xlsx</span> VDK GRU</div>
     </div>
     <div class="file-sel" id="fileSel"><span>📄</span><span id="fileName">—</span></div>
     <div class="prog-wrap" id="progWrap">
       <div class="prog-txt" id="progTxt">Aguarde…</div>
       <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
     </div>
-    <div class="modal-hint">ℹ️ <strong>Colunas:</strong> NOTA · NOME_CLIENTE · TRANSPORTADORA · LOJA · FAT · RAJLOG · MENSAGEM_NOTA · XCONF · ROMANIEO · DATA_EMISSAO</div>
+    <div class="modal-hint">ℹ️ <strong>Protheus CSV:</strong> NOTA · NOME_CLIENTE · TRANSPORTADORA · LOJA · FAT · RAJLOG · MENSAGEM_NOTA · XCONF · ROMANIEO · DATA_EMISSAO<br><strong>VDK GRU XLS:</strong> Pedido · NF/Serie · Dt. Expedição · Cliente · Transportadora · Situação (detecção automática)</div>
     <div class="modal-act">
       <button class="btn" onclick="closeModal()">Cancelar</button>
       <button class="btn primary" id="btnImport" onclick="importCSV()" disabled>✓ Importar</button>
@@ -976,18 +974,148 @@ function onFileSelect(input){
   document.getElementById('fileName').textContent=file.name+' ('+Math.round(file.size/1024)+' KB)';
   document.getElementById('fileSel').classList.add('show');
   document.getElementById('btnImport').disabled=false;
-  const r=new FileReader();r.onload=e=>{csvContent=e.target.result};r.readAsText(file,'ISO-8859-1');
+  const ext=file.name.split('.').pop().toLowerCase();
+  if(ext==='xls'||ext==='xlsx'){
+    // Arquivo VDK — lê como ArrayBuffer para XLSX.js
+    const r=new FileReader();r.onload=e=>{csvContent={type:'vdk',data:e.target.result}};r.readAsArrayBuffer(file);
+  } else {
+    const r=new FileReader();r.onload=e=>{csvContent=e.target.result};r.readAsText(file,'ISO-8859-1');
+  }
 }
 const dz=document.getElementById('dropZone');
 dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag')});
 dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
-dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');const file=e.dataTransfer.files[0];if(!file)return;document.getElementById('fileName').textContent=file.name;document.getElementById('fileSel').classList.add('show');document.getElementById('btnImport').disabled=false;const r=new FileReader();r.onload=ev=>{csvContent=ev.target.result};r.readAsText(file,'ISO-8859-1')});
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');const file=e.dataTransfer.files[0];if(!file)return;document.getElementById('fileName').textContent=file.name;document.getElementById('fileSel').classList.add('show');document.getElementById('btnImport').disabled=false;const r=new FileReader();const extD=file.name.split('.').pop().toLowerCase();
+    if(extD==='xls'||extD==='xlsx'){r.onload=ev=>{csvContent={type:'vdk',data:ev.target.result}};r.readAsArrayBuffer(file)}
+    else{r.onload=ev=>{csvContent=ev.target.result};r.readAsText(file,'ISO-8859-1')}
+  });
 
 // ═══════════════════════════════════════════════════════════
 // IMPORTAÇÃO INCREMENTAL
 // ═══════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════
+// IMPORTAÇÃO VDK — XLS do GRU (Kanban Pedidos Rajlog)
+// ═══════════════════════════════════════════════════════════
+const SITUACAO_MAP=[
+  {pat:'expedido',          st:'Expedido'},
+  {pat:'preparado expedi',  st:'Em Separação'},
+  {pat:'pedido recebido',   st:'Faturado'},
+  {pat:'integrado',         st:'Faturado'},
+  {pat:'tratativa',         st:'Pendente'},
+  {pat:'pedido',            st:'Faturado'},
+];
+function mapSituacao(s){
+  const low=(s||'').toLowerCase().trim();
+  for(const{pat,st}of SITUACAO_MAP){if(low.includes(pat))return st;}
+  return'Faturado';
+}
+function parseNFSerie(raw){
+  const s=(raw||'').toString().trim();
+  const sl=s.lastIndexOf('/');
+  if(sl<0)return{nf:s,serie:''};
+  return{nf:s.slice(0,sl).trim(),serie:s.slice(sl+1).trim()};
+}
+function cleanTranspVDK(t){
+  // "2 - RAJLOG" → "RAJLOG"  |  "352 - PATRUS" → "PATRUS"
+  const m=(t||'').match(/^\d+\s*-\s*(.+)$/);
+  return m?m[1].trim():(t||'').trim();
+}
+function fmtDateVDK(raw){
+  if(!raw)return'';
+  const s=raw.toString().trim().split(' ')[0]; // pega só a data, sem hora
+  // formato dd/mm/yyyy ou yyyy-mm-dd
+  if(/^\d{2}\/\d{2}\/\d{4}$/.test(s))return s;
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)){const[y,m,d]=s.split('-');return`${d}/${m}/${y}`;}
+  return s;
+}
+function importVDK(arrayBuffer){
+  const pw=document.getElementById('progWrap'),pf=document.getElementById('progFill'),pt=document.getElementById('progTxt');
+  pw.classList.add('show');pf.style.width='10%';pt.textContent='Carregando XLS…';
+  _lastSyncTs=Date.now();
+  loadXLSX(()=>{
+    try{
+      const wb=XLSX.read(arrayBuffer,{type:'array'});
+      const sh=wb.Sheets[wb.SheetNames[0]];
+      // Tenta detectar a linha de cabeçalho real (procura coluna NF/Serie)
+      const raw=XLSX.utils.sheet_to_json(sh,{header:1,defval:''});
+      pf.style.width='25%';pt.textContent=`${raw.length} linhas encontradas…`;
+      let hdrIdx=0;
+      for(let i=0;i<Math.min(5,raw.length);i++){
+        const row=raw[i];
+        if(row.some(v=>String(v).toLowerCase().includes('nf/serie')||String(v).toLowerCase()==='pedido')){
+          hdrIdx=i;break;
+        }
+      }
+      const headers=raw[hdrIdx].map(v=>String(v).trim());
+      const cI=(k)=>headers.findIndex(h=>h.toLowerCase().includes(k.toLowerCase()));
+      const iPed=cI('pedido'),iNF=cI('nf/serie'),iDtExp=cI('dt. expedi'),iDtEnt=cI('dt. entrega');
+      const iCli=cI('cliente'),iTrasp=cI('transportadora'),iSit=cI('situa');
+      if(iNF<0&&iPed<0){alert('Formato VDK não reconhecido — colunas Pedido / NF/Serie não encontradas.');pw.classList.remove('show');return;}
+      pf.style.width='50%';pt.textContent='Processando VDK…';
+      const existMap=new Map([...activeRecs,...expedidoRecs].map(r=>[r.nota,r]));
+      let add=0,upd=0;const n=nowStr();
+      for(let i=hdrIdx+1;i<raw.length;i++){
+        const c=raw[i];if(!c||c.every(v=>!v))continue;
+        const nfRaw=iNF>=0?c[iNF]:'';
+        const{nf,serie}=parseNFSerie(nfRaw);
+        const nota=nf||String(c[iPed]||'').trim();
+        if(!nota)continue;
+        const fat=iPed>=0?String(c[iPed]||'').trim():'';
+        const dtRaw=iDtExp>=0&&c[iDtExp]?c[iDtExp]:(iDtEnt>=0?c[iDtEnt]:'');
+        const fd={
+          nome_cliente:iCli>=0?String(c[iCli]||'').trim():'',
+          transportadora:iTrasp>=0?cleanTranspVDK(String(c[iTrasp]||'')):'' ,
+          data_emissao:fmtDateVDK(dtRaw),
+          romaneio:'',mensagem:'',
+          origem:'GRU',xconf:'',
+          loja:serie,fat:fat,vendedor:''
+        };
+        const situacao=iSit>=0?String(c[iSit]||'').trim():'';
+        const mappedSt=mapSituacao(situacao);
+        if(existMap.has(nota)){
+          const rec=existMap.get(nota);Object.assign(rec,fd);upd++;
+          if(!stMap[nota])stMap[nota]={obs:''};
+          // Só avança o status se o novo for "mais adiantado"
+          const curSt=stMap[nota].status||'Faturado';
+          const ord={Faturado:1,'Em Separação':2,Separado:3,Conferido:4,Expedido:5,Pendente:0.5};
+          if((ord[mappedSt]||0)>(ord[curSt]||0)){
+            stMap[nota].status=mappedSt;
+            const tsMap2={Expedido:'ts_exp','Em Separação':'ts_sep',Separado:'ts_sepd',Conferido:'ts_conf',Pendente:'ts_pend',Faturado:'ts_fat'};
+            if(!stMap[nota][tsMap2[mappedSt]])stMap[nota][tsMap2[mappedSt]]=n;
+          }
+        }else{
+          existMap.set(nota,{nota,...fd});add++;
+          if(!stMap[nota])stMap[nota]={obs:''};
+          stMap[nota].status=mappedSt;
+          const tsMap2={Expedido:'ts_exp','Em Separação':'ts_sep',Separado:'ts_sepd',Conferido:'ts_conf',Pendente:'ts_pend',Faturado:'ts_fat'};
+          stMap[nota].ts_fat=n;
+          if(tsMap2[mappedSt])stMap[nota][tsMap2[mappedSt]]=n;
+        }
+      }
+      pf.style.width='85%';pt.textContent='Salvando…';
+      const nA=[],nE=[];existMap.forEach(r=>{if(r.romaneio)nE.push(r);else nA.push(r)});
+      activeRecs=nA;expedidoRecs=nE;saveLS();
+      setTimeout(async()=>{
+        pf.style.width='100%';pt.textContent='Concluído!';
+        renderDateTree();onFilterChange();closeModal();
+        document.getElementById('lastUpd').textContent='VDK GRU: '+n;
+        if(SB_URL&&SB_KEY){
+          pt.textContent='Sincronizando…';
+          await sbSyncRecords([...activeRecs,...expedidoRecs]);
+          const autoStatus=Object.entries(stMap).filter(([,sd])=>['Expedido','Conferido','Em Separação'].includes(sd.status));
+          for(const[nota]of autoStatus)await sbSyncStatus(nota);
+        }
+        alert(`✓ VDK GRU importado!\n${add} novo(s) · ${upd} atualizado(s)`);
+      },300);
+    }catch(e){alert('Erro ao ler XLS: '+e.message);pw.classList.remove('show');}
+  });
+}
+
 function importCSV(){
-  if(!csvContent){alert('Selecione um CSV.');return}
+  if(!csvContent){alert('Selecione um arquivo.');return}
+  // Detecta formato VDK (XLS/XLSX)
+  if(typeof csvContent==='object'&&csvContent.type==='vdk'){importVDK(csvContent.data);return}
   _lastSyncTs=Date.now(); // bloqueia o timer de sync enquanto importa
   const pw=document.getElementById('progWrap'),pf=document.getElementById('progFill'),pt=document.getElementById('progTxt');
   pw.classList.add('show');pf.style.width='10%';pt.textContent='Lendo…';
