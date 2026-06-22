@@ -587,7 +587,10 @@ ALTER TABLE avacy_status  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE avacy_users   ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "allow_all" ON avacy_records FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "allow_all" ON avacy_status  FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "allow_all" ON avacy_users   FOR ALL USING (true) WITH CHECK (true);</pre>
+CREATE POLICY "allow_all" ON avacy_users   FOR ALL USING (true) WITH CHECK (true);
+-- Colunas adicionais (execute se já tiver o schema criado):
+ALTER TABLE avacy_records ADD COLUMN IF NOT EXISTS volume TEXT;
+ALTER TABLE avacy_records ADD COLUMN IF NOT EXISTS chave_nfe TEXT;</pre>
       <div style="font-size:10px;color:var(--muted);margin-top:8px">3. Em <strong style="color:var(--text)">Project Settings → API</strong> copie a <strong style="color:var(--text)">URL</strong> e a <strong style="color:var(--text)">anon/public key</strong> abaixo:</div>
     </div>
     <div class="form-row" style="margin-top:0">
@@ -1186,8 +1189,8 @@ function importCSV(){
         await sbSyncRecords([...activeRecs,...expedidoRecs]);
         // Sincroniza status de registros Expedido/Conferido que foram definidos automaticamente
         pt.textContent='Sincronizando status…';
-        const autoStatus=Object.entries(stMap).filter(([,sd])=>['Expedido','Conferido'].includes(sd.status));
-        for(const[nota]of autoStatus)await sbSyncStatus(nota);
+        const autoStatus=Object.entries(stMap).filter(([,sd])=>['Expedido','Conferido'].includes(sd.status)).map(([nota])=>nota);
+        await sbBulkSyncStatus(autoStatus);
       }
       alert(`✓ Concluído!\n${add} novo(s) · ${upd} atualizado(s)\n${activeRecs.length} ativo(s) · ${expedidoRecs.length} expedido(s)`)},300);
   },50);
@@ -1582,6 +1585,26 @@ function setSyncUI(state){
   dot.style.animation=state==='sync'?'pulse .8s infinite':'none';
 }
 
+
+// ── Sync de status em lote (substitui loop individual no import) ─────────────
+async function sbBulkSyncStatus(notaList){
+  if(!SB_URL||!SB_KEY||!notaList.length)return;
+  setSyncUI('sync');
+  try{
+    const CHUNK=100;
+    const rows=notaList.map(nota=>{
+      const sd=stMap[nota]||{};
+      return{nota,status:sd.status||'Faturado',obs:sd.obs||'',priority:!!sd.priority,
+        ts_fat:sd.ts_fat||null,ts_sep:sd.ts_sep||null,ts_sepd:sd.ts_sepd||null,
+        ts_conf:sd.ts_conf||null,ts_exp:sd.ts_exp||null,ts_pend:sd.ts_pend||null,
+        pend_prev:sd.pend_prev||null,scan_log:sd.scan_log||null,sep_log:sd.sep_log||null,
+        pend_log:sd.pend_log||null,updated_at:new Date().toISOString()};
+    });
+    for(let i=0;i<rows.length;i+=CHUNK)await sbPost('/rest/v1/avacy_status',rows.slice(i,i+CHUNK));
+    setSyncUI('ok');
+  }catch(e){setSyncUI('err');console.warn('sbBulkSyncStatus:',e);}
+}
+
 async function sbSyncStatus(nota){
   if(!SB_URL||!SB_KEY)return;
   setSyncUI('sync');
@@ -1670,7 +1693,8 @@ async function sbLoadAll(){
   }
 }
 
-const SB_FIELDS=['nota','fat','loja','nome_cliente','vendedor','transportadora','data_emissao','romaneio','mensagem','origem','xconf','volume','chave_nfe'];
+const SB_FIELDS=['nota','fat','loja','nome_cliente','vendedor','transportadora','data_emissao','romaneio','mensagem','origem','xconf'];
+const SB_FIELDS_EXTRA=['volume','chave_nfe']; // requer ALTER TABLE no Supabase
 let _lastSyncTs=0; // protege contra sbLoadAll logo após import
 async function sbSyncRecords(recs){
   if(!SB_URL||!SB_KEY)return;setSyncUI('sync');
@@ -1678,7 +1702,8 @@ async function sbSyncRecords(recs){
   try{
     const CHUNK=100;
     // Envia só os campos que existem na tabela do Supabase
-    const clean=recs.map(r=>{const o={};SB_FIELDS.forEach(f=>{o[f]=r[f]??null});return o});
+    const allFields=[...SB_FIELDS,...SB_FIELDS_EXTRA];
+    const clean=recs.map(r=>{const o={};allFields.forEach(f=>{if(r[f]!==undefined)o[f]=r[f]??null;else if(SB_FIELDS.includes(f))o[f]=null;});return o});
     for(let i=0;i<clean.length;i+=CHUNK){
       await sbPost('/rest/v1/avacy_records',clean.slice(i,i+CHUNK));
     }
