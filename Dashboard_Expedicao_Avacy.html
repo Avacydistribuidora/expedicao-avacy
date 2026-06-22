@@ -298,6 +298,7 @@ td{padding:7px 10px;vertical-align:middle}
 .file-sel{display:none;background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);
   border-radius:8px;padding:10px 14px;margin-top:12px;font-size:12px;color:var(--green);align-items:center;gap:8px}
 .file-sel.show{display:flex}
+.import-mode-replace{border-color:var(--red)!important;background:#fff5f5!important}
 .modal-hint{font-size:10px;color:#6b7a99;margin-top:12px;line-height:1.6;
   background:#f4f6fa;border:1px solid #dde2ec;border-radius:6px;padding:10px}
 .modal-hint strong{color:#1a2035}
@@ -391,7 +392,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v2.2 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v2.7 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -399,7 +400,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v2.2</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v2.7</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -649,7 +650,16 @@ ALTER TABLE avacy_records ADD COLUMN IF NOT EXISTS chave_nfe TEXT;</pre>
 <div class="ov" id="modal" onclick="if(event.target===this)closeModal()">
   <div class="modal">
     <h3>📥 Importar CSV do Protheus</h3>
-    <p>Importação <strong>incremental</strong>: novos pedidos adicionados; romaneio e XCONF atualizados. Status manual e OBS preservados.</p>
+    <div style="display:flex;gap:8px;margin-bottom:4px">
+      <label style="flex:1;display:flex;align-items:center;gap:8px;padding:8px 12px;border:2px solid var(--blue);border-radius:8px;cursor:pointer;background:var(--card2)" id="lbl-incremental">
+        <input type="radio" name="importMode" value="incremental" checked onchange="setImportMode(this.value)" style="accent-color:var(--blue)">
+        <div><strong style="color:var(--blue)">Incremental</strong><br><span style="font-size:11px;color:var(--muted)">Adiciona novos · Atualiza existentes · Preserva status manual</span></div>
+      </label>
+      <label style="flex:1;display:flex;align-items:center;gap:8px;padding:8px 12px;border:2px solid #ccc;border-radius:8px;cursor:pointer;background:var(--card2)" id="lbl-replace">
+        <input type="radio" name="importMode" value="replace" onchange="setImportMode(this.value)" style="accent-color:var(--red)">
+        <div><strong style="color:var(--red)">Substituir tudo</strong><br><span style="font-size:11px;color:var(--muted)">Remove registros ausentes · Reimporta limpo</span></div>
+      </label>
+    </div>
     <div class="drop-zone" id="dropZone">
       <input type="file" id="csvFile" accept=".csv,.txt,.xls,.xlsx" onchange="onFileSelect(this)">
       <div class="drop-icon">📄</div>
@@ -1133,7 +1143,10 @@ function importCSV(){
     const iChave=cIdx(hdr,'CHAVE_NFE','CHAVE_NF','CHAVE');
     if(iNota<0){alert('Coluna NOTA não encontrada.');pw.classList.remove('show');return}
     pf.style.width='50%';pt.textContent='Processando…';
-    const existMap=new Map([...activeRecs,...expedidoRecs].map(r=>[r.nota,r]));
+    // Modo Substituir: começa com mapa vazio (descarta registros que não estão no CSV)
+    const baseRecs=_importMode==='replace'?[]:([...activeRecs,...expedidoRecs]);
+    if(_importMode==='replace'){activeRecs=[];expedidoRecs=[];stMap={};}
+    const existMap=new Map(baseRecs.map(r=>[r.nota,r]));
     let add=0,upd=0;const n=nowStr();
     for(let i=1;i<rows.length;i++){
       const c=rows[i];if(!c||c.length<2)continue;
@@ -1182,22 +1195,27 @@ function importCSV(){
     pf.style.width='85%';pt.textContent='Salvando…';
     const nA=[],nE=[];existMap.forEach(r=>{if(r.romaneio)nE.push(r);else nA.push(r)});
     activeRecs=nA;expedidoRecs=nE;saveLS();
-    setTimeout(async()=>{pf.style.width='100%';pt.textContent='Concluído!';
-      // Após importar: mostra todos os status/origens para o usuário ver os dados
-      document.getElementById('sfStatus').value='';
-      document.getElementById('sfOrigem').value='';
-      document.getElementById('showExp').checked=true;
-      renderDateTree();onFilterChange();closeModal();
-      document.getElementById('lastUpd').textContent='Importação: '+n;
-      if(SB_URL&&SB_KEY){
-        pt.textContent='Sincronizando registros…';
-        await sbSyncRecords([...activeRecs,...expedidoRecs]);
-        // Sincroniza status de registros Expedido/Conferido que foram definidos automaticamente
-        pt.textContent='Sincronizando status…';
-        const autoStatus=Object.entries(stMap).filter(([,sd])=>['Expedido','Conferido'].includes(sd.status)).map(([nota])=>nota);
-        await sbBulkSyncStatus(autoStatus);
+    setTimeout(()=>{
+      pf.style.width='100%';pt.textContent='Concluído!';
+      try{
+        document.getElementById('sfStatus').value='';
+        document.getElementById('sfOrigem').value='';
+        document.getElementById('showExp').checked=true;
+        renderDateTree();
+        onFilterChange();
+        closeModal();
+      }catch(renderErr){
+        console.error('Erro no render pós-import:',renderErr);
+        closeModal();
       }
-      alert(`✓ Concluído!\n${add} novo(s) · ${upd} atualizado(s)\n${activeRecs.length} ativo(s) · ${expedidoRecs.length} expedido(s)`)},300);
+      document.getElementById('lastUpd').textContent=`${activeRecs.length+expedidoRecs.length} registros em memória`;
+      alert(`✓ Importação concluída!\n${add} novo(s)  ·  ${upd} atualizado(s)\n${activeRecs.length} ativo(s)  ·  ${expedidoRecs.length} expedido(s)`);
+      if(SB_URL&&SB_KEY){
+        const snapRecs=[...activeRecs,...expedidoRecs];
+        const autoStatus=Object.entries(stMap).filter(([,sd])=>['Expedido','Conferido'].includes(sd.status)).map(([nota])=>nota);
+        sbSyncRecords(snapRecs).then(()=>sbBulkSyncStatus(autoStatus)).catch(e=>console.warn('bg sync err:',e));
+      }
+    },300);
   },50);
 }
 
@@ -1325,6 +1343,15 @@ document.addEventListener('click',e=>{if(!e.target.closest('.act-trigger')&&!e.t
 // ═══════════════════════════════════════════════════════════
 // FILTROS
 // ═══════════════════════════════════════════════════════════
+function clearFilters(){
+  document.getElementById('sfStatus').value='';
+  document.getElementById('sfOrigem').value='';
+  document.getElementById('sfTransp').value='';
+  document.getElementById('sfVend').value='';
+  document.getElementById('showExp').checked=true;
+  document.getElementById('srch').value='';
+  onFilterChange();
+}
 function getFilters(){return{srch:document.getElementById('srch').value.toLowerCase(),sfSt:document.getElementById('sfStatus').value,sfOrig:document.getElementById('sfOrigem').value,sfTr:document.getElementById('sfTransp').value,sfVend:document.getElementById('sfVend').value,showExp:document.getElementById('showExp').checked}}
 function applyFilters(pool,filters,exclTr=false,exclVend=false){
   const{srch,sfSt,sfOrig,sfTr,sfVend,showExp}=filters;
@@ -1379,6 +1406,9 @@ function clearFilters(){
 // RENDER TABELA
 // ═══════════════════════════════════════════════════════════
 function render(){
+  try{_render()}catch(e){console.error('render() error:',e);document.getElementById('tbody').innerHTML=`<tr><td colspan="16"><div class="empty"><div class="ico">⚠️</div><p style="color:var(--red)">Erro ao renderizar: ${e.message}</p></div></td></tr>`}
+}
+function _render(){
   const filters=getFilters();
   const pool=[...activeRecs,...expedidoRecs];
   let list=applyFilters(pool,filters);
@@ -1393,7 +1423,12 @@ function render(){
   });
   updateDashboard(list);
   const body=document.getElementById('tbody');
-  if(!list.length){body.innerHTML=`<tr><td colspan="16"><div class="empty"><div class="ico">🔎</div><p>Nenhum registro encontrado.</p></div></td></tr>`;return}
+  if(!list.length){
+    const tot=activeRecs.length+expedidoRecs.length;
+    const msg=tot>0
+      ?`<p>Nenhum registro com os filtros atuais.</p><p style="font-size:12px;color:var(--muted)">${tot} registros em memória — use "Limpar filtros" para ver todos</p><button class="btn" onclick="clearFilters()">Limpar filtros</button>`
+      :`<p>Nenhum dado importado.</p><button class="btn primary" onclick="openModal()">📥 Importar CSV do Protheus</button>`;
+    body.innerHTML=`<tr><td colspan="16"><div class="empty"><div class="ico">${tot>0?'🔎':'📂'}</div>${msg}</div></td></tr>`;return}
   const tsMap={Faturado:'ts_fat','Em Separação':'ts_sep',Separado:'ts_sepd',Conferido:'ts_conf',Expedido:'ts_exp',Pendente:'ts_pend'};
   body.innerHTML=list.map(r=>{
     const sd=stMap[r.nota]||{status:'Faturado',obs:''};const st=sd.status||'Faturado';const sc=SC_CLASS[st]||'fat';
@@ -1450,7 +1485,6 @@ function updateDashboard(list){
     if(r.origem==='GRU'||r.origem==='MATRIZ')origC[r.origem]++;
     if(r.transportadora){const k=r.transportadora.length>22?r.transportadora.slice(0,22)+'…':r.transportadora;transpC[k]=(transpC[k]||0)+1}
   });
-  document.getElementById('k-total').textContent=fat+sep+sepd+conf+pend;
   document.getElementById('k-fat').textContent=fat;document.getElementById('k-sep').textContent=sep;
   document.getElementById('k-sepd').textContent=sepd;document.getElementById('k-conf').textContent=conf;
   document.getElementById('k-exp').textContent=exp;
@@ -1801,7 +1835,20 @@ async function saveSbConfig(){
 // ═══════════════════════════════════════════════════════════
 function toggleSort(f){if(sortField===f)sortDir=sortDir==='asc'?'desc':'asc';else{sortField=f;sortDir='asc'}updateSortUI();render()}
 function updateSortUI(){['nota','emissao'].forEach(f=>{const th=document.getElementById('th-'+f),si=document.getElementById('si-'+f);th.classList.remove('sort-asc','sort-desc');si.textContent='⇅';if(sortField===f){th.classList.add(sortDir==='asc'?'sort-asc':'sort-desc');si.textContent=sortDir==='asc'?'▲':'▼'}})}
-function openModal(){csvContent=null;document.getElementById('csvFile').value='';document.getElementById('fileSel').classList.remove('show');document.getElementById('progWrap').classList.remove('show');document.getElementById('progFill').style.width='0';document.getElementById('btnImport').disabled=true;document.getElementById('modal').classList.add('open')}
+let _importMode='incremental';
+function setImportMode(v){
+  _importMode=v;
+  document.getElementById('lbl-incremental').style.borderColor=v==='incremental'?'var(--blue)':'#ccc';
+  document.getElementById('lbl-replace').style.borderColor=v==='replace'?'var(--red)':'#ccc';
+  document.getElementById('lbl-replace').style.background=v==='replace'?'#fff5f5':'var(--card2)';
+  document.getElementById('lbl-incremental').style.background=v==='incremental'?'#f0f6ff':'var(--card2)';
+}
+function openModal(){csvContent=null;_importMode='incremental';
+  // Resetar radio para incremental
+  const radios=document.querySelectorAll('input[name="importMode"]');
+  radios.forEach(r=>r.checked=r.value==='incremental');
+  setImportMode('incremental');
+  document.getElementById('csvFile').value='';document.getElementById('fileSel').classList.remove('show');document.getElementById('progWrap').classList.remove('show');document.getElementById('progFill').style.width='0';document.getElementById('btnImport').disabled=true;document.getElementById('modal').classList.add('open')}
 function closeModal(){document.getElementById('modal').classList.remove('open')}
 function clearAll(){
   if(getCurrentUser()?.role!=='admin'){alert('Apenas o administrador pode limpar os dados.');return}
@@ -1827,7 +1874,7 @@ function initDashboard(){
   document.getElementById('menuAdminLink').style.display=isAdmin?'block':'none';
   document.getElementById('menuClearLink').style.display=isAdmin?'block':'none';
   loadLS();initSelectedDates();renderDateTree();updateSortUI();
-  document.getElementById('sfOrigem').value='MATRIZ';
+  document.getElementById('sfOrigem').value='';
   document.getElementById('sfStatus').value='Faturado';
   fillTransp();render();
   if(activeRecs.length)document.getElementById('lastUpd').textContent=`Em memória: ${activeRecs.length} ativo(s)`;
@@ -1835,8 +1882,13 @@ function initDashboard(){
   if(SB_URL&&SB_KEY){
     sbLoadAll().then(ok=>{
       if(ok){initSelectedDates();renderDateTree();onFilterChange();
-        document.getElementById('lastUpd').textContent=`Supabase: ${activeRecs.length} ativo(s) · ${expedidoRecs.length} expedido(s)`}
-      else{console.warn('sbLoadAll falhou no init — usando dados locais')}
+        const tot=activeRecs.length+expedidoRecs.length;
+        document.getElementById('lastUpd').textContent=tot>0?`${tot} registros carregados`:`Supabase vazio — importe o CSV`}
+      else{
+        const tot=activeRecs.length+expedidoRecs.length;
+        document.getElementById('lastUpd').textContent=tot>0?`${tot} registros (local)`:`Sem dados — importe o CSV`;
+        console.warn('sbLoadAll falhou no init — usando dados locais');
+      }
     });
     // Poll leve a cada 60s — só status, só re-renderiza se algo mudou
     setInterval(()=>{
