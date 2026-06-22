@@ -393,7 +393,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.0 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.1 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -401,7 +401,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.0</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.1</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1015,6 +1015,7 @@ dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');co
 const SITUACAO_MAP=[
   {pat:'expedido',          st:'Expedido'},
   {pat:'preparado expedi',  st:'Em Separação'},
+  {pat:'pedido separado',   st:'Separado'},
   {pat:'pedido recebido',   st:'Faturado'},
   {pat:'integrado',         st:'Faturado'},
   {pat:'tratativa',         st:'Pendente'},
@@ -1188,7 +1189,10 @@ function importCSV(){
           stMap[nota].ts_fat=auth||n;
           stMap[nota].ts_conf=stMap[nota].ts_conf||n;
         } else {
-          stMap[nota].status='Faturado';
+          // Preservar pré-bipe (Em Separação / Separado registrado antes da importação)
+          const preScanned=['Em Separação','Separado','Conferido'].includes(stMap[nota].status);
+          if(!preScanned){stMap[nota].status='Faturado';}
+          stMap[nota].pre_scan=false; // marca como confirmado pelo CSV
           stMap[nota].ts_fat=auth||n;
         }
       }
@@ -1251,7 +1255,26 @@ function doBipe(){
   if(!val)return;
   const cu=getCurrentUser();const n=nowStr();
   const found=[...activeRecs,...expedidoRecs].filter(r=>r.fat===val||r.loja===val||r.nota===val);
-  if(!found.length){showBipeFeedback('err',`❌ "${val}" não encontrado`);return}
+  if(!found.length){
+    // Pré-bipe: nota ainda não importada — registra em stMap para aplicar quando CSV chegar
+    const newSt=bipeMode==='sep'?'Em Separação':'Separado';
+    const tsKey=bipeMode==='sep'?'ts_sep':'ts_sepd';
+    const logKey=bipeMode==='sep'?'scan_log':'sep_log';
+    const existing=stMap[val]||{obs:''};
+    // Só registra se ainda não foi bipado nesse status ou anterior
+    const stOrd={'Faturado':1,'Em Separação':2,'Separado':3,'Conferido':4,'Expedido':5};
+    if((stOrd[existing.status]||0)<(stOrd[newSt]||0)){
+      stMap[val]={...existing,status:newSt,pre_scan:true,[tsKey]:n,[logKey]:{user:cu?.username||'?',ts:n,code:val}};
+      saveLS();sbSyncStatus(val);
+      bipeLogEntries.unshift({nota:val,user:cu?.username||'?',ts:n,ok:true,action:newSt+' (pré-bipe)',mode:bipeMode});
+      if(bipeLogEntries.length>20)bipeLogEntries=bipeLogEntries.slice(0,20);
+      showBipeFeedback('ok',`⏳ Pré-bipe "${val}" → ${newSt} (aguarda importação CSV)`);
+      renderBipeLog();
+    } else {
+      showBipeFeedback('warn',`⚠ "${val}" já está como ${existing.status}`);
+    }
+    return;
+  }
   let changed=0,skip=0;
   found.forEach(r=>{
     const sd=stMap[r.nota]||{obs:''};const st=sd.status||'Faturado';
