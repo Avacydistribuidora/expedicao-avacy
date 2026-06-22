@@ -530,7 +530,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
             <th>FAT</th><th>LOJA</th>
             <th class="sortable" id="th-nota" onclick="toggleSort('nota')">NOTA <span class="si" id="si-nota">⇅</span></th>
             <th class="sortable" id="th-emissao" onclick="toggleSort('emissao')">EMISSÃO <span class="si" id="si-emissao">⇅</span></th>
-            <th>NOME DO CLIENTE</th><th>VENDEDOR</th><th>TRANSPORTADORA</th>
+            <th>NOME DO CLIENTE</th><th>VENDEDOR</th><th>TRANSPORTADORA</th><th style="text-align:right">VOL</th>
             <th>STATUS</th><th>ORIG</th><th>CONF</th>
             <th style="min-width:150px">AÇÃO</th>
             <th style="min-width:145px">OBS</th>
@@ -538,7 +538,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
           </tr>
         </thead>
         <tbody id="tbody">
-          <tr><td colspan="14"><div class="empty">
+          <tr><td colspan="15"><div class="empty">
             <div class="ico">📂</div>
             <p>Nenhum dado importado.</p>
             <button class="btn primary" onclick="openModal()">📥 Importar CSV do Protheus</button>
@@ -1054,7 +1054,7 @@ function importVDK(arrayBuffer){
       if(iNF<0&&iPed<0){alert('Formato VDK não reconhecido — colunas Pedido / NF/Serie não encontradas.');pw.classList.remove('show');return;}
       pf.style.width='50%';pt.textContent='Processando VDK…';
       const existMap=new Map([...activeRecs,...expedidoRecs].map(r=>[r.nota,r]));
-      let add=0,upd=0;const n=nowStr();
+      let add=0,upd=0,skip=0;const n=nowStr();
       for(let i=hdrIdx+1;i<raw.length;i++){
         const c=raw[i];if(!c||c.every(v=>!v))continue;
         const nfRaw=iNF>=0?c[iNF]:'';
@@ -1069,7 +1069,8 @@ function importVDK(arrayBuffer){
           data_emissao:fmtDateVDK(dtRaw),
           romaneio:'',mensagem:'',
           origem:'GRU',xconf:'',
-          loja:serie,fat:fat,vendedor:''
+          loja:serie,fat:fat,vendedor:'',
+          volume:iVol>=0?String(c[iVol]||'').trim():''
         };
         const situacao=iSit>=0?String(c[iSit]||'').trim():'';
         const mappedSt=mapSituacao(situacao);
@@ -1085,12 +1086,8 @@ function importVDK(arrayBuffer){
             if(!stMap[nota][tsMap2[mappedSt]])stMap[nota][tsMap2[mappedSt]]=n;
           }
         }else{
-          existMap.set(nota,{nota,...fd});add++;
-          if(!stMap[nota])stMap[nota]={obs:''};
-          stMap[nota].status=mappedSt;
-          const tsMap2={Expedido:'ts_exp','Em Separação':'ts_sep',Separado:'ts_sepd',Conferido:'ts_conf',Pendente:'ts_pend',Faturado:'ts_fat'};
-          stMap[nota].ts_fat=n;
-          if(tsMap2[mappedSt])stMap[nota][tsMap2[mappedSt]]=n;
+          // VDK é somente atualização — ignora notas que não existem localmente
+          skip++;
         }
       }
       pf.style.width='85%';pt.textContent='Salvando…';
@@ -1106,7 +1103,7 @@ function importVDK(arrayBuffer){
           const autoStatus=Object.entries(stMap).filter(([,sd])=>['Expedido','Conferido','Em Separação'].includes(sd.status));
           for(const[nota]of autoStatus)await sbSyncStatus(nota);
         }
-        alert(`✓ VDK GRU importado!\n${add} novo(s) · ${upd} atualizado(s)`);
+        alert(`✓ VDK GRU — status atualizados!\n${upd} atualizado(s) · ${skip} não encontrados (aguarde importação do Protheus)`);
       },300);
     }catch(e){alert('Erro ao ler XLS: '+e.message);pw.classList.remove('show');}
   });
@@ -1385,7 +1382,7 @@ function render(){
   });
   updateDashboard(list);
   const body=document.getElementById('tbody');
-  if(!list.length){body.innerHTML=`<tr><td colspan="14"><div class="empty"><div class="ico">🔎</div><p>Nenhum registro encontrado.</p></div></td></tr>`;return}
+  if(!list.length){body.innerHTML=`<tr><td colspan="15"><div class="empty"><div class="ico">🔎</div><p>Nenhum registro encontrado.</p></div></td></tr>`;return}
   const tsMap={Faturado:'ts_fat','Em Separação':'ts_sep',Separado:'ts_sepd',Conferido:'ts_conf',Expedido:'ts_exp',Pendente:'ts_pend'};
   body.innerHTML=list.map(r=>{
     const sd=stMap[r.nota]||{status:'Faturado',obs:''};const st=sd.status||'Faturado';const sc=SC_CLASS[st]||'fat';
@@ -1412,6 +1409,7 @@ function render(){
       <td><span class="clip" title="${esc(r.nome_cliente)}">${r.nome_cliente||'—'}</span></td>
       <td><span class="clip-sm" title="${esc(r.vendedor||'')}" style="color:${r.vendedor?'var(--text)':'var(--muted)'}">${r.vendedor||'—'}</span></td>
       <td><span class="clip-sm" title="${esc(r.transportadora)}">${r.transportadora||'—'}</span></td>
+      <td style="text-align:right;font-size:11px;color:var(--muted);font-family:monospace">${r.volume||'—'}</td>
       <td><div class="has-tip"><span class="badge ${sc}"><span class="dot ${sc}"></span>${st}</span>${ts?`<span class="ts">${ts}</span>`:''}${tipHtml}</div></td>
       <td>${origemBadge(r.origem)}</td>
       <td>${r.xconf?`<span class="conf-yes">✔</span>`:`<span class="conf-no">—</span>`}</td>
@@ -1594,6 +1592,29 @@ async function sbSyncStatus(nota){
   }catch(e){setSyncUI('err');console.warn('sbSyncStatus:',e)}
 }
 
+
+// ── Poll periódico leve — só busca status, re-renderiza só se mudou ──────────
+async function sbPollStatus(){
+  if(!SB_URL||!SB_KEY)return;
+  _lastSyncTs=Date.now(); // marca ANTES para não sobrepor chamadas
+  setSyncUI('sync');
+  try{
+    const sbStats=await sbGetAll('avacy_status');
+    if(!Array.isArray(sbStats)||!sbStats.length){setSyncUI('ok');return;}
+    let changed=false;
+    sbStats.forEach(row=>{
+      const{nota,updated_at,...sd}=row;
+      const loc=stMap[nota];
+      // aceita só se Supabase tem dado mais recente
+      if(!loc||(updated_at&&(!loc._ts||updated_at>loc._ts))){
+        stMap[nota]={...sd,_ts:updated_at};changed=true;
+      }
+    });
+    if(changed){saveLS();onFilterChange();}
+    setSyncUI('ok');
+  }catch(e){setSyncUI('err');console.warn('sbPollStatus:',e);}
+}
+
 async function sbLoadAll(){
   if(!SB_URL||!SB_KEY)return false;setSyncUI('sync');
   try{
@@ -1645,7 +1666,7 @@ async function sbLoadAll(){
   }
 }
 
-const SB_FIELDS=['nota','fat','loja','nome_cliente','vendedor','transportadora','data_emissao','romaneio','mensagem','origem','xconf'];
+const SB_FIELDS=['nota','fat','loja','nome_cliente','vendedor','transportadora','data_emissao','romaneio','mensagem','origem','xconf','volume'];
 let _lastSyncTs=0; // protege contra sbLoadAll logo após import
 async function sbSyncRecords(recs){
   if(!SB_URL||!SB_KEY)return;setSyncUI('sync');
@@ -1783,10 +1804,11 @@ function initDashboard(){
         document.getElementById('lastUpd').textContent=`Supabase: ${activeRecs.length} ativo(s) · ${expedidoRecs.length} expedido(s)`}
       else{console.warn('sbLoadAll falhou no init — usando dados locais')}
     });
+    // Poll leve a cada 60s — só status, só re-renderiza se algo mudou
     setInterval(()=>{
-      if(Date.now()-_lastSyncTs<90000)return;
-      sbLoadAll().then(ok=>{if(ok){renderDateTree();onFilterChange()}});
-    },30000);
+      if(Date.now()-_lastSyncTs<60000)return;
+      sbPollStatus();
+    },60000);
   }
 }
 initUsers();
