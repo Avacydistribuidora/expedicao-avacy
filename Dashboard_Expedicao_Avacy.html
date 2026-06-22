@@ -1127,7 +1127,7 @@ function importCSV(){
     const hdr=rows[0].map(h=>h.trim());
     const iNota=cIdx(hdr,'NOTA'),iNome=cIdx(hdr,'NOME_CLIENTE','A1_NOME'),iTrasp=cIdx(hdr,'TRANSPORTADORA');
     const iEmis=cIdx(hdr,'DATA_EMISSAO'),iAuth=cIdx(hdr,'DT_HR_AUTORIZACAO'),iRom=cIdx(hdr,'ROMANIEO','ROMANEIO');
-    const iMens=cIdx(hdr,'MENSAGEM_NOTA','MENSAGEM'),iRaj=cIdx(hdr,'RAJLOG'),iXCon=cIdx(hdr,'XCONF');
+    const iMens=cIdx(hdr,'MENSAGEM_NOTA','MENSAGEM'),iRaj=cIdx(hdr,'RAJLOG'),iXCon=cIdx(hdr,'XCONF','CONF');
     const iLoja=cIdx(hdr,'LOJA'),iFat=cIdx(hdr,'FAT');
     const iVend=cIdx(hdr,'VENDEDOR','A3_NOME','C5_VEND','NOME_VENDEDOR');
     const iChave=cIdx(hdr,'CHAVE_NFE','CHAVE_NF','CHAVE');
