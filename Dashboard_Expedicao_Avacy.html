@@ -393,7 +393,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.1 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.2 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -401,7 +401,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.1</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.2</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1143,6 +1143,7 @@ function importCSV(){
     const iLoja=cIdx(hdr,'LOJA'),iFat=cIdx(hdr,'FAT');
     const iVend=cIdx(hdr,'VENDEDOR','A3_NOME','C5_VEND','NOME_VENDEDOR');
     const iChave=cIdx(hdr,'CHAVE_NFE','CHAVE_NF','CHAVE');
+    const iVolCSV=cIdx(hdr,'VOLUME1','VOLUME','VOL','QTD_VOL');
     if(iNota<0){alert('Coluna NOTA não encontrada.');pw.classList.remove('show');return}
     pf.style.width='50%';pt.textContent='Processando…';
     // Modo Substituir: começa com mapa vazio (descarta registros que não estão no CSV)
@@ -1160,7 +1161,8 @@ function importCSV(){
         mensagem:clean(iMens>=0?c[iMens]||'':''),origem:origemFromRaj(clean(iRaj>=0?c[iRaj]||'':'')),
         xconf,loja:clean(iLoja>=0?c[iLoja]||'':''),fat:clean(iFat>=0?c[iFat]||'':''),
         vendedor:clean(iVend>=0?c[iVend]||'':''),
-        chave_nfe:clean(iChave>=0?c[iChave]||'':'')};
+        chave_nfe:clean(iChave>=0?c[iChave]||'':''),
+        volume:iVolCSV>=0?String(parseInt((c[iVolCSV]||'0').toString().replace(',','.'))||0):''};
       if(existMap.has(nota)){
         const rec=existMap.get(nota);Object.assign(rec,fd);upd++;
         if(!stMap[nota])stMap[nota]={obs:''};
