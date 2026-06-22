@@ -381,7 +381,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <div class="login-screen" id="loginScreen">
   <div class="login-box">
     <div class="lb-logo">
-      <div style="font-size:28px;font-weight:900;letter-spacing:.05em;background:linear-gradient(90deg,#fff 50%,#2dd4bf);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Avacy</div>
+      <div style="font-size:32px;font-weight:900;letter-spacing:.06em;background:linear-gradient(90deg,#0d2167 40%,#0d9488);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Avacy</div>
     </div>
     <h2>Dashboard — Expedição</h2>
     <p class="login-sub">Faça login para acessar o sistema</p>
@@ -391,6 +391,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v2.1 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -398,7 +399,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição</div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v2.1</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -534,11 +535,11 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
             <th>STATUS</th><th>ORIG</th><th>CONF</th>
             <th style="min-width:150px">AÇÃO</th>
             <th style="min-width:145px">OBS</th>
-            <th>ROMANEIO</th><th>MENSAGEM</th>
+            <th>ROMANEIO</th><th>MENSAGEM</th><th style="min-width:110px">CHAVE NFe</th>
           </tr>
         </thead>
         <tbody id="tbody">
-          <tr><td colspan="15"><div class="empty">
+          <tr><td colspan="16"><div class="empty">
             <div class="ico">📂</div>
             <p>Nenhum dado importado.</p>
             <button class="btn primary" onclick="openModal()">📥 Importar CSV do Protheus</button>
@@ -1126,6 +1127,7 @@ function importCSV(){
     const iMens=cIdx(hdr,'MENSAGEM_NOTA','MENSAGEM'),iRaj=cIdx(hdr,'RAJLOG'),iXCon=cIdx(hdr,'XCONF');
     const iLoja=cIdx(hdr,'LOJA'),iFat=cIdx(hdr,'FAT');
     const iVend=cIdx(hdr,'VENDEDOR','A3_NOME','C5_VEND','NOME_VENDEDOR');
+    const iChave=cIdx(hdr,'CHAVE_NFE','CHAVE_NF','CHAVE');
     if(iNota<0){alert('Coluna NOTA não encontrada.');pw.classList.remove('show');return}
     pf.style.width='50%';pt.textContent='Processando…';
     const existMap=new Map([...activeRecs,...expedidoRecs].map(r=>[r.nota,r]));
@@ -1139,7 +1141,8 @@ function importCSV(){
         data_emissao:fmtDate(clean(iEmis>=0?c[iEmis]||':':'')),romaneio:rom,
         mensagem:clean(iMens>=0?c[iMens]||'':''),origem:origemFromRaj(clean(iRaj>=0?c[iRaj]||'':'')),
         xconf,loja:clean(iLoja>=0?c[iLoja]||'':''),fat:clean(iFat>=0?c[iFat]||'':''),
-        vendedor:clean(iVend>=0?c[iVend]||'':'')};
+        vendedor:clean(iVend>=0?c[iVend]||'':''),
+        chave_nfe:clean(iChave>=0?c[iChave]||'':'')};
       if(existMap.has(nota)){
         const rec=existMap.get(nota);Object.assign(rec,fd);upd++;
         if(!stMap[nota])stMap[nota]={obs:''};
@@ -1382,7 +1385,7 @@ function render(){
   });
   updateDashboard(list);
   const body=document.getElementById('tbody');
-  if(!list.length){body.innerHTML=`<tr><td colspan="15"><div class="empty"><div class="ico">🔎</div><p>Nenhum registro encontrado.</p></div></td></tr>`;return}
+  if(!list.length){body.innerHTML=`<tr><td colspan="16"><div class="empty"><div class="ico">🔎</div><p>Nenhum registro encontrado.</p></div></td></tr>`;return}
   const tsMap={Faturado:'ts_fat','Em Separação':'ts_sep',Separado:'ts_sepd',Conferido:'ts_conf',Expedido:'ts_exp',Pendente:'ts_pend'};
   body.innerHTML=list.map(r=>{
     const sd=stMap[r.nota]||{status:'Faturado',obs:''};const st=sd.status||'Faturado';const sc=SC_CLASS[st]||'fat';
@@ -1417,6 +1420,7 @@ function render(){
       <td><input class="obs-inp" value="${esc(sd.obs||'')}" placeholder="Observação…" onchange="saveObs('${esc(r.nota)}',this.value)"></td>
       <td>${r.romaneio?`<span class="rom-yes" title="${esc(r.romaneio)}">✓ ${r.romaneio.slice(0,10)}</span>`:`<span class="rom-no">—</span>`}</td>
       <td>${r.mensagem?`<span class="mens" title="${esc(r.mensagem)}">${r.mensagem}</span>`:`<span style="color:var(--muted);font-size:11px">—</span>`}</td>
+      <td>${r.chave_nfe?`<span class="clip" style="max-width:100px;font-size:9px;font-family:monospace;color:var(--muted)" title="${esc(r.chave_nfe)}">${r.chave_nfe}</span>`:`<span style="color:var(--muted);font-size:11px">—</span>`}</td>
     </tr>`;
   }).join('');
 }
@@ -1496,7 +1500,7 @@ function exportConsolidado(){
         'NOME DO CLIENTE':r.nome_cliente,'VENDEDOR':r.vendedor||'','TRANSPORTADORA':r.transportadora,
         'STATUS':sd.status||'Faturado','ORIGEM':r.origem,
         'CONF':r.xconf?'Sim':'Não','PRIORIDADE':sd.priority?'Sim':'Não',
-        'ROMANEIO':r.romaneio||'','OBS':sd.obs||'','MENSAGEM':r.mensagem||''};
+        'ROMANEIO':r.romaneio||'','CHAVE NFe':r.chave_nfe||'','OBS':sd.obs||'','MENSAGEM':r.mensagem||'','CHAVE NFe':r.chave_nfe||''};
     });
     const ws=XLSX.utils.json_to_sheet(rows);
     // Largura colunas
@@ -1522,7 +1526,7 @@ function exportAnalitico(){
         'DT PENDENTE':tPend,'USUÁRIO PENDENTE':sd.pend_log?.user||'',
         'SLA FAT→SEP':diffHuman(tFat,tSep),'SLA SEP→SEPD':diffHuman(tSep,tSepd),
         'SLA SEPD→CONF':diffHuman(tSepd,tConf),'SLA TOTAL':diffHuman(tFat,tConf||tSepd||tSep),
-        'ROMANEIO':r.romaneio||'','OBS':sd.obs||''
+        'ROMANEIO':r.romaneio||'','CHAVE NFe':r.chave_nfe||'','OBS':sd.obs||''
       };
     });
     // Sheet 2: Produtividade
@@ -1666,7 +1670,7 @@ async function sbLoadAll(){
   }
 }
 
-const SB_FIELDS=['nota','fat','loja','nome_cliente','vendedor','transportadora','data_emissao','romaneio','mensagem','origem','xconf','volume'];
+const SB_FIELDS=['nota','fat','loja','nome_cliente','vendedor','transportadora','data_emissao','romaneio','mensagem','origem','xconf','volume','chave_nfe'];
 let _lastSyncTs=0; // protege contra sbLoadAll logo após import
 async function sbSyncRecords(recs){
   if(!SB_URL||!SB_KEY)return;setSyncUI('sync');
