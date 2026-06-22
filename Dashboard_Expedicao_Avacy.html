@@ -108,6 +108,7 @@ canvas{display:block;margin:0 auto}
 .bar-track{flex:1;height:9px;background:#e8edf5;border-radius:4px;overflow:hidden}
 .bar-fill{height:100%;border-radius:4px;transition:width .5s cubic-bezier(.4,0,.2,1)}
 .bar-val{font-size:11px;color:#6b7a99;width:28px;text-align:right;flex-shrink:0;font-family:monospace;font-weight:700}
+.bar-vol{font-size:10px;color:var(--muted);font-weight:400}
 .leg-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 6px;margin-top:9px}
 .leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#6b7a99}
 .leg-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
@@ -392,7 +393,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v2.8 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.0 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -400,7 +401,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v2.8</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.0</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -441,8 +442,8 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
   <div class="kpi c-sepd"><div class="lbl">Separado</div><div class="val" id="k-sepd" style="color:var(--purple)">0</div></div>
   <div class="kpi c-conf"><div class="lbl">Conferido</div><div class="val" id="k-conf" style="color:var(--teal)">0</div></div>
   <div class="kpi c-exp"><div class="lbl">Expedido</div><div class="val" id="k-exp" style="color:var(--green)">0</div></div>
-  <div class="kpi c-pend" style="cursor:pointer" onclick="document.getElementById('sfStatus').value='Pendente';onFilterChange()" title="Ver pendentes"><div class="lbl">Pendente</div><div class="val" id="k-pend" style="color:var(--red)">0</div></div>
-  <div class="kpi c-prio" style="cursor:pointer" onclick="document.getElementById('sfStatus').value='__PRIO__';onFilterChange()" title="Ver priorizados"><div class="lbl">⭐ Priorizados</div><div class="val" id="k-prio" style="color:var(--orange)">0</div></div>
+  <div class="kpi c-pend" style="cursor:pointer" onclick="document.getElementById('sfStatus').value='Pendente';onStatusChange()" title="Ver pendentes"><div class="lbl">Pendente</div><div class="val" id="k-pend" style="color:var(--red)">0</div></div>
+  <div class="kpi c-prio" style="cursor:pointer" onclick="document.getElementById('sfStatus').value='__PRIO__';onStatusChange()" title="Ver priorizados"><div class="lbl">⭐ Priorizados</div><div class="val" id="k-prio" style="color:var(--orange)">0</div></div>
 </div>
 
 <!-- APP BODY -->
@@ -502,7 +503,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
         </button>
         <div class="dt-panel" id="dtPanel"></div>
       </div>
-      <select id="sfStatus" onchange="onFilterChange()">
+      <select id="sfStatus" onchange="onStatusChange()">
         <option value="">Todos os status</option>
         <option>Faturado</option><option>Em Separação</option>
         <option>Separado</option><option>Conferido</option>
@@ -1064,7 +1065,7 @@ function importVDK(arrayBuffer){
       const headers=raw[hdrIdx].map(v=>String(v).trim());
       const cI=(k)=>headers.findIndex(h=>h.toLowerCase().includes(k.toLowerCase()));
       const iPed=cI('pedido'),iNF=cI('nf/serie'),iDtExp=cI('dt. expedi'),iDtEnt=cI('dt. entrega');
-      const iCli=cI('cliente'),iTrasp=cI('transportadora'),iSit=cI('situa');
+      const iCli=cI('cliente'),iTrasp=cI('transportadora'),iSit=cI('situa'),iVol=cI('volume');
       if(iNF<0&&iPed<0){alert('Formato VDK não reconhecido — colunas Pedido / NF/Serie não encontradas.');pw.classList.remove('show');return;}
       pf.style.width='50%';pt.textContent='Processando VDK…';
       const existMap=new Map([...activeRecs,...expedidoRecs].map(r=>[r.nota,r]));
@@ -1368,12 +1369,15 @@ function applyFilters(pool,filters,exclTr=false,exclVend=false){
     return true;
   });
 }
-function onFilterChange(){
-  // Expedidos: liga automaticamente ao selecionar status Expedido, desliga nos demais
+function onStatusChange(){
+  // Auto-check "Expedidos" só quando o SELECT de status muda
   const sfSt=document.getElementById('sfStatus').value;
   const expChk=document.getElementById('showExp');
   if(sfSt==='Expedido'||sfSt===''){expChk.checked=true}
   else if(sfSt&&sfSt!==''){expChk.checked=false}
+  onFilterChange();
+}
+function onFilterChange(){
   fillTransp();render();updateDtLabel();
 }
 function fillTransp(){
@@ -1477,13 +1481,15 @@ function updateDashboard(list){
   // Conta priorizados em TODOS os registros (ativo+expedido), não só os filtrados
   const allRecs=[...activeRecs,...expedidoRecs];
   allRecs.forEach(r=>{if(stMap[r.nota]?.priority)prio++});
+  const origV={GRU:0,MATRIZ:0},transpV={};
   list.forEach(r=>{
     const sd=stMap[r.nota]||{};const st=sd.status||'Faturado';
     if(st==='Faturado')fat++;else if(st==='Em Separação')sep++;
     else if(st==='Separado')sepd++;else if(st==='Conferido')conf++;
     else if(st==='Expedido')exp++;else if(st==='Pendente')pend++;
-    if(r.origem==='GRU'||r.origem==='MATRIZ')origC[r.origem]++;
-    if(r.transportadora){const k=r.transportadora.length>22?r.transportadora.slice(0,22)+'…':r.transportadora;transpC[k]=(transpC[k]||0)+1}
+    const vol=parseInt((r.volume||'').toString().replace(/\D/g,''))||0;
+    if(r.origem==='GRU'||r.origem==='MATRIZ'){origC[r.origem]++;origV[r.origem]=(origV[r.origem]||0)+vol;}
+    if(r.transportadora){const k=r.transportadora.length>22?r.transportadora.slice(0,22)+'…':r.transportadora;transpC[k]=(transpC[k]||0)+1;transpV[k]=(transpV[k]||0)+vol;}
   });
   document.getElementById('k-fat').textContent=fat;document.getElementById('k-sep').textContent=sep;
   document.getElementById('k-sepd').textContent=sepd;document.getElementById('k-conf').textContent=conf;
@@ -1495,8 +1501,8 @@ function updateDashboard(list){
     {label:'Separado',value:sepd,color:'#a371f7'},{label:'Conferido',value:conf,color:'#2dd4bf'},
     {label:'Expedido',value:exp,color:'#3fb950'},{label:'Pendente',value:pend,color:'#f85149'},
   ]);
-  drawBars('cOrigem',Object.entries(origC).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([l,v])=>({label:l,value:v,color:l==='GRU'?'#2dd4bf':'#58a6ff'})));
-  drawBars('cTransp',Object.entries(transpC).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([l,v])=>({label:l,value:v,color:'#58a6ff'})));
+  drawBars('cOrigem',Object.entries(origC).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([l,v])=>({label:l,value:v,vol:origV[l]||0,color:l==='GRU'?'#2dd4bf':'#58a6ff'})));
+  drawBars('cTransp',Object.entries(transpC).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([l,v])=>({label:l,value:v,vol:transpV[l]||0,color:'#58a6ff'})));
 }
 function drawDonut(id,data){
   const canvas=document.getElementById(id);if(!canvas)return;
@@ -1520,7 +1526,8 @@ function drawBars(id,data){
   const el=document.getElementById(id);if(!el)return;
   if(!data.length){el.innerHTML='<div style="font-size:10px;color:var(--muted);text-align:center;padding:8px">Sem dados</div>';return}
   const max=Math.max(...data.map(d=>d.value),1);
-  el.innerHTML=data.map(d=>`<div class="bar-row"><div class="bar-lbl" title="${esc(d.label)}">${d.label}</div><div class="bar-track"><div class="bar-fill" style="width:${(d.value/max*100).toFixed(1)}%;background:${d.color}"></div></div><div class="bar-val">${d.value}</div></div>`).join('');
+  const fmtVol=v=>v>0?v.toLocaleString('pt-BR'):'—';
+  el.innerHTML=data.map(d=>`<div class="bar-row"><div class="bar-lbl" title="${esc(d.label)}">${d.label}</div><div class="bar-track"><div class="bar-fill" style="width:${(d.value/max*100).toFixed(1)}%;background:${d.color}"></div></div><div class="bar-val">${d.value}<span class="bar-vol"> · ${fmtVol(d.vol)}</span></div></div>`).join('');
 }
 
 // ═══════════════════════════════════════════════════════════
