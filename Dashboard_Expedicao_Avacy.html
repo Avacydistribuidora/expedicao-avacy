@@ -391,7 +391,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v2.1 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v2.2 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -399,7 +399,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v2.1</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v2.2</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1182,7 +1182,12 @@ function importCSV(){
     pf.style.width='85%';pt.textContent='Salvando…';
     const nA=[],nE=[];existMap.forEach(r=>{if(r.romaneio)nE.push(r);else nA.push(r)});
     activeRecs=nA;expedidoRecs=nE;saveLS();
-    setTimeout(async()=>{pf.style.width='100%';pt.textContent='Concluído!';renderDateTree();onFilterChange();closeModal();
+    setTimeout(async()=>{pf.style.width='100%';pt.textContent='Concluído!';
+      // Após importar: mostra todos os status/origens para o usuário ver os dados
+      document.getElementById('sfStatus').value='';
+      document.getElementById('sfOrigem').value='';
+      document.getElementById('showExp').checked=true;
+      renderDateTree();onFilterChange();closeModal();
       document.getElementById('lastUpd').textContent='Importação: '+n;
       if(SB_URL&&SB_KEY){
         pt.textContent='Sincronizando registros…';
