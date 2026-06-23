@@ -1195,11 +1195,22 @@ function importCSV(){
           stMap[nota].ts_fat=auth||n;
           stMap[nota].ts_conf=stMap[nota].ts_conf||n;
         } else {
-          // Preservar pré-bipe (Em Separação / Separado registrado antes da importação)
-          const preScanned=['Em Separação','Separado','Conferido'].includes(stMap[nota].status);
-          if(!preScanned){stMap[nota].status='Faturado';}
-          stMap[nota].pre_scan=false; // marca como confirmado pelo CSV
-          stMap[nota].ts_fat=auth||n;
+          // BUG FIX: Preservar pré-bipe por nota, FAT ou LOJA
+          const fatVal=fd.fat,lojaVal=fd.loja;
+          const SCAN_ST=['Em Separação','Separado','Conferido'];
+          const preKey=SCAN_ST.includes(stMap[nota]?.status)?nota:(fatVal&&SCAN_ST.includes(stMap[fatVal]?.status))?fatVal:(lojaVal&&SCAN_ST.includes(stMap[lojaVal]?.status))?lojaVal:null;
+          if(preKey&&preKey!==nota){
+            const ps=stMap[preKey];
+            stMap[nota]={...stMap[nota],...ps,pre_scan:false,ts_fat:auth||n};
+            delete stMap[preKey];
+          }else if(preKey===nota){
+            stMap[nota].pre_scan=false;
+            stMap[nota].ts_fat=auth||n;
+          }else{
+            stMap[nota].status='Faturado';
+            stMap[nota].pre_scan=false;
+            stMap[nota].ts_fat=auth||n;
+          }
         }
       }
     }
@@ -1300,7 +1311,11 @@ function doBipe(){
   });
   if(bipeLogEntries.length>20)bipeLogEntries=bipeLogEntries.slice(0,20);
   saveLS();
-  if(changed>0){showBipeFeedback('ok',`✔ ${changed} pedido(s) → ${bipeMode==='sep'?'Em Separação':'Separado'}`);onFilterChange()}
+  if(changed>0){
+    // BUG FIX: sincroniza com Supabase para garantir persistência ao reabrir
+    found.forEach(r=>{const st=stMap[r.nota]?.status;if(st==='Em Separação'||st==='Separado')sbSyncStatus(r.nota);});
+    showBipeFeedback('ok',`✔ ${changed} pedido(s) → ${bipeMode==='sep'?'Em Separação':'Separado'}`);onFilterChange()
+  }
   else showBipeFeedback('warn',`⚠ Status incompatível (${found[0]&&stMap[found[0].nota]?.status})`);
   renderBipeLog();
 }
