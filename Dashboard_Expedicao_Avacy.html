@@ -256,6 +256,8 @@ td{padding:7px 10px;vertical-align:middle}
 .row-popover a.rp-sepd{color:var(--purple)}
 .row-popover a.rp-pend{color:var(--red)}
 .row-popover a.rp-resume{color:var(--green)}
+.row-popover a.rp-del{color:var(--red)}
+.row-popover .rp-divider{height:1px;background:var(--border);margin:3px 0}
 
 /* Priority star */
 .prio-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:0 2px;
@@ -1362,6 +1364,27 @@ function togglePriority(nota){
   const sd=stMap[nota]||{obs:''};sd.priority=!sd.priority;sd._ts=new Date().toISOString();stMap[nota]=sd;saveLS();sbSyncStatus(nota);render();
 }
 function saveObs(nota,val){if(stMap[nota]){stMap[nota].obs=val;stMap[nota]._ts=new Date().toISOString();saveLS();sbSyncStatus(nota)}}
+function deleteRecord(nota){
+  const cu=getCurrentUser();
+  const rec=[...activeRecs,...expedidoRecs].find(r=>r.nota===nota);
+  const label=rec?`Nota ${nota} — ${rec.nome_cliente||''}`.trim():`Nota ${nota}`;
+  if(!confirm(`Excluir permanentemente:\n${label}\n\nEssa ação remove o registro do dashboard. Caso o CSV seja reimportado sem o modo Substituir, o registro voltará.`))return;
+  activeRecs=activeRecs.filter(r=>r.nota!==nota);
+  expedidoRecs=expedidoRecs.filter(r=>r.nota!==nota);
+  delete stMap[nota];
+  saveLS();
+  // Remove do Supabase
+  if(SB_URL&&SB_KEY){
+    const base=SB_URL.replace(/\/+$/,'');
+    const hdr={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+    const enc=encodeURIComponent(nota);
+    Promise.all([
+      fetch(`${base}/rest/v1/avacy_records?nota=eq.${enc}`,{method:'DELETE',headers:hdr}),
+      fetch(`${base}/rest/v1/avacy_status?nota=eq.${enc}`,{method:'DELETE',headers:hdr})
+    ]).then(()=>setSyncUI('ok')).catch(()=>setSyncUI('err'));
+  }
+  onFilterChange();
+}
 function hlRow(nota,cls){requestAnimationFrame(()=>{const row=document.getElementById('r-'+nota.replace(/\W/g,'_'));if(row){row.classList.add(cls);setTimeout(()=>row.classList.remove(cls),900)}})}
 
 // ── ROW ACTION POPOVER ──────────────────────────────────────
@@ -1376,8 +1399,11 @@ function toggleRowMenu(nota,btn){
   else if(st==='Em Separação'){items.push({cls:'rp-sepd',icon:'✓',label:'Separado',fn:`advance('${nota}')`})}
   else if(st==='Separado'){}
   else if(st==='Pendente'){items.push({cls:'rp-resume',icon:'↩',label:'Retomar',fn:`retomar('${nota}')`})}
-  if(!items.length)return;
-  pop.innerHTML=items.map(i=>`<a class="${i.cls}" onclick="${i.fn};closeRowMenu()">${i.icon} ${i.label}</a>`).join('');
+  // Excluir sempre disponível (separado por linha divisória se houver outros itens)
+  const notaEsc=nota.replace(/'/g,"\\'");
+  const delItem={cls:'rp-del',icon:'🗑',label:'Excluir registro',fn:`deleteRecord('${notaEsc}')`};
+  const divider=items.length?'<div class="rp-divider"></div>':'';
+  pop.innerHTML=items.map(i=>`<a class="${i.cls}" onclick="${i.fn};closeRowMenu()">${i.icon} ${i.label}</a>`).join('')+divider+`<a class="${delItem.cls}" onclick="${delItem.fn};closeRowMenu()">${delItem.icon} ${delItem.label}</a>`;
   const rect=btn.getBoundingClientRect();
   pop.style.left=Math.min(rect.left,window.innerWidth-200)+'px';
   pop.style.top=(rect.bottom+4)+'px';
@@ -1490,7 +1516,7 @@ function _render(){
     if(sd.pend_log)logEntries.push({label:'⚠ Pendente',data:sd.pend_log});
     if(logEntries.length)tipHtml=`<div class="tip">${logEntries.map(e=>`<div class="tip-row"><span class="tip-key">${e.label}:</span><span class="tip-val">${esc(e.data.user)} · ${esc(e.data.ts)}</span></div>`).join('')}</div>`;
     // Ação – botão único ⋮ → popover
-    const hasAct=['Faturado','Em Separação','Separado','Pendente'].includes(st);
+    const hasAct=true; // sempre mostra ⋮ para permitir excluir
     const acaoBtn=`<button class="act-trigger ${hasAct?'has-actions':''}" onclick="toggleRowMenu('${esc(r.nota)}',this)" title="Ações do pedido">⋮</button>`;
     // Classes de linha: prioridade > status tint
     const stTint={'Em Separação':'st-sep',Separado:'st-sepd',Conferido:'st-conf',Expedido:'st-exp',Pendente:'st-pend'};
