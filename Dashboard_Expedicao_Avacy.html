@@ -397,7 +397,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.8 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.9 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -405,7 +405,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.8</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.9</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1104,7 +1104,7 @@ function importVDK(arrayBuffer){
         const situacao=iSit>=0?String(c[iSit]||'').trim():'';
         const mappedSt=mapSituacao(situacao);
         if(existMap.has(nota)){
-          const rec=existMap.get(nota);Object.assign(rec,fd);upd++;
+          upd++; // VDK = somente status — não altera campos do registro (nome, transp, etc.)
           if(!stMap[nota])stMap[nota]={obs:''};
           // Só avança o status se o novo for "mais adiantado"
           const curSt=stMap[nota].status||'Faturado';
