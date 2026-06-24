@@ -397,7 +397,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.6 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.8 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -405,7 +405,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.6</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.8</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1164,6 +1164,7 @@ function importCSV(){
     if(_importMode==='replace'){activeRecs=[];expedidoRecs=[];stMap={};}
     const existMap=new Map(baseRecs.map(r=>[r.nota,r]));
     let add=0,upd=0;const n=nowStr();
+    const preBipeMerged=[];
     for(let i=1;i<rows.length;i++){
       const c=rows[i];if(!c||c.length<2)continue;
       const nota=clean(c[iNota]||'');if(!nota)continue;
@@ -1212,6 +1213,7 @@ function importCSV(){
             const ps=stMap[preKey];
             stMap[nota]={...stMap[nota],...ps,pre_scan:false,ts_fat:auth||n};
             delete stMap[preKey];
+            preBipeMerged.push(preKey); // rastreia chave antiga para limpeza no Supabase
           }else if(preKey===nota){
             stMap[nota].pre_scan=false;
             stMap[nota].ts_fat=auth||n;
@@ -1243,8 +1245,21 @@ function importCSV(){
       alert(`✓ Importação concluída!\n${add} novo(s)  ·  ${upd} atualizado(s)\n${activeRecs.length} ativo(s)  ·  ${expedidoRecs.length} expedido(s)`);
       if(SB_URL&&SB_KEY){
         const snapRecs=[...activeRecs,...expedidoRecs];
-        const autoStatus=Object.entries(stMap).filter(([,sd])=>['Expedido','Conferido'].includes(sd.status)).map(([nota])=>nota);
-        sbSyncRecords(snapRecs).then(()=>sbBulkSyncStatus(autoStatus)).catch(e=>console.warn('bg sync err:',e));
+        // Sincroniza TODOS os status ativos — inclui pré-bipes mesclados (Em Separação/Separado)
+        const autoStatus=Object.entries(stMap).filter(([,sd])=>['Expedido','Conferido','Em Separação','Separado'].includes(sd.status)).map(([k])=>k);
+        sbSyncRecords(snapRecs)
+          .then(()=>sbBulkSyncStatus(autoStatus))
+          .then(()=>{
+            // Remove chaves antigas de pré-bipe do Supabase para evitar re-inserção no poll
+            if(preBipeMerged.length){
+              const _base=SB_URL.replace(/\/+$/,'');
+              const _hdr={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+              preBipeMerged.forEach(oldKey=>{
+                fetch(`${_base}/rest/v1/avacy_status?nota=eq.${encodeURIComponent(oldKey)}`,{method:'DELETE',headers:_hdr}).catch(()=>{});
+              });
+            }
+          })
+          .catch(e=>console.warn('bg sync err:',e));
       }
     },300);
   },50);
@@ -1842,15 +1857,39 @@ async function sbPollStatus(){
   try{
     const sbStats=await sbGetAll('avacy_status');
     if(!Array.isArray(sbStats)||!sbStats.length){setSyncUI('ok');return;}
+    // Mapa FAT/LOJA → NOTA para redirecionar pré-bipes que ainda não foram limpos no Supabase
+    const _allRecs=[...activeRecs,...expedidoRecs];
+    const _recNotas=new Set(_allRecs.map(r=>r.nota));
+    const _fatLojaMap=new Map();
+    _allRecs.forEach(r=>{if(r.fat)_fatLojaMap.set(r.fat,r.nota);if(r.loja)_fatLojaMap.set(r.loja,r.nota);});
+    const _toDeleteSb=[];
     let changed=false;
     sbStats.forEach(row=>{
       const{nota,updated_at,...sd}=row;
+      // Se a chave não é uma nota real mas é um FAT/LOJA de algum registro → redireciona
+      const targetNota=_recNotas.has(nota)?nota:(_fatLojaMap.get(nota)||nota);
+      if(targetNota!==nota){
+        // Aplica no nota correto e agenda limpeza da chave antiga
+        const loc=stMap[targetNota];
+        if(!loc||(updated_at&&(!loc._ts||updated_at>loc._ts))){
+          stMap[targetNota]={...sd,_ts:updated_at};changed=true;
+          sbSyncStatus(targetNota); // persiste sob chave correta
+        }
+        _toDeleteSb.push(nota); // limpa chave errada do Supabase
+        delete stMap[nota];
+        return;
+      }
       const loc=stMap[nota];
       // aceita só se Supabase tem dado mais recente
       if(!loc||(updated_at&&(!loc._ts||updated_at>loc._ts))){
         stMap[nota]={...sd,_ts:updated_at};changed=true;
       }
     });
+    // Limpa chaves antigas do Supabase (zombies de pré-bipe)
+    if(_toDeleteSb.length&&SB_URL&&SB_KEY){
+      const _b=SB_URL.replace(/\/+$/,''),_h={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+      _toDeleteSb.forEach(k=>fetch(`${_b}/rest/v1/avacy_status?nota=eq.${encodeURIComponent(k)}`,{method:'DELETE',headers:_h}).catch(()=>{}));
+    }
     if(changed){saveLS();onFilterChange();}
     setSyncUI('ok');
   }catch(e){setSyncUI('err');console.warn('sbPollStatus:',e);}
@@ -1887,14 +1926,29 @@ async function sbLoadAll(){
     }
     // ── Merge de status: só sobrescreve se Supabase tiver timestamp mais novo ──
     if(Array.isArray(sbStats)&&sbStats.length){
+      // Mapa FAT/LOJA → NOTA para redirecionar pré-bipes zombie
+      const _allR=[...activeRecs,...expedidoRecs];
+      const _notaSet=new Set(_allR.map(r=>r.nota));
+      const _flMap=new Map();
+      _allR.forEach(r=>{if(r.fat)_flMap.set(r.fat,r.nota);if(r.loja)_flMap.set(r.loja,r.nota);});
+      const _toDelSb=[];
       sbStats.forEach(row=>{
         const{nota,updated_at,...sd}=row;
-        const loc=stMap[nota];
-        // aceita do Supabase se: não existe local, ou timestamp do Supabase é mais recente
-        if(!loc||(updated_at&&(!loc._ts||updated_at>loc._ts))){
-          stMap[nota]={...sd,_ts:updated_at};
+        const targetNota=_notaSet.has(nota)?nota:(_flMap.get(nota)||nota);
+        if(targetNota!==nota){
+          const loc=stMap[targetNota];
+          if(!loc||(updated_at&&(!loc._ts||updated_at>loc._ts))){stMap[targetNota]={...sd,_ts:updated_at};}
+          _toDelSb.push(nota);delete stMap[nota];
+          return;
         }
+        const loc=stMap[nota];
+        if(!loc||(updated_at&&(!loc._ts||updated_at>loc._ts))){stMap[nota]={...sd,_ts:updated_at};}
       });
+      // Limpa chaves zombie do Supabase
+      if(_toDelSb.length&&SB_URL&&SB_KEY){
+        const _b2=SB_URL.replace(/\/+$/,''),_h2={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+        _toDelSb.forEach(k=>fetch(`${_b2}/rest/v1/avacy_status?nota=eq.${encodeURIComponent(k)}`,{method:'DELETE',headers:_h2}).catch(()=>{}));
+      }
     }
     fixExpedidoStatus();
     saveLS();setSyncUI('ok');return true;
@@ -2045,9 +2099,9 @@ function initDashboard(){
   const cu=getCurrentUser();if(!cu)return;
   document.getElementById('userAvatar').textContent=cu.username.slice(0,2).toUpperCase();
   document.getElementById('userLabel').textContent=cu.username;
-  const isAdmin=cu.role==='admin';
-  document.getElementById('menuAdminLink').style.display=isAdmin?'block':'none';
-  document.getElementById('menuClearLink').style.display=isAdmin?'block':'none';
+  const _isAdminLocal=cu.role==='admin';
+  document.getElementById('menuAdminLink').style.display=_isAdminLocal?'block':'none';
+  document.getElementById('menuClearLink').style.display=_isAdminLocal?'block':'none';
   loadLS();initSelectedDates();renderDateTree();updateSortUI();
   document.getElementById('sfOrigem').value='MATRIZ';
   document.getElementById('sfStatus').value='Faturado';
