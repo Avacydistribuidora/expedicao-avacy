@@ -394,7 +394,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.3 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.4 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -402,7 +402,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.3</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.4</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -419,6 +419,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
         <a onclick="openModal();closeActMenu()">📥 Importar CSV do Protheus</a>
         <a onclick="exportConsolidado();closeActMenu()">📤 Exportar Consolidado (.xlsx)</a>
         <a onclick="exportAnalitico();closeActMenu()">📈 Exportar Analítico / SLA (.xlsx)</a>
+        <a onclick="exportBipados();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px">📋 Relatório de Bipados (Sep/Separado)</a>
           <a onclick="openSbConfig();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px">🔗 Configurar Sincronização</a>
         </div>
     </div>
@@ -1281,7 +1282,7 @@ function doBipe(){
     // Só registra se ainda não foi bipado nesse status ou anterior
     const stOrd={'Faturado':1,'Em Separação':2,'Separado':3,'Conferido':4,'Expedido':5};
     if((stOrd[existing.status]||0)<(stOrd[newSt]||0)){
-      stMap[val]={...existing,status:newSt,pre_scan:true,[tsKey]:n,[logKey]:{user:cu?.username||'?',ts:n,code:val}};
+      stMap[val]={...existing,status:newSt,pre_scan:true,[tsKey]:n,[logKey]:{user:cu?.username||'?',ts:n,code:val},_ts:new Date().toISOString()};
       saveLS();sbSyncStatus(val);
       bipeLogEntries.unshift({nota:val,user:cu?.username||'?',ts:n,ok:true,action:newSt+' (pré-bipe)',mode:bipeMode});
       if(bipeLogEntries.length>20)bipeLogEntries=bipeLogEntries.slice(0,20);
@@ -1297,12 +1298,12 @@ function doBipe(){
     const sd=stMap[r.nota]||{obs:''};const st=sd.status||'Faturado';
     if(bipeMode==='sep'&&st==='Faturado'){
       sd.status='Em Separação';sd.ts_sep=n;
-      sd.scan_log={user:cu?.username||'?',ts:n,code:val};
+      sd.scan_log={user:cu?.username||'?',ts:n,code:val};sd._ts=new Date().toISOString();
       stMap[r.nota]=sd;changed++;
       bipeLogEntries.unshift({nota:r.nota,user:cu?.username||'?',ts:n,ok:true,action:'Em Separação',mode:'sep'});
     }else if(bipeMode==='sepd'&&st==='Em Separação'){
       sd.status='Separado';sd.ts_sepd=n;
-      sd.sep_log={user:cu?.username||'?',ts:n,code:val};
+      sd.sep_log={user:cu?.username||'?',ts:n,code:val};sd._ts=new Date().toISOString();
       stMap[r.nota]=sd;changed++;
       bipeLogEntries.unshift({nota:r.nota,user:cu?.username||'?',ts:n,ok:true,action:'Separado',mode:'sepd'});
     }else{
@@ -1341,8 +1342,8 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeBipeModal();cl
 // ═══════════════════════════════════════════════════════════
 function advance(nota){
   const sd=stMap[nota];if(!sd)return;const n=nowStr();const cu=getCurrentUser();
-  if(sd.status==='Faturado'){sd.status='Em Separação';sd.ts_sep=n;sd.scan_log={user:cu?.username||'?',ts:n,code:'manual'}}
-  else if(sd.status==='Em Separação'){sd.status='Separado';sd.ts_sepd=n;sd.sep_log={user:cu?.username||'?',ts:n,code:'manual'}}
+  if(sd.status==='Faturado'){sd.status='Em Separação';sd.ts_sep=n;sd.scan_log={user:cu?.username||'?',ts:n,code:'manual'};sd._ts=new Date().toISOString()}
+  else if(sd.status==='Em Separação'){sd.status='Separado';sd.ts_sepd=n;sd.sep_log={user:cu?.username||'?',ts:n,code:'manual'};sd._ts=new Date().toISOString()}
   saveLS();sbSyncStatus(nota);onFilterChange();hlRow(nota,'hl');
 }
 function setPendente(nota){
@@ -1351,16 +1352,16 @@ function setPendente(nota){
   if(curSt!=='Faturado'){alert('Pendente só pode ser aplicado a pedidos com status Faturado.');return}
   const n=nowStr();const cu=getCurrentUser();
   sd.pend_prev='Faturado';sd.status='Pendente';sd.ts_pend=n;
-  sd.pend_log={user:cu?.username||'?',ts:n};stMap[nota]=sd;saveLS();sbSyncStatus(nota);onFilterChange();hlRow(nota,'hl');
+  sd.pend_log={user:cu?.username||'?',ts:n};sd._ts=new Date().toISOString();stMap[nota]=sd;saveLS();sbSyncStatus(nota);onFilterChange();hlRow(nota,'hl');
 }
 function retomar(nota){
   const sd=stMap[nota];if(!sd)return;
-  sd.status=sd.pend_prev||'Faturado';delete sd.pend_prev;saveLS();sbSyncStatus(nota);onFilterChange();hlRow(nota,'hl');
+  sd.status=sd.pend_prev||'Faturado';delete sd.pend_prev;sd._ts=new Date().toISOString();saveLS();sbSyncStatus(nota);onFilterChange();hlRow(nota,'hl');
 }
 function togglePriority(nota){
-  const sd=stMap[nota]||{obs:''};sd.priority=!sd.priority;stMap[nota]=sd;saveLS();sbSyncStatus(nota);render();
+  const sd=stMap[nota]||{obs:''};sd.priority=!sd.priority;sd._ts=new Date().toISOString();stMap[nota]=sd;saveLS();sbSyncStatus(nota);render();
 }
-function saveObs(nota,val){if(stMap[nota]){stMap[nota].obs=val;saveLS();sbSyncStatus(nota)}}
+function saveObs(nota,val){if(stMap[nota]){stMap[nota].obs=val;stMap[nota]._ts=new Date().toISOString();saveLS();sbSyncStatus(nota)}}
 function hlRow(nota,cls){requestAnimationFrame(()=>{const row=document.getElementById('r-'+nota.replace(/\W/g,'_'));if(row){row.classList.add(cls);setTimeout(()=>row.classList.remove(cls),900)}})}
 
 // ── ROW ACTION POPOVER ──────────────────────────────────────
@@ -1667,6 +1668,64 @@ function exportAnalitico(){
 }
 
 // ═══════════════════════════════════════════════════════════
+// RELATÓRIO DE BIPADOS
+// ═══════════════════════════════════════════════════════════
+function exportBipados(){
+  loadXLSX(()=>{
+    const now=new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
+    const allRecs=[...activeRecs,...expedidoRecs];
+    const recMap=new Map(allRecs.map(r=>[r.nota,r]));
+    const rows=[];
+    Object.entries(stMap).forEach(([key,sd])=>{
+      const st=sd.status||'Faturado';
+      if(st!=='Em Separação'&&st!=='Separado')return;
+      const rec=recMap.get(key)||{};
+      const isPreBipe=!!sd.pre_scan&&!recMap.has(key);
+      rows.push({
+        'STATUS':st,
+        'PRÉ-BIPE':isPreBipe?'Sim':'Não',
+        'CÓDIGO BIPADO':key,
+        'NOTA':rec.nota||key,
+        'FAT':rec.fat||'—',
+        'LOJA':rec.loja||'—',
+        'CLIENTE':rec.nome_cliente||'—',
+        'VENDEDOR':rec.vendedor||'—',
+        'TRANSPORTADORA':rec.transportadora||'—',
+        'ORIGEM':rec.origem||'—',
+        'VOLUME':rec.volume||'—',
+        'USUÁRIO BIPE':sd.scan_log?.user||sd.sep_log?.user||'—',
+        'DT/HR EM SEPARAÇÃO':sd.ts_sep||'—',
+        'USUÁRIO SEPARADO':sd.sep_log?.user||'—',
+        'DT/HR SEPARADO':sd.ts_sepd||'—',
+        'OBS':sd.obs||''
+      });
+    });
+    if(!rows.length){alert('Nenhum pedido em "Em Separação" ou "Separado" no momento.');return}
+    rows.sort((a,b)=>{
+      if(a['STATUS']===b['STATUS'])return(a['DT/HR EM SEPARAÇÃO']||'').localeCompare(b['DT/HR EM SEPARAÇÃO']||'');
+      return a['STATUS']==='Em Separação'?-1:1;
+    });
+    const ws=XLSX.utils.json_to_sheet(rows);
+    ws['!cols']=[{wch:14},{wch:9},{wch:14},{wch:12},{wch:10},{wch:8},{wch:32},{wch:25},{wch:22},{wch:8},{wch:7},{wch:16},{wch:18},{wch:16},{wch:18},{wch:25}];
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'Bipados');
+    const byUser={};
+    rows.forEach(r=>{
+      const u=r['USUÁRIO BIPE']||'—';
+      if(!byUser[u])byUser[u]={sep:0,sepd:0};
+      if(r['STATUS']==='Em Separação')byUser[u].sep++;
+      else byUser[u].sepd++;
+    });
+    const resumo=Object.entries(byUser).sort((a,b)=>(b[1].sep+b[1].sepd)-(a[1].sep+a[1].sepd))
+      .map(([u,d])=>({'USUÁRIO':u,'EM SEPARAÇÃO':d.sep,'SEPARADO':d.sepd,'TOTAL':d.sep+d.sepd}));
+    const ws2=XLSX.utils.json_to_sheet(resumo.length?resumo:[{'USUÁRIO':'Sem dados','EM SEPARAÇÃO':0,'SEPARADO':0,'TOTAL':0}]);
+    ws2['!cols']=[{wch:20},{wch:15},{wch:12},{wch:10}];
+    XLSX.utils.book_append_sheet(wb,ws2,'Resumo por Usuário');
+    XLSX.writeFile(wb,`Bipados_AVACY_${now}.xlsx`);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
 // SUPABASE SYNC
 // ═══════════════════════════════════════════════════════════
 let SB_URL=localStorage.getItem('avacy_sb_url')||'https://wureelywtpcdxbmyblqj.supabase.co';
@@ -1969,9 +2028,9 @@ function initDashboard(){
     });
     // Poll leve a cada 60s — só status, só re-renderiza se algo mudou
     setInterval(()=>{
-      if(Date.now()-_lastSyncTs<60000)return;
+      if(Date.now()-_lastSyncTs<20000)return;
       sbPollStatus();
-    },60000);
+    },20000);
   }
 }
 initUsers();
