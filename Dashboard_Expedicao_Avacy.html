@@ -318,6 +318,7 @@ td{padding:7px 10px;vertical-align:middle}
 .role-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700}
 .role-admin{background:rgba(249,115,22,.15);color:var(--orange);border:1px solid rgba(249,115,22,.3)}
 .role-user{background:rgba(88,166,255,.12);color:var(--blue);border:1px solid rgba(88,166,255,.3)}
+.role-leitura{background:rgba(45,212,191,.12);color:var(--teal);border:1px solid rgba(45,212,191,.3)}
 .form-row{display:flex;gap:8px;align-items:flex-end;margin-top:14px;padding-top:14px;border-top:1px solid #eaeff8}
 .form-field{display:flex;flex-direction:column;gap:4px;flex:1}
 .form-field label{font-size:10px;color:#6b7a99;text-transform:uppercase;letter-spacing:.07em}
@@ -396,7 +397,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.5 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.6 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -404,7 +405,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.5</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.6</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -418,11 +419,11 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     <div class="act-wrap" id="actWrap">
       <button class="btn primary" onclick="toggleActMenu()">⚙ Ações <span style="font-size:9px">▾</span></button>
       <div class="act-menu" id="actMenu">
-        <a onclick="openModal();closeActMenu()">📥 Importar CSV do Protheus</a>
+        <a id="actImport" onclick="openModal();closeActMenu()">📥 Importar CSV do Protheus</a>
         <a onclick="exportConsolidado();closeActMenu()">📤 Exportar Consolidado (.xlsx)</a>
         <a onclick="exportAnalitico();closeActMenu()">📈 Exportar Analítico / SLA (.xlsx)</a>
         <a onclick="exportBipados();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px">📋 Relatório de Bipados (Sep/Separado)</a>
-          <a onclick="openSbConfig();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px">🔗 Configurar Sincronização</a>
+          <a id="actSbConfig" onclick="openSbConfig();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px">🔗 Configurar Sincronização</a>
         </div>
     </div>
     <div class="user-badge" onclick="toggleUserMenu()" id="userBadge">
@@ -475,7 +476,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
   <main class="right-main">
     <div class="toolbar">
       <!-- Bipar — primeiro na toolbar -->
-      <button class="btn" onclick="openBipeModal('sep')" title="Bipar → Em Separação"
+      <button id="btnBipeSep" class="btn" onclick="openBipeModal('sep')" title="Bipar → Em Separação"
               style="border-color:rgba(249,115,22,.55);color:var(--orange);font-weight:700">
         <svg width="20" height="14" viewBox="0 0 44 28" fill="currentColor">
           <rect x="0" y="0" width="3" height="28"/><rect x="5" y="0" width="1.5" height="28"/>
@@ -487,7 +488,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
         </svg>
         Em separação
       </button>
-      <button class="btn" onclick="openBipeModal('sepd')" title="Bipar → Separado"
+      <button id="btnBipeSepd" class="btn" onclick="openBipeModal('sepd')" title="Bipar → Separado"
               style="border-color:rgba(163,113,247,.45);color:var(--purple)">
         <svg width="20" height="14" viewBox="0 0 44 28" fill="currentColor">
           <rect x="0" y="0" width="3" height="28"/><rect x="5" y="0" width="2" height="28"/>
@@ -720,7 +721,7 @@ ALTER TABLE avacy_records ADD COLUMN IF NOT EXISTS chave_nfe TEXT;</pre>
       <div class="form-row">
         <div class="form-field"><label>Nova senha <span style="color:var(--muted);font-size:10px">(deixe vazio para manter)</span></label><input type="password" id="euPass" placeholder="nova senha" autocomplete="new-password"></div>
         <div class="form-field" id="euRoleWrap" style="max-width:130px"><label>Papel</label>
-          <select id="euRole"><option value="user">Operador</option><option value="admin">Admin</option></select>
+          <select id="euRole"><option value="user">Operador</option><option value="admin">Admin</option><option value="leitura">Leitura</option></select>
         </div>
         <div style="display:flex;gap:8px;align-self:flex-end">
           <button class="btn primary" onclick="saveEditUser()">💾 Salvar</button>
@@ -735,7 +736,7 @@ ALTER TABLE avacy_records ADD COLUMN IF NOT EXISTS chave_nfe TEXT;</pre>
       <div class="form-field"><label>Usuário</label><input type="text" id="nuUser" placeholder="nome" autocomplete="off"></div>
       <div class="form-field"><label>Senha</label><input type="password" id="nuPass" placeholder="senha"></div>
       <div class="form-field" style="max-width:120px"><label>Papel</label>
-        <select id="nuRole"><option value="user">Operador</option><option value="admin">Admin</option></select>
+        <select id="nuRole"><option value="user">Operador</option><option value="admin">Admin</option><option value="leitura">Leitura</option></select>
       </div>
       <button class="btn primary" onclick="addUser()" style="align-self:flex-end">+ Adicionar</button>
     </div>
@@ -750,6 +751,11 @@ ALTER TABLE avacy_records ADD COLUMN IF NOT EXISTS chave_nfe TEXT;</pre>
 // ═══════════════════════════════════════════════════════════
 const LS_REC='avacy8_rec',LS_ST='avacy8_st',LS_USERS='avacy8_users',SS_USER='avacy8_session';
 const STATUS_ORDER={Faturado:1,'Em Separação':0,Separado:2,Conferido:3,Expedido:4,Pendente:0.5};
+
+// ── Helpers de papel ─────────────────────────────────────────
+function isAdmin(){return getCurrentUser()?.role==='admin'}
+function canOperate(){const r=getCurrentUser()?.role;return r==='admin'||r==='operador'||r==='user'}
+// 'user' é o valor interno do papel Operador
 const SC_CLASS={Faturado:'fat','Em Separação':'sep',Separado:'sepd',Conferido:'conf',Expedido:'exp',Pendente:'pend'};
 const MESES=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
@@ -819,7 +825,7 @@ function renderUsrTable(){
   document.getElementById('usrTbody').innerHTML=users.map(u=>`
     <tr id="urow-${esc(u.username)}">
       <td><strong>${esc(u.username)}</strong>${u.username===cu?.username?'<span style="font-size:9px;color:var(--muted);margin-left:6px">(você)</span>':''}</td>
-      <td><span class="role-badge ${u.role==='admin'?'role-admin':'role-user'}">${u.role==='admin'?'Admin':'Operador'}</span></td>
+      <td><span class="role-badge ${u.role==='admin'?'role-admin':u.role==='leitura'?'role-leitura':'role-user'}">${u.role==='admin'?'Admin':u.role==='leitura'?'Leitura':'Operador'}</span></td>
       <td style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn sm" onclick="startEditUser('${esc(u.username)}')" style="color:var(--blue);border-color:rgba(88,166,255,.3)">✏️ Editar</button>
         ${u.username!==cu?.username?`<button class="btn sm" style="color:var(--red);border-color:rgba(248,81,73,.3)" onclick="deleteUser('${esc(u.username)}')">🗑 Remover</button>`:''}
@@ -1343,12 +1349,14 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeBipeModal();cl
 // AÇÕES NA TABELA
 // ═══════════════════════════════════════════════════════════
 function advance(nota){
+  if(!canOperate())return;
   const sd=stMap[nota];if(!sd)return;const n=nowStr();const cu=getCurrentUser();
   if(sd.status==='Faturado'){sd.status='Em Separação';sd.ts_sep=n;sd.scan_log={user:cu?.username||'?',ts:n,code:'manual'};sd._ts=new Date().toISOString()}
   else if(sd.status==='Em Separação'){sd.status='Separado';sd.ts_sepd=n;sd.sep_log={user:cu?.username||'?',ts:n,code:'manual'};sd._ts=new Date().toISOString()}
   saveLS();sbSyncStatus(nota);onFilterChange();hlRow(nota,'hl');
 }
 function setPendente(nota){
+  if(!canOperate())return;
   const sd=stMap[nota]||{obs:''};
   const curSt=sd.status||'Faturado';
   if(curSt!=='Faturado'){alert('Pendente só pode ser aplicado a pedidos com status Faturado.');return}
@@ -1357,10 +1365,12 @@ function setPendente(nota){
   sd.pend_log={user:cu?.username||'?',ts:n};sd._ts=new Date().toISOString();stMap[nota]=sd;saveLS();sbSyncStatus(nota);onFilterChange();hlRow(nota,'hl');
 }
 function retomar(nota){
+  if(!canOperate())return;
   const sd=stMap[nota];if(!sd)return;
   sd.status=sd.pend_prev||'Faturado';delete sd.pend_prev;sd._ts=new Date().toISOString();saveLS();sbSyncStatus(nota);onFilterChange();hlRow(nota,'hl');
 }
 function togglePriority(nota){
+  if(!canOperate())return;
   const sd=stMap[nota]||{obs:''};sd.priority=!sd.priority;sd._ts=new Date().toISOString();stMap[nota]=sd;saveLS();sbSyncStatus(nota);render();
 }
 function saveObs(nota,val){if(stMap[nota]){stMap[nota].obs=val;stMap[nota]._ts=new Date().toISOString();saveLS();sbSyncStatus(nota)}}
@@ -1368,6 +1378,7 @@ function deleteRecord(nota){
   const cu=getCurrentUser();
   const rec=[...activeRecs,...expedidoRecs].find(r=>r.nota===nota);
   const label=rec?`Nota ${nota} — ${rec.nome_cliente||''}`.trim():`Nota ${nota}`;
+  if(!isAdmin()){alert('Apenas o administrador pode excluir registros.');return}
   if(!confirm(`Excluir permanentemente:\n${label}\n\nEssa ação remove o registro do dashboard. Caso o CSV seja reimportado sem o modo Substituir, o registro voltará.`))return;
   activeRecs=activeRecs.filter(r=>r.nota!==nota);
   expedidoRecs=expedidoRecs.filter(r=>r.nota!==nota);
@@ -1395,15 +1406,17 @@ function toggleRowMenu(nota,btn){
   closeRowMenu();
   const sd=stMap[nota]||{};const st=sd.status||'Faturado';
   const items=[];
-  if(st==='Faturado'){items.push({cls:'rp-sep',icon:'▶',label:'Em Separação',fn:`advance('${nota}')`});items.push({cls:'rp-pend',icon:'⚠',label:'Pendente',fn:`setPendente('${nota}')`})}
-  else if(st==='Em Separação'){items.push({cls:'rp-sepd',icon:'✓',label:'Separado',fn:`advance('${nota}')`})}
-  else if(st==='Separado'){}
-  else if(st==='Pendente'){items.push({cls:'rp-resume',icon:'↩',label:'Retomar',fn:`retomar('${nota}')`})}
-  // Excluir sempre disponível (separado por linha divisória se houver outros itens)
+  if(canOperate()){
+    if(st==='Faturado'){items.push({cls:'rp-sep',icon:'▶',label:'Em Separação',fn:`advance('${nota}')`});items.push({cls:'rp-pend',icon:'⚠',label:'Pendente',fn:`setPendente('${nota}')`})}
+    else if(st==='Em Separação'){items.push({cls:'rp-sepd',icon:'✓',label:'Separado',fn:`advance('${nota}')`})}
+    else if(st==='Pendente'){items.push({cls:'rp-resume',icon:'↩',label:'Retomar',fn:`retomar('${nota}')`})}
+  }
   const notaEsc=nota.replace(/'/g,"\\'");
+  const canDel=isAdmin();
+  if(!items.length&&!canDel)return; // nada a mostrar para Leitura
   const delItem={cls:'rp-del',icon:'🗑',label:'Excluir registro',fn:`deleteRecord('${notaEsc}')`};
-  const divider=items.length?'<div class="rp-divider"></div>':'';
-  pop.innerHTML=items.map(i=>`<a class="${i.cls}" onclick="${i.fn};closeRowMenu()">${i.icon} ${i.label}</a>`).join('')+divider+`<a class="${delItem.cls}" onclick="${delItem.fn};closeRowMenu()">${delItem.icon} ${delItem.label}</a>`;
+  const divider=items.length&&canDel?'<div class="rp-divider"></div>':'';
+  pop.innerHTML=items.map(i=>`<a class="${i.cls}" onclick="${i.fn};closeRowMenu()">${i.icon} ${i.label}</a>`).join('')+(canDel?divider+`<a class="${delItem.cls}" onclick="${delItem.fn};closeRowMenu()">${delItem.icon} ${delItem.label}</a>`:'');
   const rect=btn.getBoundingClientRect();
   pop.style.left=Math.min(rect.left,window.innerWidth-200)+'px';
   pop.style.top=(rect.bottom+4)+'px';
@@ -1516,7 +1529,7 @@ function _render(){
     if(sd.pend_log)logEntries.push({label:'⚠ Pendente',data:sd.pend_log});
     if(logEntries.length)tipHtml=`<div class="tip">${logEntries.map(e=>`<div class="tip-row"><span class="tip-key">${e.label}:</span><span class="tip-val">${esc(e.data.user)} · ${esc(e.data.ts)}</span></div>`).join('')}</div>`;
     // Ação – botão único ⋮ → popover
-    const hasAct=true; // sempre mostra ⋮ para permitir excluir
+    const hasAct=isAdmin()||(canOperate()&&['Faturado','Em Separação','Separado','Pendente'].includes(st));
     const acaoBtn=`<button class="act-trigger ${hasAct?'has-actions':''}" onclick="toggleRowMenu('${esc(r.nota)}',this)" title="Ações do pedido">⋮</button>`;
     // Classes de linha: prioridade > status tint
     const stTint={'Em Separação':'st-sep',Separado:'st-sepd',Conferido:'st-conf',Expedido:'st-exp',Pendente:'st-pend'};
@@ -1533,7 +1546,7 @@ function _render(){
       <td style="text-align:right;font-size:11px;color:var(--muted);font-family:monospace">${r.volume||'—'}</td>
       <td><div class="has-tip"><span class="badge ${sc}"><span class="dot ${sc}"></span>${st}</span>${ts?`<span class="ts">${ts}</span>`:''}${tipHtml}</div></td>
       <td>${origemBadge(r.origem)}</td>
-      <td>${r.xconf?`<span class="conf-yes">✔</span>`:`<span class="conf-no">—</span>`}</td>
+      <td>${r.origem==='GRU'?`<span class="conf-no" title="Atualizado via VDK">—</span>`:(r.xconf?`<span class="conf-yes">✔</span>`:`<span class="conf-no">—</span>`)}</td>
       <td>${acaoBtn}</td>
       <td><input class="obs-inp" value="${esc(sd.obs||'')}" placeholder="Observação…" onchange="saveObs('${esc(r.nota)}',this.value)"></td>
       <td>${r.romaneio?`<span class="rom-yes" title="${esc(r.romaneio)}">✓ ${r.romaneio.slice(0,10)}</span>`:`<span class="rom-no">—</span>`}</td>
@@ -2040,6 +2053,13 @@ function initDashboard(){
   document.getElementById('sfStatus').value='Faturado';
   fillTransp();render();
   if(activeRecs.length)document.getElementById('lastUpd').textContent=`Em memória: ${activeRecs.length} ativo(s)`;
+  // Controle de interface por papel
+  const _canOp=canOperate(),_isAdm=isAdmin();
+  // Bipe: Admin + Operador
+  ['btnBipeSep','btnBipeSepd'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=_canOp?'':'none'});
+  // Import e Config sync: Admin only
+  ['actImport','actSbConfig'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=_isAdm?'':'none'});
+  // Limpeza de dados: Admin only (já tratado)
   // Supabase: load on init, then auto-refresh every 30s
   if(SB_URL&&SB_KEY){
     sbLoadAll().then(ok=>{
