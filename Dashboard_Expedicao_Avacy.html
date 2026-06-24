@@ -397,7 +397,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.9 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v4.0 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -405,7 +405,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.9</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v4.0</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1083,6 +1083,13 @@ function importVDK(arrayBuffer){
       if(iNF<0&&iPed<0){alert('Formato VDK não reconhecido — colunas Pedido / NF/Serie não encontradas.');pw.classList.remove('show');return;}
       pf.style.width='50%';pt.textContent='Processando VDK…';
       const existMap=new Map([...activeRecs,...expedidoRecs].map(r=>[r.nota,r]));
+      // Mapa numérico: resolve diferença de zeros à esquerda entre VDK e Protheus
+      // Ex: VDK "000309422" vs Protheus "309422" → ambos normalizam para 309422
+      const numericMap=new Map();
+      [...activeRecs,...expedidoRecs].forEach(r=>{
+        const num=String(parseInt(r.nota,10));
+        if(!isNaN(parseInt(r.nota,10)))numericMap.set(num,r);
+      });
       let add=0,upd=0,skip=0;const n=nowStr();
       for(let i=hdrIdx+1;i<raw.length;i++){
         const c=raw[i];if(!c||c.every(v=>!v))continue;
@@ -1103,16 +1110,20 @@ function importVDK(arrayBuffer){
         };
         const situacao=iSit>=0?String(c[iSit]||'').trim():'';
         const mappedSt=mapSituacao(situacao);
-        if(existMap.has(nota)){
+        // Lookup: exato primeiro, depois numérico (resolve diferença de zeros à esquerda)
+        const notaNum=String(parseInt(nota,10));
+        const matchRec=existMap.get(nota)||(!isNaN(parseInt(nota,10))&&numericMap.get(notaNum)?numericMap.get(notaNum):null);
+        const notaKey=matchRec?matchRec.nota:null; // chave real do registro no stMap
+        if(notaKey){
           upd++; // VDK = somente status — não altera campos do registro (nome, transp, etc.)
-          if(!stMap[nota])stMap[nota]={obs:''};
+          if(!stMap[notaKey])stMap[notaKey]={obs:''};
           // Só avança o status se o novo for "mais adiantado"
-          const curSt=stMap[nota].status||'Faturado';
+          const curSt=stMap[notaKey].status||'Faturado';
           const ord={Faturado:1,'Em Separação':2,Separado:3,Conferido:4,Expedido:5,Pendente:0.5};
           if((ord[mappedSt]||0)>(ord[curSt]||0)){
-            stMap[nota].status=mappedSt;
+            stMap[notaKey].status=mappedSt;stMap[notaKey]._ts=new Date().toISOString();
             const tsMap2={Expedido:'ts_exp','Em Separação':'ts_sep',Separado:'ts_sepd',Conferido:'ts_conf',Pendente:'ts_pend',Faturado:'ts_fat'};
-            if(!stMap[nota][tsMap2[mappedSt]])stMap[nota][tsMap2[mappedSt]]=n;
+            if(!stMap[notaKey][tsMap2[mappedSt]])stMap[notaKey][tsMap2[mappedSt]]=n;
           }
         }else{
           // VDK é somente atualização — ignora notas que não existem localmente
@@ -1129,7 +1140,7 @@ function importVDK(arrayBuffer){
         if(SB_URL&&SB_KEY){
           pt.textContent='Sincronizando…';
           await sbSyncRecords([...activeRecs,...expedidoRecs]);
-          const autoStatus=Object.entries(stMap).filter(([,sd])=>['Expedido','Conferido','Em Separação'].includes(sd.status));
+          const autoStatus=Object.entries(stMap).filter(([,sd])=>['Expedido','Conferido','Em Separação','Separado'].includes(sd.status));
           for(const[nota]of autoStatus)await sbSyncStatus(nota);
         }
         alert(`✓ VDK GRU — status atualizados!\n${upd} atualizado(s) · ${skip} não encontrados (aguarde importação do Protheus)`);
