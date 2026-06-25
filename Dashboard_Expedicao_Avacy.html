@@ -397,7 +397,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v4.0 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v4.1 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -405,7 +405,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v4.0</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v4.1</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1058,6 +1058,14 @@ function fmtDateVDK(raw){
   if(/^\d{4}-\d{2}-\d{2}$/.test(s)){const[y,m,d]=s.split('-');return`${d}/${m}/${y}`;}
   return s;
 }
+function fmtDateTimeVDK(raw){
+  // Preserva data + hora do campo Dt. Expedição do VDK (ex: "07/04/2026 08:06")
+  if(!raw)return'';
+  const s=raw.toString().trim();
+  if(/^\d{2}\/\d{2}\/\d{4}/.test(s))return s.slice(0,16).trim();
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)){const[y,m,d]=s.slice(0,10).split('-');const t=s.slice(10).trim().slice(0,5);return`${d}/${m}/${y}${t?' '+t:''}`;} 
+  return s.slice(0,16).trim();
+}
 function importVDK(arrayBuffer){
   const pw=document.getElementById('progWrap'),pf=document.getElementById('progFill'),pt=document.getElementById('progTxt');
   pw.classList.add('show');pf.style.width='10%';pt.textContent='Carregando XLS…';
@@ -1125,6 +1133,8 @@ function importVDK(arrayBuffer){
             const tsMap2={Expedido:'ts_exp','Em Separação':'ts_sep',Separado:'ts_sepd',Conferido:'ts_conf',Pendente:'ts_pend',Faturado:'ts_fat'};
             if(!stMap[notaKey][tsMap2[mappedSt]])stMap[notaKey][tsMap2[mappedSt]]=n;
           }
+          // Para Expedido: sempre registrar data real do VDK (Dt. Expedição), não timestamp do import
+          if(mappedSt==='Expedido'&&dtRaw){const _vdkDt=fmtDateTimeVDK(String(dtRaw));if(_vdkDt)stMap[notaKey].ts_exp=_vdkDt;}
         }else{
           // VDK é somente atualização — ignora notas que não existem localmente
           skip++;
@@ -1197,8 +1207,8 @@ function importCSV(){
           stMap[nota].status='Expedido';
           if(!stMap[nota].ts_exp)stMap[nota].ts_exp=n;
         } else if(xconf==='S'){
-          // CONF=S sem romaneio → Conferido (respeita Pendente manual)
-          if(curSt!=='Pendente'){
+          // CONF=S sem romaneio → Conferido (respeita Pendente manual e Expedido via VDK)
+          if(curSt!=='Pendente'&&curSt!=='Expedido'){
             stMap[nota].status='Conferido';
             if(!stMap[nota].ts_conf)stMap[nota].ts_conf=n;
           }
