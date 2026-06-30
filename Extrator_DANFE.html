@@ -355,6 +355,9 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
       <button class="tab-btn active" onclick="showTab('tab-resumo')" id="btn-tab-resumo">
         📊 Resumo Geral
       </button>
+      <button class="tab-btn" onclick="showTab('tab-coletor')" id="btn-tab-coletor">
+        📱 Coletor TC21
+      </button>
     </div>
 
     <!-- ABA: CARREGAR DANFEs -->
@@ -460,6 +463,24 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
       <div id="resumoGeral"></div>
     </div>
 
+    <!-- ABA: COLETOR TC21 -->
+    <div class="tab-panel" id="tab-coletor">
+      <div class="card" style="max-width:480px;margin:0 auto;text-align:center">
+        <h3>📱 Acesso Coletor TC21</h3>
+        <p style="font-size:13px;color:#666;margin:10px 0 18px">Aponte a câmera do TC21 para o QR Code abaixo para abrir o Coletor sem digitar a URL.</p>
+        <div id="qr-coletor" style="display:inline-block;background:white;padding:14px;border-radius:10px;border:1px solid #dde3ec">
+          <img id="qr-img" src="" alt="QR Code Coletor" style="width:220px;height:220px;display:block">
+        </div>
+        <p style="font-size:11px;color:#999;margin-top:12px;word-break:break-all" id="qr-url-label"></p>
+        <div style="margin-top:16px">
+          <a id="qr-link" href="#" target="_blank"
+            style="display:inline-block;background:#2E75B6;color:white;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none">
+            🔗 Abrir Coletor
+          </a>
+        </div>
+      </div>
+    </div>
+
   </div><!-- .main -->
 </div><!-- .layout -->
 
@@ -473,7 +494,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 // ════════════════════════════════════════════════════════════════════════════
 // ── VERSÃO — atualizar a cada deploy no GitHub ─────────────────────────────
 // ════════════════════════════════════════════════════════════════════════════
-const APP_VERSION     = 'V2.2';               // ← atualizar a cada deploy
+const APP_VERSION     = 'V2.3';               // ← atualizar a cada deploy
 const GITHUB_REPO     = 'Avacydistribuidora/expedicao-avacy';
 const GITHUB_FILE     = 'Extrator_DANFE.html';
 
@@ -629,6 +650,15 @@ function showTab(id) {
   document.getElementById(id).classList.add('active');
   document.getElementById('btn-' + id).classList.add('active');
   if (id === 'tab-resumo') renderResumo();
+  if (id === 'tab-coletor') renderQrColetor();
+}
+
+function renderQrColetor() {
+  const url = 'https://avacydistribuidora.github.io/expedicao-avacy/Coletor_TC21.html';
+  const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(url);
+  document.getElementById('qr-img').src = qrUrl;
+  document.getElementById('qr-url-label').textContent = url;
+  document.getElementById('qr-link').href = url;
 }
 function abrirAbaCarregar() {
   showTab('tab-carregar');
