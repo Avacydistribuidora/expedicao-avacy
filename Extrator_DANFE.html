@@ -20,7 +20,7 @@
   --cinza: #f0f4f8;
   --borda: #dde3ec;
   --texto: #1a1a2e;
-  --sidebar-w: 290px;
+  --sidebar-w: 260px;
   --header-h: 52px;
 }
 
@@ -139,21 +139,6 @@ header .sub { font-size: 11px; opacity: .75; margin-top: 1px; }
 .sidebar-stats span { display: block; margin-bottom: 3px; }
 .sidebar-stats strong { color: #a0c0e0; }
 
-/* ── GRÁFICOS SIDEBAR ── */
-.sidebar-charts {
-  border-top: 1px solid #0d1a2e;
-  padding: 10px 10px 8px;
-  flex-shrink: 0;
-  overflow: visible;
-}
-.sidebar-charts .chart-title {
-  font-size: 10px; font-weight: 700; letter-spacing: .06em;
-  text-transform: uppercase; color: #6a8aaa; margin-bottom: 5px;
-}
-.sidebar-charts .chart-wrap {
-  position: relative; width: 100%; height: 110px;
-}
-.sidebar-charts canvas { position: absolute; top:0; left:0; }
 
 /* ── CONTEÚDO PRINCIPAL ── */
 .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
@@ -354,13 +339,6 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
     <div class="tree" id="sidebarTree">
       <!-- gerado por JS -->
     </div>
-    <!-- GRÁFICOS -->
-    <div class="sidebar-charts" id="sidebarCharts">
-      <div class="chart-title">💰 Valor NF &amp; Frete (R$)</div>
-      <div class="chart-wrap"><canvas id="chartValor"></canvas></div>
-      <div class="chart-title" style="margin-top:10px">📦 NFs &amp; Volume (cx)</div>
-      <div class="chart-wrap"><canvas id="chartQtd"></canvas></div>
-    </div>
     <div class="sidebar-stats" id="sidebarStats"></div>
   </nav>
 
@@ -368,19 +346,19 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
   <div class="main">
     <!-- ABAS -->
     <div class="tabs-bar" id="tabsBar">
-      <button class="tab-btn active" onclick="showTab('tab-carregar')" id="btn-tab-carregar">
+      <button class="tab-btn" onclick="showTab('tab-carregar')" id="btn-tab-carregar">
         📥 Carregar DANFEs
       </button>
       <button class="tab-btn" onclick="showTab('tab-carreta')" id="btn-tab-carreta" style="display:none">
         🚛 <span id="tab-carreta-label">Carreta</span>
       </button>
-      <button class="tab-btn" onclick="showTab('tab-resumo')" id="btn-tab-resumo">
+      <button class="tab-btn active" onclick="showTab('tab-resumo')" id="btn-tab-resumo">
         📊 Resumo Geral
       </button>
     </div>
 
     <!-- ABA: CARREGAR DANFEs -->
-    <div class="tab-panel active" id="tab-carregar">
+    <div class="tab-panel" id="tab-carregar">
 
       <!-- Drop Zone -->
       <div class="drop-zone" id="dropZone">
@@ -478,7 +456,7 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
     </div>
 
     <!-- ABA: RESUMO GERAL -->
-    <div class="tab-panel" id="tab-resumo">
+    <div class="tab-panel active" id="tab-resumo">
       <div id="resumoGeral"></div>
     </div>
 
@@ -686,21 +664,27 @@ function renderSidebar() {
     anosMap[ano][mes] = items.sort((a,b) => a.num - b.num);
   }
 
+  const hoje = new Date();
+  const anoAtual = hoje.getFullYear();
+  const mesAtual = hoje.getMonth();
+
   let html = '';
   for (const ano of Object.keys(anosMap).sort().reverse()) {
+    const anoAberto = parseInt(ano) === anoAtual;
     html += `<div class="tree-year">
-      <div class="year-label open" onclick="toggleYear(this)">
+      <div class="year-label ${anoAberto?'open':''}" onclick="toggleYear(this)">
         <span class="arrow">▶</span> 📅 ${ano}
       </div>
-      <div class="month-block open">`;
+      <div class="month-block ${anoAberto?'open':''}">`;
 
     for (const mes of Object.keys(anosMap[ano]).sort((a,b)=>a-b)) {
       const items = anosMap[ano][mes];
+      const mesAberto = anoAberto && parseInt(mes) === mesAtual;
       html += `<div>
-        <div class="month-label open" onclick="toggleMonth(this)">
+        <div class="month-label ${mesAberto?'open':''}" onclick="toggleMonth(this)">
           <span class="arrow">▶</span> 📁 ${MESES[mes]}
         </div>
-        <div class="carretas-list open">`;
+        <div class="carretas-list ${mesAberto?'open':''}">`;
       for (const c of items) {
         html += `<div class="carreta-item" data-id="${c.id}" onclick="selecionarCarreta('${c.id}')">
           <span class="icon">🚛</span> ${c.num}ª Carreta
@@ -843,7 +827,7 @@ async function excluirCarreta(id) {
   document.getElementById('carretaDetalhe').innerHTML =
     '<div class="empty"><div class="icon">🚛</div><p>Carreta excluída.</p></div>';
   showTab('tab-carregar');
-  renderSidebar(); renderSidebarCharts();
+  renderSidebar();
 }
 
 // ── DRAG & DROP ───────────────────────────────────────────────────────────────
@@ -1239,7 +1223,7 @@ async function salvarCarreta() {
     setStatus('❌ Erro ao salvar: ' + (e.message || e), 'error');
     return;
   }
-  renderSidebar(); renderSidebarCharts();
+  renderSidebar();
   setStatus(`✅ ${num}ª Carreta salva com sucesso! Veja no menu lateral.`, 'success');
 
   // Limpar form
@@ -1253,11 +1237,14 @@ async function salvarCarreta() {
 }
 
 // ── RESUMO GERAL ──────────────────────────────────────────────────────────────
+let _rChart1 = null, _rChart2 = null;
+
 function renderResumo() {
   const carretas = getCarretas().sort((a,b) => a.num - b.num);
+  const el = document.getElementById('resumoGeral');
+
   if (!carretas.length) {
-    document.getElementById('resumoGeral').innerHTML =
-      '<div class="empty"><div class="icon">📊</div><p>Nenhuma carreta registrada ainda.</p></div>';
+    el.innerHTML = '<div class="empty"><div class="icon">📊</div><p>Nenhuma carreta registrada ainda.</p></div>';
     return;
   }
 
@@ -1267,6 +1254,13 @@ function renderResumo() {
   const totVal   = carretas.reduce((s,c) => s+(c.totalValor||0), 0);
   const totFrete = carretas.reduce((s,c) => s+(c.frete||0), 0);
 
+  const labels  = carretas.map(c => `${c.num}ª`);
+  const valores = carretas.map(c => c.totalValor || 0);
+  const fretes  = carretas.map(c => c.frete || 0);
+  const nfsArr  = carretas.map(c => c.nfs?.length || 0);
+  const volsArr = carretas.map(c => c.totalCaixas || 0);
+
+  // ── HTML ──────────────────────────────────────────────────────────────────
   let html = `
   <div class="stats-grid">
     <div class="stat-card"><div class="label">Carretas</div><div class="value">${carretas.length}</div><div class="sub">programações</div></div>
@@ -1274,6 +1268,18 @@ function renderResumo() {
     <div class="stat-card verde"><div class="label">Valor Total NFs</div><div class="value" style="font-size:15px">R$ ${totVal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
     <div class="stat-card laranja"><div class="label">Total Caixas</div><div class="value">${totCx}</div><div class="sub">${totPar} pares</div></div>
     <div class="stat-card vermelho"><div class="label">Total Frete</div><div class="value" style="font-size:15px">R$ ${totFrete.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
+  </div>
+
+  <!-- GRÁFICOS -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
+    <div class="card" style="margin-bottom:0">
+      <h3>💰 Valor NF &amp; Frete por Carreta</h3>
+      <div style="position:relative;height:220px"><canvas id="rChart1"></canvas></div>
+    </div>
+    <div class="card" style="margin-bottom:0">
+      <h3>📦 Qtd NFs &amp; Volume (caixas) por Carreta</h3>
+      <div style="position:relative;height:220px"><canvas id="rChart2"></canvas></div>
+    </div>
   </div>
 
   <div class="card">
@@ -1307,7 +1313,60 @@ function renderResumo() {
   </tr></tfoot></table></div>
   </div>`;
 
-  document.getElementById('resumoGeral').innerHTML = html;
+  el.innerHTML = html;
+
+  // ── GRÁFICOS (aguarda Chart.js e DOM) ────────────────────────────────────
+  const buildCharts = () => {
+    if (typeof Chart === 'undefined') { setTimeout(buildCharts, 300); return; }
+    if (_rChart1) { _rChart1.destroy(); _rChart1 = null; }
+    if (_rChart2) { _rChart2.destroy(); _rChart2 = null; }
+
+    const gridColor = 'rgba(0,0,0,.06)';
+    const fmtV = v => v >= 1e6 ? 'R$'+(v/1e6).toFixed(1)+'M' : v >= 1e3 ? 'R$'+(v/1e3).toFixed(0)+'k' : 'R$'+v;
+    const baseOpts = {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 500 },
+      plugins: { legend: { position:'top', labels:{ font:{size:11}, padding:12, boxWidth:12 } } },
+      scales: {
+        x: { grid:{ color:gridColor }, ticks:{ font:{size:11} } },
+        y: { grid:{ color:gridColor }, ticks:{ font:{size:11} } },
+      }
+    };
+
+    // Gráfico 1 — Valor NF (linha) + Frete (linha preenchida)
+    _rChart1 = new Chart(document.getElementById('rChart1'), {
+      type: 'bar',
+      data: { labels, datasets: [
+        { label:'Valor NF', data:valores, backgroundColor:'rgba(46,117,182,.75)', borderColor:'#2E75B6', borderWidth:1, borderRadius:4 },
+        { label:'Frete',    data:fretes,  backgroundColor:'rgba(192,57,43,.75)',  borderColor:'#c0392b', borderWidth:1, borderRadius:4 },
+      ]},
+      options: { ...baseOpts,
+        scales: { ...baseOpts.scales,
+          y: { ...baseOpts.scales.y, ticks:{ ...baseOpts.scales.y.ticks, callback: fmtV } }
+        }
+      }
+    });
+
+    // Gráfico 2 — NFs (linha) + Caixas (barras, eixo direito)
+    _rChart2 = new Chart(document.getElementById('rChart2'), {
+      type: 'bar',
+      data: { labels, datasets: [
+        { type:'line', label:'NFs', data:nfsArr, yAxisID:'y',
+          borderColor:'#1e7e34', backgroundColor:'rgba(30,126,52,.15)',
+          borderWidth:2, pointRadius:4, pointBackgroundColor:'#1e7e34', tension:.3, fill:true },
+        { label:'Caixas', data:volsArr, yAxisID:'y2',
+          backgroundColor:'rgba(230,126,34,.75)', borderColor:'#e67e22', borderWidth:1, borderRadius:4 },
+      ]},
+      options: { ...baseOpts,
+        scales: {
+          x: baseOpts.scales.x,
+          y:  { ...baseOpts.scales.y, position:'left',  title:{ display:true, text:'Qtd NFs', font:{size:10} } },
+          y2: { ...baseOpts.scales.y, position:'right', title:{ display:true, text:'Caixas',  font:{size:10} },
+                grid:{ drawOnChartArea:false } },
+        }
+      }
+    });
+  };
+  setTimeout(buildCharts, 50);
 }
 
 // ── EXPORTAR EXCEL ────────────────────────────────────────────────────────────
@@ -1429,83 +1488,11 @@ function setStatus(msg, type) {
   el.innerHTML = msg; el.className = 'status-bar ' + type;
 }
 
-// ── GRÁFICOS SIDEBAR ──────────────────────────────────────────────────────────
-let _chartValor = null;
-let _chartQtd   = null;
-
-function fmtK(v) {
-  if (v >= 1e6) return (v/1e6).toFixed(1)+'M';
-  if (v >= 1e3) return (v/1e3).toFixed(0)+'k';
-  return v;
-}
-
-function renderSidebarCharts() {
-  const secao = document.getElementById('sidebarCharts');
-  if (!secao) return;
-
-  // Aguarda Chart.js carregar (pode demorar em conexões lentas)
-  if (typeof Chart === 'undefined') {
-    setTimeout(renderSidebarCharts, 500);
-    return;
-  }
-
-  const carretas = getCarretas().sort((a,b) => a.num - b.num);
-  secao.style.display = carretas.length ? '' : 'none';
-  if (!carretas.length) return;
-
-  const labels  = carretas.map(c => `${c.num}ª`);
-  const valores = carretas.map(c => c.totalValor  || 0);
-  const fretes  = carretas.map(c => c.frete        || 0);
-  const nfs     = carretas.map(c => c.nfs?.length  || 0);
-  const vols    = carretas.map(c => c.totalCaixas  || 0);
-
-  Chart.defaults.color = '#7a9fc0';
-  Chart.defaults.font.size = 9;
-
-  const xScale = { ticks: { color:'#7a9fc0', font:{size:9}, maxRotation:0 }, grid: { color:'rgba(255,255,255,.06)' } };
-  const yBase  = { ticks: { color:'#7a9fc0', font:{size:9}, maxTicksLimit:4 }, grid: { color:'rgba(255,255,255,.07)' } };
-  const legend = { display:true, labels:{ color:'#a0c0e0', font:{size:9}, boxWidth:9, padding:5 } };
-  const baseOpts = { responsive:true, maintainAspectRatio:false, animation:false,
-                     plugins:{ legend }, scales:{ x:xScale, y:yBase } };
-
-  // ── Valor NF + Frete ──────────────────────────────────────────────────────
-  if (_chartValor) { _chartValor.destroy(); _chartValor = null; }
-  const cvValor = document.getElementById('chartValor');
-  if (cvValor) {
-    _chartValor = new Chart(cvValor, {
-      type: 'bar',
-      data: { labels, datasets: [
-        { label:'Valor NF', data:valores, backgroundColor:'rgba(46,117,182,.8)',  borderWidth:0 },
-        { label:'Frete',    data:fretes,  backgroundColor:'rgba(192,57,43,.8)',   borderWidth:0 },
-      ]},
-      options: { ...baseOpts, scales: { x:xScale,
-        y: { ...yBase, ticks: { ...yBase.ticks, callback: fmtK } }
-      }}
-    });
-  }
-
-  // ── NFs + Caixas (eixos independentes) ────────────────────────────────────
-  if (_chartQtd) { _chartQtd.destroy(); _chartQtd = null; }
-  const cvQtd = document.getElementById('chartQtd');
-  if (cvQtd) {
-    _chartQtd = new Chart(cvQtd, {
-      type: 'bar',
-      data: { labels, datasets: [
-        { label:'NFs',    data:nfs,  yAxisID:'y',  backgroundColor:'rgba(30,126,52,.8)',  borderWidth:0 },
-        { label:'Caixas', data:vols, yAxisID:'y2', backgroundColor:'rgba(230,126,34,.8)', borderWidth:0 },
-      ]},
-      options: { ...baseOpts, scales: { x:xScale,
-        y:  { ...yBase, position:'left' },
-        y2: { ...yBase, position:'right', grid:{ drawOnChartArea:false } },
-      }}
-    });
-  }
-}
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 document.getElementById('dataProg').valueAsDate = new Date();
 document.getElementById('dtColeta').valueAsDate = new Date();
-initDB().then(() => { renderSidebar(); renderSidebarCharts(); });
+initDB().then(() => { renderSidebar(); showTab('tab-resumo'); renderResumo(); });
 checkVersion();
 </script>
 </body>
