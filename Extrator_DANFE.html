@@ -144,12 +144,16 @@ header .sub { font-size: 11px; opacity: .75; margin-top: 1px; }
   border-top: 1px solid #0d1a2e;
   padding: 10px 10px 8px;
   flex-shrink: 0;
+  overflow: visible;
 }
 .sidebar-charts .chart-title {
   font-size: 10px; font-weight: 700; letter-spacing: .06em;
   text-transform: uppercase; color: #6a8aaa; margin-bottom: 5px;
 }
-.sidebar-charts canvas { display: block; width: 100% !important; }
+.sidebar-charts .chart-wrap {
+  position: relative; width: 100%; height: 110px;
+}
+.sidebar-charts canvas { position: absolute; top:0; left:0; }
 
 /* ── CONTEÚDO PRINCIPAL ── */
 .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
@@ -353,9 +357,9 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
     <!-- GRÁFICOS -->
     <div class="sidebar-charts" id="sidebarCharts">
       <div class="chart-title">💰 Valor NF &amp; Frete (R$)</div>
-      <canvas id="chartValor" height="110"></canvas>
+      <div class="chart-wrap"><canvas id="chartValor"></canvas></div>
       <div class="chart-title" style="margin-top:10px">📦 NFs &amp; Volume (cx)</div>
-      <canvas id="chartQtd" height="110"></canvas>
+      <div class="chart-wrap"><canvas id="chartQtd"></canvas></div>
     </div>
     <div class="sidebar-stats" id="sidebarStats"></div>
   </nav>
@@ -401,7 +405,7 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
           </div>
           <div class="fg">
             <label>Transportadora</label>
-            <input type="text" id="transportadora" value="Jr Roldão">
+            <input type="text" id="transportadora" value="JR ROLDÃO">
           </div>
           <div class="fg">
             <label>Frete (R$)</label>
@@ -1416,78 +1420,73 @@ function setStatus(msg, type) {
 let _chartValor = null;
 let _chartQtd   = null;
 
+function fmtK(v) {
+  if (v >= 1e6) return (v/1e6).toFixed(1)+'M';
+  if (v >= 1e3) return (v/1e3).toFixed(0)+'k';
+  return v;
+}
+
 function renderSidebarCharts() {
-  const carretas = getCarretas().sort((a,b) => a.num - b.num);
   const secao = document.getElementById('sidebarCharts');
   if (!secao) return;
 
-  // Oculta gráficos se não há dados
+  // Aguarda Chart.js carregar (pode demorar em conexões lentas)
+  if (typeof Chart === 'undefined') {
+    setTimeout(renderSidebarCharts, 500);
+    return;
+  }
+
+  const carretas = getCarretas().sort((a,b) => a.num - b.num);
   secao.style.display = carretas.length ? '' : 'none';
   if (!carretas.length) return;
 
   const labels  = carretas.map(c => `${c.num}ª`);
-  const valores = carretas.map(c => +(c.totalValor||0).toFixed(2));
-  const fretes  = carretas.map(c => +(c.frete||0).toFixed(2));
-  const nfs     = carretas.map(c => c.nfs?.length || 0);
-  const vols    = carretas.map(c => c.totalCaixas || 0);
+  const valores = carretas.map(c => c.totalValor  || 0);
+  const fretes  = carretas.map(c => c.frete        || 0);
+  const nfs     = carretas.map(c => c.nfs?.length  || 0);
+  const vols    = carretas.map(c => c.totalCaixas  || 0);
 
-  const baseOpts = {
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: false,
-    plugins: { legend: { display: true, labels: { color:'#a0c0e0', font:{size:9}, boxWidth:10, padding:6 } } },
-    scales: {
-      x: { ticks: { color:'#7a9fc0', font:{size:9} }, grid: { color:'rgba(255,255,255,.05)' } },
-      y: { ticks: { color:'#7a9fc0', font:{size:9}, maxTicksLimit:4,
-                    callback: v => v>=1000 ? (v/1000).toFixed(0)+'k' : v },
-           grid: { color:'rgba(255,255,255,.07)' } },
-    }
-  };
+  Chart.defaults.color = '#7a9fc0';
+  Chart.defaults.font.size = 9;
 
-  // ── Gráfico Valor NF + Frete ──────────────────────────────────────────────
-  if (_chartValor) _chartValor.destroy();
-  _chartValor = new Chart(document.getElementById('chartValor'), {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        { label:'Valor NF', data: valores,
-          backgroundColor:'rgba(46,117,182,.75)', borderColor:'#2E75B6', borderWidth:1 },
-        { label:'Frete',    data: fretes,
-          backgroundColor:'rgba(192,57,43,.75)',  borderColor:'#c0392b', borderWidth:1 },
-      ]
-    },
-    options: { ...baseOpts,
-      scales: { ...baseOpts.scales,
-        y: { ...baseOpts.scales.y,
-             ticks: { ...baseOpts.scales.y.ticks,
-               callback: v => v>=1000000 ? (v/1000000).toFixed(1)+'M'
-                            : v>=1000 ? (v/1000).toFixed(0)+'k' : v }}}
-    }
-  });
+  const xScale = { ticks: { color:'#7a9fc0', font:{size:9}, maxRotation:0 }, grid: { color:'rgba(255,255,255,.06)' } };
+  const yBase  = { ticks: { color:'#7a9fc0', font:{size:9}, maxTicksLimit:4 }, grid: { color:'rgba(255,255,255,.07)' } };
+  const legend = { display:true, labels:{ color:'#a0c0e0', font:{size:9}, boxWidth:9, padding:5 } };
+  const baseOpts = { responsive:true, maintainAspectRatio:false, animation:false,
+                     plugins:{ legend }, scales:{ x:xScale, y:yBase } };
 
-  // ── Gráfico Qtd NFs + Volume ──────────────────────────────────────────────
-  if (_chartQtd) _chartQtd.destroy();
-  _chartQtd = new Chart(document.getElementById('chartQtd'), {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        { label:'NFs',    data: nfs,  yAxisID:'y',
-          backgroundColor:'rgba(30,126,52,.75)',  borderColor:'#1e7e34', borderWidth:1 },
-        { label:'Caixas', data: vols, yAxisID:'y2',
-          backgroundColor:'rgba(230,126,34,.75)', borderColor:'#e67e22', borderWidth:1 },
-      ]
-    },
-    options: { ...baseOpts,
-      scales: {
-        x:  baseOpts.scales.x,
-        y:  { ...baseOpts.scales.y, position:'left',  title:{ display:true, text:'NFs', color:'#5a8a6a', font:{size:8} } },
-        y2: { ...baseOpts.scales.y, position:'right', title:{ display:true, text:'cx', color:'#b07020', font:{size:8} },
-              grid:{ drawOnChartArea:false } },
-      }
-    }
-  });
+  // ── Valor NF + Frete ──────────────────────────────────────────────────────
+  if (_chartValor) { _chartValor.destroy(); _chartValor = null; }
+  const cvValor = document.getElementById('chartValor');
+  if (cvValor) {
+    _chartValor = new Chart(cvValor, {
+      type: 'bar',
+      data: { labels, datasets: [
+        { label:'Valor NF', data:valores, backgroundColor:'rgba(46,117,182,.8)',  borderWidth:0 },
+        { label:'Frete',    data:fretes,  backgroundColor:'rgba(192,57,43,.8)',   borderWidth:0 },
+      ]},
+      options: { ...baseOpts, scales: { x:xScale,
+        y: { ...yBase, ticks: { ...yBase.ticks, callback: fmtK } }
+      }}
+    });
+  }
+
+  // ── NFs + Caixas (eixos independentes) ────────────────────────────────────
+  if (_chartQtd) { _chartQtd.destroy(); _chartQtd = null; }
+  const cvQtd = document.getElementById('chartQtd');
+  if (cvQtd) {
+    _chartQtd = new Chart(cvQtd, {
+      type: 'bar',
+      data: { labels, datasets: [
+        { label:'NFs',    data:nfs,  yAxisID:'y',  backgroundColor:'rgba(30,126,52,.8)',  borderWidth:0 },
+        { label:'Caixas', data:vols, yAxisID:'y2', backgroundColor:'rgba(230,126,34,.8)', borderWidth:0 },
+      ]},
+      options: { ...baseOpts, scales: { x:xScale,
+        y:  { ...yBase, position:'left' },
+        y2: { ...yBase, position:'right', grid:{ drawOnChartArea:false } },
+      }}
+    });
+  }
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
