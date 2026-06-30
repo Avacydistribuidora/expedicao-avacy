@@ -355,8 +355,11 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
       <button class="tab-btn active" onclick="showTab('tab-resumo')" id="btn-tab-resumo">
         📊 Resumo Geral
       </button>
-      <button class="tab-btn" onclick="showTab('tab-coletor')" id="btn-tab-coletor">
-        📱 Coletor TC21
+      <button class="tab-btn" onclick="showTab('tab-separacao')" id="btn-tab-separacao">
+        📋 Separação
+      </button>
+      <button class="tab-btn" onclick="showTab('tab-usuarios')" id="btn-tab-usuarios">
+        👥 Usuários
       </button>
     </div>
 
@@ -463,20 +466,113 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
       <div id="resumoGeral"></div>
     </div>
 
-    <!-- ABA: COLETOR TC21 -->
-    <div class="tab-panel" id="tab-coletor">
-      <div class="card" style="max-width:480px;margin:0 auto;text-align:center">
-        <h3>📱 Acesso Coletor TC21</h3>
-        <p style="font-size:13px;color:#666;margin:10px 0 18px">Aponte a câmera do TC21 para o QR Code abaixo para abrir o Coletor sem digitar a URL.</p>
-        <div id="qr-coletor" style="display:inline-block;background:white;padding:14px;border-radius:10px;border:1px solid #dde3ec">
-          <img id="qr-img" src="" alt="QR Code Coletor" style="width:220px;height:220px;display:block">
+    <!-- ABA: SEPARAÇÃO -->
+    <div class="tab-panel" id="tab-separacao">
+      <!-- LOGIN COLETOR -->
+      <div id="sep-login-area" style="max-width:380px;margin:0 auto">
+        <div class="card">
+          <h3>🔐 Identificação do Separador</h3>
+          <p style="font-size:13px;color:#666;margin:8px 0 16px">Entre com seu usuário e senha para registrar separações.</p>
+          <div style="margin-bottom:12px">
+            <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">USUÁRIO</label>
+            <input type="text" id="sep-login-user" placeholder="Seu nome"
+              style="width:100%;padding:10px 12px;border:1px solid var(--borda);border-radius:6px;font-size:15px;font-weight:700;letter-spacing:.04em"
+              autocomplete="off" autocorrect="off" autocapitalize="characters">
+          </div>
+          <div style="margin-bottom:16px">
+            <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">SENHA</label>
+            <input type="password" id="sep-login-senha" placeholder="••••••"
+              style="width:100%;padding:10px 12px;border:1px solid var(--borda);border-radius:6px;font-size:15px"
+              onkeydown="if(event.key==='Enter')sepFazerLogin()">
+          </div>
+          <button onclick="sepFazerLogin()"
+            style="width:100%;padding:12px;background:var(--azul-medio);color:white;border:none;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer">
+            Entrar
+          </button>
+          <p id="sep-login-erro" style="color:var(--vermelho);font-size:13px;font-weight:700;margin-top:10px;min-height:18px;text-align:center"></p>
         </div>
-        <p style="font-size:11px;color:#999;margin-top:12px;word-break:break-all" id="qr-url-label"></p>
-        <div style="margin-top:16px">
-          <a id="qr-link" href="#" target="_blank"
-            style="display:inline-block;background:#2E75B6;color:white;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none">
-            🔗 Abrir Coletor
-          </a>
+      </div>
+
+      <!-- COLETOR ATIVO -->
+      <div id="sep-coletor-area" style="display:none">
+        <!-- Header do separador logado -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding:10px 16px;background:var(--azul-escuro);color:white;border-radius:8px">
+          <span>👤 <strong id="sep-usuario-nome"></strong> — separador ativo</span>
+          <button onclick="sepLogout()"
+            style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:white;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:13px">
+            Sair
+          </button>
+        </div>
+
+        <!-- Campo de scan -->
+        <div class="card" style="margin-bottom:14px">
+          <label style="font-size:12px;color:#666;letter-spacing:.05em;text-transform:uppercase;display:block;margin-bottom:8px">
+            📷 Escanear ou digitar código do pedido
+          </label>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="sep-scan-input" placeholder="G00000"
+              style="flex:1;padding:12px 14px;border:2px solid var(--azul-medio);border-radius:8px;font-size:20px;font-weight:700;letter-spacing:.06em;outline:none"
+              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+              onkeydown="if(event.key==='Enter'){sepProcessarScan(this.value.trim().toUpperCase());this.value=''}">
+            <button onclick="sepProcessarScan(document.getElementById('sep-scan-input').value.trim().toUpperCase());document.getElementById('sep-scan-input').value=''"
+              style="padding:12px 18px;background:var(--azul-medio);color:white;border:none;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer">
+              OK
+            </button>
+          </div>
+        </div>
+
+        <!-- Card resultado do scan -->
+        <div id="sep-result-area"></div>
+
+        <!-- Histórico do dia -->
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <h3>📋 Separações de hoje</h3>
+            <button onclick="sepCarregarHistorico()"
+              style="background:none;border:1px solid var(--borda);border-radius:4px;padding:3px 10px;font-size:12px;cursor:pointer;color:#666">
+              ↺ Atualizar
+            </button>
+          </div>
+          <div id="sep-hist-list">Carregando...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ABA: USUÁRIOS -->
+    <div class="tab-panel" id="tab-usuarios">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+        <!-- Formulário novo usuário -->
+        <div class="card">
+          <h3>➕ Novo Separador</h3>
+          <p style="font-size:13px;color:#666;margin:6px 0 14px">Preencha os dados e clique em Salvar.</p>
+          <div style="margin-bottom:10px">
+            <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">NOME / LOGIN</label>
+            <input type="text" id="usu-nome" placeholder="Ex: JOÃO SILVA"
+              style="width:100%;padding:9px 10px;border:1px solid var(--borda);border-radius:6px;font-size:14px;font-weight:700"
+              autocorrect="off" autocapitalize="characters">
+          </div>
+          <div style="margin-bottom:14px">
+            <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">SENHA</label>
+            <input type="text" id="usu-senha" placeholder="Ex: avacy123"
+              style="width:100%;padding:9px 10px;border:1px solid var(--borda);border-radius:6px;font-size:14px">
+          </div>
+          <button onclick="usuSalvar()"
+            style="width:100%;padding:10px;background:var(--verde);color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">
+            💾 Salvar Usuário
+          </button>
+          <p id="usu-msg" style="font-size:13px;font-weight:700;margin-top:10px;min-height:18px;text-align:center"></p>
+        </div>
+
+        <!-- Lista de usuários -->
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <h3>👥 Separadores Cadastrados</h3>
+            <button onclick="usuCarregar()"
+              style="background:none;border:1px solid var(--borda);border-radius:4px;padding:3px 10px;font-size:12px;cursor:pointer;color:#666">
+              ↺
+            </button>
+          </div>
+          <div id="usu-lista">Carregando...</div>
         </div>
       </div>
     </div>
@@ -494,7 +590,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 // ════════════════════════════════════════════════════════════════════════════
 // ── VERSÃO — atualizar a cada deploy no GitHub ─────────────────────────────
 // ════════════════════════════════════════════════════════════════════════════
-const APP_VERSION     = 'V2.3';               // ← atualizar a cada deploy
+const APP_VERSION     = 'V2.4';               // ← atualizar a cada deploy
 const GITHUB_REPO     = 'Avacydistribuidora/expedicao-avacy';
 const GITHUB_FILE     = 'Extrator_DANFE.html';
 
@@ -650,15 +746,8 @@ function showTab(id) {
   document.getElementById(id).classList.add('active');
   document.getElementById('btn-' + id).classList.add('active');
   if (id === 'tab-resumo') renderResumo();
-  if (id === 'tab-coletor') renderQrColetor();
-}
-
-function renderQrColetor() {
-  const url = 'https://avacydistribuidora.github.io/expedicao-avacy/Coletor_TC21.html';
-  const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(url);
-  document.getElementById('qr-img').src = qrUrl;
-  document.getElementById('qr-url-label').textContent = url;
-  document.getElementById('qr-link').href = url;
+  if (id === 'tab-separacao') sepIniciarAba();
+  if (id === 'tab-usuarios') usuCarregar();
 }
 function abrirAbaCarregar() {
   showTab('tab-carregar');
@@ -1518,6 +1607,261 @@ function setStatus(msg, type) {
   el.innerHTML = msg; el.className = 'status-bar ' + type;
 }
 
+
+// ════════════════════════════════════════════════════════════════════════════
+// ── ABA SEPARAÇÃO ────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+let sepUsuario = null; // { id, nome }
+
+function sepIniciarAba() {
+  const sessao = JSON.parse(localStorage.getItem('sep_sessao') || 'null');
+  if (sessao && sessao.id && sessao.nome) {
+    sepUsuario = sessao;
+    sepMostrarColetor();
+  } else {
+    sepMostrarLogin();
+  }
+}
+
+function sepMostrarLogin() {
+  document.getElementById('sep-login-area').style.display = '';
+  document.getElementById('sep-coletor-area').style.display = 'none';
+  setTimeout(() => document.getElementById('sep-login-user').focus(), 100);
+}
+
+function sepMostrarColetor() {
+  document.getElementById('sep-login-area').style.display = 'none';
+  document.getElementById('sep-coletor-area').style.display = '';
+  document.getElementById('sep-usuario-nome').textContent = sepUsuario.nome;
+  document.getElementById('sep-result-area').innerHTML = '';
+  setTimeout(() => document.getElementById('sep-scan-input').focus(), 100);
+  sepCarregarHistorico();
+}
+
+async function sepFazerLogin() {
+  const nome  = (document.getElementById('sep-login-user').value || '').trim().toUpperCase();
+  const senha = (document.getElementById('sep-login-senha').value || '').trim();
+  const erroEl = document.getElementById('sep-login-erro');
+  erroEl.textContent = '';
+  if (!nome || !senha) { erroEl.textContent = 'Preencha usuário e senha.'; return; }
+  if (!db) { erroEl.textContent = '⚠️ Sem conexão com Supabase.'; return; }
+
+  const { data, error } = await db.from('separadores')
+    .select('id, nome, ativo').eq('nome', nome).eq('senha', senha).single();
+
+  if (error || !data) { erroEl.textContent = '❌ Usuário ou senha incorretos.'; return; }
+  if (!data.ativo)    { erroEl.textContent = '❌ Usuário inativo.'; return; }
+
+  sepUsuario = { id: data.id, nome: data.nome };
+  localStorage.setItem('sep_sessao', JSON.stringify(sepUsuario));
+  document.getElementById('sep-login-senha').value = '';
+  sepMostrarColetor();
+}
+
+function sepLogout() {
+  if (!confirm('Sair da conta ' + (sepUsuario?.nome || '') + '?')) return;
+  localStorage.removeItem('sep_sessao');
+  sepUsuario = null;
+  sepMostrarLogin();
+}
+
+async function sepProcessarScan(pedidoCod) {
+  if (!pedidoCod) return;
+  if (!db) { alert('Sem conexão com Supabase.'); return; }
+
+  const { data } = await db.from('separacoes').select('*')
+    .eq('pedido', pedidoCod).eq('status', 'em_separacao')
+    .order('inicio', { ascending: false }).limit(1);
+
+  if (data && data.length > 0) {
+    sepRenderAndamento(data[0]);
+  } else {
+    sepRenderNovo(pedidoCod);
+  }
+  setTimeout(() => document.getElementById('sep-scan-input').focus(), 50);
+}
+
+function sepRenderNovo(pedidoCod) {
+  document.getElementById('sep-result-area').innerHTML = `
+    <div class="card" style="border-left:4px solid var(--azul-medio);margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="background:var(--azul-medio);color:white;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700">NOVO</span>
+        <span style="font-size:22px;font-weight:700;letter-spacing:.06em">${pedidoCod}</span>
+      </div>
+      <p style="font-size:13px;color:#666;margin-bottom:12px">Pedido não iniciado. Confirme para começar a separação.</p>
+      <div style="display:flex;gap:8px">
+        <button onclick="sepIniciar('${pedidoCod}')"
+          style="flex:1;padding:12px;background:var(--laranja);color:white;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">
+          ▶ Iniciar Separação
+        </button>
+        <button onclick="document.getElementById('sep-result-area').innerHTML=''"
+          style="padding:12px 14px;background:#c0392b;color:white;border:none;border-radius:8px;font-size:15px;cursor:pointer">✕</button>
+      </div>
+    </div>`;
+}
+
+function sepRenderAndamento(sep) {
+  const ini = new Date(sep.inicio);
+  const diffMin = Math.floor((new Date() - ini) / 60000);
+  const durStr = diffMin < 60 ? `${diffMin} min` : `${Math.floor(diffMin/60)}h ${diffMin%60}min`;
+  const iniStr = ini.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+  document.getElementById('sep-result-area').innerHTML = `
+    <div class="card" style="border-left:4px solid var(--laranja);margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <span style="background:var(--laranja);color:white;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700">⏱ EM SEPARAÇÃO</span>
+        <span style="font-size:22px;font-weight:700;letter-spacing:.06em">${sep.pedido}</span>
+      </div>
+      <p style="font-size:13px;color:#666;margin-bottom:12px">
+        Iniciado às ${iniStr} · ${durStr} decorridos · Separador: <b>${sep.separador||'—'}</b>
+      </p>
+      <div style="display:flex;gap:8px">
+        <button onclick="sepConcluir(${sep.id})"
+          style="flex:1;padding:12px;background:var(--verde);color:white;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">
+          ✓ Concluído
+        </button>
+        <button onclick="document.getElementById('sep-result-area').innerHTML=''"
+          style="padding:12px 14px;background:#c0392b;color:white;border:none;border-radius:8px;font-size:15px;cursor:pointer">✕</button>
+      </div>
+    </div>`;
+}
+
+function sepRenderOk(sep) {
+  const diffMin = Math.floor((new Date(sep.fim) - new Date(sep.inicio)) / 60000);
+  const durStr  = diffMin < 60 ? `${diffMin} min` : `${Math.floor(diffMin/60)}h ${diffMin%60}min`;
+  document.getElementById('sep-result-area').innerHTML = `
+    <div class="card" style="border-left:4px solid var(--verde);margin-bottom:14px;text-align:center">
+      <div style="font-size:36px;margin-bottom:6px">✅</div>
+      <div style="font-size:22px;font-weight:700;letter-spacing:.06em;margin-bottom:4px">${sep.pedido}</div>
+      <div style="font-size:14px;color:#666">Separado em <b>${durStr}</b></div>
+    </div>`;
+  setTimeout(() => {
+    document.getElementById('sep-result-area').innerHTML = '';
+    document.getElementById('sep-scan-input').focus();
+  }, 4000);
+}
+
+async function sepIniciar(pedidoCod) {
+  const { data, error } = await db.from('separacoes').insert({
+    pedido: pedidoCod, status: 'em_separacao',
+    separador_id: sepUsuario.id, separador: sepUsuario.nome
+  }).select().single();
+  if (error) { alert('Erro: ' + error.message); return; }
+  sepRenderAndamento(data);
+  sepCarregarHistorico();
+}
+
+async function sepConcluir(sepId) {
+  const { data, error } = await db.from('separacoes')
+    .update({ status: 'separado', fim: new Date().toISOString() })
+    .eq('id', sepId).select().single();
+  if (error) { alert('Erro: ' + error.message); return; }
+  sepRenderOk(data);
+  sepCarregarHistorico();
+}
+
+async function sepCarregarHistorico() {
+  if (!db) return;
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const { data } = await db.from('separacoes').select('*')
+    .gte('inicio', hoje.toISOString())
+    .order('inicio', { ascending: false }).limit(50);
+
+  const el = document.getElementById('sep-hist-list');
+  if (!data || data.length === 0) {
+    el.innerHTML = '<p style="font-size:13px;color:#aaa;text-align:center;padding:16px 0">Nenhuma separação registrada hoje.</p>';
+    return;
+  }
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>Pedido</th><th>Separador</th><th>Início</th><th>Fim</th><th>Duração</th><th>Status</th><th></th>
+    </tr></thead><tbody>
+    ${data.map(s => {
+      const ini = new Date(s.inicio);
+      const iniStr = ini.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+      let fimStr = '—', durStr = '—';
+      if (s.fim) {
+        fimStr = new Date(s.fim).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+        const m = Math.floor((new Date(s.fim)-ini)/60000);
+        durStr = m < 60 ? `${m} min` : `${Math.floor(m/60)}h ${m%60}min`;
+      }
+      const isAnd = s.status === 'em_separacao';
+      const badge = isAnd
+        ? `<span style="background:var(--laranja);color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">Em Separação</span>`
+        : `<span style="background:var(--verde);color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">Separado</span>`;
+      const btnConcluir = isAnd
+        ? `<button onclick="sepConcluir(${s.id})" style="background:var(--verde);color:white;border:none;border-radius:4px;padding:3px 8px;font-size:12px;font-weight:700;cursor:pointer">✓</button>` : '';
+      return `<tr>
+        <td><b>${s.pedido}</b></td>
+        <td>${s.separador||'—'}</td>
+        <td>${iniStr}</td><td>${fimStr}</td><td>${durStr}</td>
+        <td>${badge}</td><td>${btnConcluir}</td>
+      </tr>`;
+    }).join('')}
+    </tbody></table></div>`;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ── ABA USUÁRIOS ─────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+async function usuCarregar() {
+  if (!db) return;
+  const { data } = await db.from('separadores').select('*').order('nome');
+  const el = document.getElementById('usu-lista');
+  if (!data || data.length === 0) {
+    el.innerHTML = '<p style="font-size:13px;color:#aaa">Nenhum usuário cadastrado.</p>'; return;
+  }
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Nome</th><th>Senha</th><th>Ativo</th><th></th></tr></thead><tbody>
+    ${data.map(u => `<tr>
+      <td><b>${u.nome}</b></td>
+      <td style="font-family:monospace;font-size:12px">${u.senha}</td>
+      <td>
+        <button onclick="usuToggleAtivo(${u.id},${u.ativo})"
+          style="background:${u.ativo ? 'var(--verde)' : '#aaa'};color:white;border:none;border-radius:4px;padding:3px 8px;font-size:12px;font-weight:700;cursor:pointer">
+          ${u.ativo ? '✓ Ativo' : '✗ Inativo'}
+        </button>
+      </td>
+      <td>
+        <button onclick="usuExcluir(${u.id},'${u.nome}')"
+          style="background:var(--vermelho);color:white;border:none;border-radius:4px;padding:3px 8px;font-size:12px;cursor:pointer">
+          🗑
+        </button>
+      </td>
+    </tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+async function usuSalvar() {
+  const nome  = (document.getElementById('usu-nome').value || '').trim().toUpperCase();
+  const senha = (document.getElementById('usu-senha').value || '').trim();
+  const msg   = document.getElementById('usu-msg');
+  msg.style.color = 'var(--vermelho)';
+  if (!nome || !senha) { msg.textContent = 'Preencha nome e senha.'; return; }
+  if (!db) { msg.textContent = 'Sem conexão.'; return; }
+
+  const { error } = await db.from('separadores').insert({ nome, senha });
+  if (error) {
+    msg.textContent = error.code === '23505' ? '❌ Nome já cadastrado.' : '❌ ' + error.message;
+    return;
+  }
+  msg.style.color = 'var(--verde)';
+  msg.textContent = '✓ Usuário ' + nome + ' criado!';
+  document.getElementById('usu-nome').value = '';
+  document.getElementById('usu-senha').value = '';
+  usuCarregar();
+  setTimeout(() => msg.textContent = '', 3000);
+}
+
+async function usuToggleAtivo(id, ativo) {
+  await db.from('separadores').update({ ativo: !ativo }).eq('id', id);
+  usuCarregar();
+}
+
+async function usuExcluir(id, nome) {
+  if (!confirm(`Excluir o usuário ${nome}?`)) return;
+  await db.from('separadores').delete().eq('id', id);
+  usuCarregar();
+}
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 document.getElementById('dataProg').valueAsDate = new Date();
