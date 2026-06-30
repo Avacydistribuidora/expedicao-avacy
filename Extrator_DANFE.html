@@ -495,34 +495,47 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 // ════════════════════════════════════════════════════════════════════════════
 // ── VERSÃO — atualizar a cada deploy no GitHub ─────────────────────────────
 // ════════════════════════════════════════════════════════════════════════════
-const APP_VERSION     = '2026-06-30';          // data da última atualização
+const APP_VERSION     = 'V2.1';               // ← atualizar a cada deploy
 const GITHUB_REPO     = 'Avacydistribuidora/expedicao-avacy';
 const GITHUB_FILE     = 'Extrator_DANFE.html';
 
+// Compara versões no formato "V2.1", "V2.10", etc.
+function cmpVersion(a, b) {
+  const parse = v => v.replace(/^V/i,'').split('.').map(Number);
+  const [aM, am = 0] = parse(a);
+  const [bM, bm = 0] = parse(b);
+  return aM !== bM ? aM - bM : am - bm;
+}
+
 async function checkVersion() {
   const badge = document.getElementById('versionBadge');
-  if (badge) badge.textContent = `🏷️ v${APP_VERSION}`;
+  if (badge) {
+    badge.textContent = `🏷️ ${APP_VERSION}`;
+    badge.title = `Versão local: ${APP_VERSION}`;
+  }
   try {
+    // Busca o arquivo cru no GitHub e extrai a versão de lá
     const res = await fetch(
-      `https://api.github.com/repos/${GITHUB_REPO}/commits?path=${GITHUB_FILE}&per_page=1`,
-      { headers: { Accept: 'application/vnd.github.v3+json' } }
+      `https://raw.githubusercontent.com/${GITHUB_REPO}/main/${GITHUB_FILE}`,
+      { cache: 'no-store' }
     );
     if (!res.ok) return;
-    const data = await res.json();
-    if (!data.length) return;
-    const lastCommit = data[0].commit.committer.date.slice(0, 10); // "YYYY-MM-DD"
+    const txt = await res.text();
+    const m = txt.match(/const\s+APP_VERSION\s*=\s*['"]([^'"]+)['"]/);
+    if (!m) return;
+    const ghVersion = m[1];
     if (badge) {
-      if (lastCommit > APP_VERSION) {
-        badge.textContent = `⚠️ v${APP_VERSION} → nova v${lastCommit}`;
-        badge.style.background = 'rgba(230,120,0,.6)';
-        badge.title = `Versão local: ${APP_VERSION} | GitHub: ${lastCommit} — Atualize o arquivo!`;
+      if (cmpVersion(ghVersion, APP_VERSION) > 0) {
+        badge.textContent = `⚠️ ${APP_VERSION} → ${ghVersion}`;
+        badge.style.background = 'rgba(230,120,0,.65)';
+        badge.title = `Local: ${APP_VERSION} | GitHub: ${ghVersion} — Baixe a versão atualizada!`;
       } else {
-        badge.textContent = `✅ v${APP_VERSION}`;
+        badge.textContent = `✅ ${APP_VERSION}`;
         badge.style.background = 'rgba(30,180,80,.35)';
         badge.title = `Versão atualizada (${APP_VERSION})`;
       }
     }
-  } catch { /* sem internet ou API fora — ignora */ }
+  } catch { /* offline — mantém badge neutro */ }
 }
 
 // ════════════════════════════════════════════════════════════════════════════
