@@ -473,7 +473,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 // ════════════════════════════════════════════════════════════════════════════
 // ── VERSÃO — atualizar a cada deploy no GitHub ─────────────────────────────
 // ════════════════════════════════════════════════════════════════════════════
-const APP_VERSION     = 'V2.1';               // ← atualizar a cada deploy
+const APP_VERSION     = 'V2.2';               // ← atualizar a cada deploy
 const GITHUB_REPO     = 'Avacydistribuidora/expedicao-avacy';
 const GITHUB_FILE     = 'Extrator_DANFE.html';
 
@@ -747,7 +747,7 @@ function renderDetalheCarreta(c) {
   let html = `
   <div class="stats-grid">
     <div class="stat-card"><div class="label">NFs</div><div class="value">${c.nfs.length}</div><div class="sub">notas fiscais</div></div>
-    <div class="stat-card laranja"><div class="label">Caixas</div><div class="value">${totCx}</div><div class="sub">${totPar} pares</div></div>
+    <div class="stat-card laranja"><div class="label">Caixas</div><div class="value">${totCx.toLocaleString('pt-BR')}</div><div class="sub">${totPar.toLocaleString('pt-BR')} pares</div></div>
     <div class="stat-card verde"><div class="label">Valor Total NFs</div><div class="value">R$ ${totVal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
     <div class="stat-card vermelho"><div class="label">Frete</div><div class="value">R$ ${frete.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="sub">${c.transportadora||'—'}</div></div>
     <div class="stat-card" style="border-left-color:#8e44ad"><div class="label">% Frete / NF</div><div class="value" style="color:#8e44ad">${pct}</div><div class="sub">frete ÷ valor total</div></div>
@@ -778,8 +778,8 @@ function renderDetalheCarreta(c) {
       <td>${nf.origem||''}</td>
       <td>ALPARGATAS</td>
       <td>${nf.dtStr||''}</td>
-      <td>${nf.qtdCaixas??''}</td>
-      <td>${nf.qtdPares??''}</td>
+      <td>${nf.qtdCaixas!=null?nf.qtdCaixas.toLocaleString('pt-BR'):''}</td>
+      <td>${nf.qtdPares!=null?nf.qtdPares.toLocaleString('pt-BR'):''}</td>
       <td>R$ ${(nf.valorNF||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
       <td style="font-size:11px">${nf.vlmM3||''}</td>
       <td style="font-size:11px">${nf.peso!=null?nf.peso.toLocaleString('pt-BR',{maximumFractionDigits:3}):''}</td>
@@ -792,7 +792,7 @@ function renderDetalheCarreta(c) {
   html += `</tbody>
     <tfoot><tr>
       <td colspan="4">TOTAL</td>
-      <td>${totCx}</td><td>${totPar}</td>
+      <td>${totCx.toLocaleString('pt-BR')}</td><td>${totPar.toLocaleString('pt-BR')}</td>
       <td>R$ ${totVal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
       <td>${c.volM3||''}</td>
       <td>${totPeso>0?totPeso.toLocaleString('pt-BR',{maximumFractionDigits:3}):''}</td>
@@ -1079,14 +1079,14 @@ function atualizarTotais() {
   const pct    = totVal > 0 ? (frete/totVal*100).toFixed(2)+'%' : '—';
 
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  set('tf-cx',  totCx);
-  set('tf-par', totPar);
+  set('tf-cx',  totCx.toLocaleString('pt-BR'));
+  set('tf-par', totPar.toLocaleString('pt-BR'));
   set('tf-val', 'R$ '+totVal.toLocaleString('pt-BR',{minimumFractionDigits:2}));
   set('tf-pct', pct);
   set('tf-nfs', ok.length+' NFs');
 
   setStatus(
-    `✅ ${ok.length} NF(s) · ${totCx} caixas · ${totPar} pares · `+
+    `✅ ${ok.length} NF(s) · ${totCx.toLocaleString('pt-BR')} caixas · ${totPar.toLocaleString('pt-BR')} pares · `+
     `R$ ${totVal.toLocaleString('pt-BR',{minimumFractionDigits:2})} · `+
     `<b>Frete ${pct}</b>`, 'success'
   );
@@ -1170,8 +1170,8 @@ function renderTabela() {
   html += `</tbody>
     <tfoot><tr style="background:var(--azul-escuro);color:white;font-weight:700;font-size:12px">
       <td colspan="4" style="padding:9px 10px;text-align:center">TOTAL</td>
-      <td id="tf-cx"   style="padding:9px 10px;text-align:center">${totCx}</td>
-      <td id="tf-par"  style="padding:9px 10px;text-align:center">${totPar}</td>
+      <td id="tf-cx"   style="padding:9px 10px;text-align:center">${totCx.toLocaleString('pt-BR')}</td>
+      <td id="tf-par"  style="padding:9px 10px;text-align:center">${totPar.toLocaleString('pt-BR')}</td>
       <td id="tf-val"  style="padding:9px 10px;text-align:center">R$ ${totVal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
       <td id="tf-pct"  style="padding:9px 10px;text-align:center">${pct}</td>
       <td style="padding:9px 10px"></td>
@@ -1266,7 +1266,7 @@ function renderResumo() {
     <div class="stat-card"><div class="label">Carretas</div><div class="value">${carretas.length}</div><div class="sub">programações</div></div>
     <div class="stat-card"><div class="label">NFs</div><div class="value">${totNFs}</div><div class="sub">notas fiscais</div></div>
     <div class="stat-card verde"><div class="label">Valor Total NFs</div><div class="value" style="font-size:15px">R$ ${totVal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
-    <div class="stat-card laranja"><div class="label">Total Caixas</div><div class="value">${totCx}</div><div class="sub">${totPar} pares</div></div>
+    <div class="stat-card laranja"><div class="label">Total Caixas</div><div class="value">${totCx.toLocaleString('pt-BR')}</div><div class="sub">${totPar.toLocaleString('pt-BR')} pares</div></div>
     <div class="stat-card vermelho"><div class="label">Total Frete</div><div class="value" style="font-size:15px">R$ ${totFrete.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
   </div>
 
@@ -1297,8 +1297,8 @@ function renderResumo() {
       <td>${fmtData(c.data)}</td>
       <td>${c.transportadora||'—'}</td>
       <td>${c.nfs?.length||0}</td>
-      <td>${c.totalCaixas||0}</td>
-      <td>${c.totalPares||0}</td>
+      <td>${(c.totalCaixas||0).toLocaleString('pt-BR')}</td>
+      <td>${(c.totalPares||0).toLocaleString('pt-BR')}</td>
       <td>R$ ${(c.totalValor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
       <td>R$ ${(c.frete||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
       <td>${pct}</td>
@@ -1307,7 +1307,7 @@ function renderResumo() {
 
   html += `</tbody><tfoot><tr>
     <td colspan="3">TOTAL</td><td>${totNFs}</td>
-    <td>${totCx}</td><td>${totPar}</td>
+    <td>${totCx.toLocaleString('pt-BR')}</td><td>${totPar.toLocaleString('pt-BR')}</td>
     <td>R$ ${totVal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
     <td>R$ ${totFrete.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td></td>
   </tr></tfoot></table></div>
