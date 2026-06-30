@@ -8,432 +8,338 @@
 <title>Coletor AVACY</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-:root {
-  --azul: #1F3864; --azul2: #162b50; --azul3: #0d1a2e;
-  --verde: #2ecc71; --laranja: #e67e22; --verm: #e74c3c;
-  --cinza: #8aaac8;
-}
-body {
-  font-family: Calibri, Arial, sans-serif;
-  background: var(--azul); color: white;
-  min-height: 100vh; display: flex; flex-direction: column;
-}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--azul:#1F3864;--azul2:#162b50;--azul3:#0d1a2e;--verde:#2ecc71;--laranja:#e67e22;--verm:#e74c3c;--cinza:#8aaac8}
+body{font-family:Calibri,Arial,sans-serif;background:var(--azul);color:white;min-height:100vh;display:flex;flex-direction:column}
 
-/* ── HEADER ── */
-header {
-  background: var(--azul2); padding: 14px 16px;
-  display: flex; align-items: center; justify-content: space-between;
-  border-bottom: 2px solid var(--azul3); flex-shrink: 0;
-}
-.logo { font-size: 19px; font-weight: 700; }
-.logo span { color: #7ec8f4; }
-.header-right { display: flex; align-items: center; gap: 10px; }
-#db-dot { width: 10px; height: 10px; border-radius: 50%; background: #888; display: inline-block; }
-#db-dot.ok  { background: #2ecc71; box-shadow: 0 0 5px #2ecc71; }
-#db-dot.err { background: var(--verm); }
-#usuario-badge {
-  font-size: 13px; font-weight: 700; color: #7ec8f4;
-  background: rgba(126,200,244,.15); padding: 4px 10px;
-  border-radius: 20px; border: 1px solid rgba(126,200,244,.3);
-  cursor: pointer; display: none;
-}
+header{background:var(--azul2);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--azul3);flex-shrink:0}
+.logo{font-size:18px;font-weight:700}.logo span{color:#7ec8f4}
+#db-dot{width:9px;height:9px;border-radius:50%;background:#888;display:inline-block}
+#db-dot.ok{background:#2ecc71;box-shadow:0 0 5px #2ecc71}
+#db-dot.err{background:var(--verm)}
+#badge-user{font-size:13px;font-weight:700;color:#7ec8f4;background:rgba(126,200,244,.15);padding:4px 10px;border-radius:20px;border:1px solid rgba(126,200,244,.3);cursor:pointer;display:none}
 
-/* ── TELA LOGIN ── */
-#tela-login {
-  flex: 1; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; padding: 24px 20px;
-}
-.login-box {
-  width: 100%; max-width: 340px;
-  background: var(--azul2); border-radius: 16px;
-  padding: 28px 22px; border: 1px solid #2E4A6A;
-}
-.login-box h2 { font-size: 20px; margin-bottom: 6px; }
-.login-box p { font-size: 13px; color: var(--cinza); margin-bottom: 22px; }
-.field { margin-bottom: 16px; }
-.field label { font-size: 12px; color: var(--cinza); display: block; margin-bottom: 6px; letter-spacing: .04em; }
-.field input {
-  width: 100%; padding: 14px 12px;
-  background: #1F3864; border: 2px solid #2E4A6A;
-  border-radius: 10px; color: white; font-size: 18px;
-  outline: none; transition: border-color .2s;
-}
-.field input:focus { border-color: #2E75B6; }
-.field input::placeholder { color: #3a5a7a; }
-#btn-login {
-  width: 100%; padding: 16px; background: #2E75B6;
-  border: none; border-radius: 10px; color: white;
-  font-size: 18px; font-weight: 700; cursor: pointer;
-  transition: background .2s, transform .1s;
-}
-#btn-login:active { transform: scale(.97); }
-#btn-login:hover { background: #3585cc; }
-#login-erro {
-  margin-top: 12px; text-align: center;
-  color: #ff7675; font-size: 14px; font-weight: 700;
-  min-height: 20px;
-}
+/* LOGIN */
+#tela-login{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 18px}
+.login-box{width:100%;max-width:340px;background:var(--azul2);border-radius:16px;padding:26px 20px;border:1px solid #2E4A6A}
+.login-box h2{font-size:20px;margin-bottom:4px}
+.login-box p{font-size:13px;color:var(--cinza);margin-bottom:20px}
+.field{margin-bottom:14px}
+.field label{font-size:11px;color:var(--cinza);display:block;margin-bottom:5px;letter-spacing:.04em}
+.field input{width:100%;padding:13px 12px;background:#1F3864;border:2px solid #2E4A6A;border-radius:10px;color:white;font-size:18px;outline:none;transition:border-color .2s}
+.field input:focus{border-color:#2E75B6}
+.field input::placeholder{color:#3a5a7a}
+#btn-login{width:100%;padding:15px;background:#2E75B6;border:none;border-radius:10px;color:white;font-size:17px;font-weight:700;cursor:pointer}
+#login-erro{margin-top:10px;text-align:center;color:#ff7675;font-size:14px;font-weight:700;min-height:18px}
 
-/* ── TELA COLETOR ── */
-#tela-coletor { flex: 1; display: none; flex-direction: column; }
+/* COLETOR */
+#tela-coletor{flex:1;display:none;flex-direction:column;overflow-y:auto;padding-bottom:20px}
 
-.scan-zone { padding: 14px 14px 8px; }
-.scan-zone label {
-  font-size: 11px; color: var(--cinza); letter-spacing: .05em;
-  text-transform: uppercase; display: block; margin-bottom: 6px;
-}
-.scan-input-wrap { position: relative; }
-.scan-input-wrap input {
-  width: 100%; padding: 14px 46px 14px 14px;
-  background: white; border: 3px solid #2E75B6;
-  border-radius: 10px; font-size: 22px; font-weight: 700;
-  color: #1a1a2e; letter-spacing: .06em; outline: none;
-}
-.scan-input-wrap input:focus { border-color: #5ba3e0; }
-.scan-icon { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 24px; opacity: .4; }
+/* SEÇÃO ATIVOS — pedidos em separação do usuário */
+#secao-ativos{padding:12px 14px 0}
+.ativos-title{font-size:11px;color:var(--cinza);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+.ativo-card{background:var(--azul2);border:2px solid var(--laranja);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px}
+.ativo-pedido{font-size:24px;font-weight:700;letter-spacing:.06em;flex:1}
+.ativo-info{font-size:12px;color:var(--cinza);margin-top:2px}
+.btn-concluir-card{background:var(--verde);border:none;color:#0d2b0d;padding:12px 16px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap}
+.btn-concluir-card:active{opacity:.8}
+.nenhum-ativo{font-size:13px;color:#5a7a9a;padding:10px 0 4px}
 
-/* ── RESULT ── */
-#result-area { padding: 10px 14px; flex: 1; }
+/* SEÇÃO SCAN */
+#secao-scan{padding:12px 14px 0}
+.scan-label{font-size:11px;color:var(--cinza);letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:6px}
+.scan-wrap{display:flex;gap:8px}
+.scan-wrap input{flex:1;padding:13px 14px;background:white;border:3px solid #2E75B6;border-radius:10px;font-size:21px;font-weight:700;color:#1a1a2e;letter-spacing:.06em;outline:none}
+.scan-wrap input:focus{border-color:#5ba3e0}
+.btn-scan-ok{padding:13px 18px;background:#2E75B6;color:white;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer}
 
-.result-card {
-  border-radius: 14px; padding: 18px 16px;
-  text-align: center; animation: fadeIn .25s ease;
-}
-@keyframes fadeIn { from { opacity:0; transform:translateY(8px) } to { opacity:1 } }
-.result-card.novo      { background: #0f3460; border: 2px solid #2E75B6; }
-.result-card.andamento { background: #7f4900; border: 2px solid var(--laranja); }
-.result-card.ok        { background: #0d4a1f; border: 2px solid var(--verde); }
+/* RESULTADO DO SCAN */
+#secao-result{padding:10px 14px 0}
+.result-card{border-radius:12px;padding:16px;margin-bottom:0;animation:fadeIn .2s}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.result-card.novo{background:#0f3460;border:2px solid #2E75B6}
+.result-card.andamento{background:#7f4900;border:2px solid var(--laranja)}
+.result-card.ok{background:#0d4a1f;border:2px solid var(--verde);text-align:center}
+.rc-badge{display:inline-block;padding:3px 12px;border-radius:16px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+.result-card.novo .rc-badge{background:#2E75B6;color:white}
+.result-card.andamento .rc-badge{background:var(--laranja);color:white}
+.result-card.ok .rc-badge{background:var(--verde);color:#0d2b0d}
+.rc-pedido{font-size:28px;font-weight:700;letter-spacing:.08em;margin-bottom:6px}
+.rc-info{font-size:13px;color:rgba(255,255,255,.7);line-height:1.5}
+.rc-btns{display:flex;gap:8px;margin-top:12px}
+.rc-btn{flex:1;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer}
+.rc-btn:active{opacity:.8}
+.rc-btn-ini{background:var(--laranja);color:white}
+.rc-btn-ok{background:var(--verde);color:#0d2b0d}
+.rc-btn-x{background:var(--verm);color:white;flex:0 0 auto;padding:14px 15px}
 
-.badge {
-  display: inline-block; padding: 4px 14px; border-radius: 20px;
-  font-size: 12px; font-weight: 700; letter-spacing: .06em;
-  text-transform: uppercase; margin-bottom: 10px;
-}
-.result-card.novo      .badge { background: #2E75B6; color: white; }
-.result-card.andamento .badge { background: var(--laranja); color: white; }
-.result-card.ok        .badge { background: var(--verde); color: #0d2b0d; }
+/* HISTÓRICO */
+#secao-hist{padding:12px 14px 0}
+.hist-title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.hist-title-row span{font-size:11px;color:var(--cinza);letter-spacing:.06em;text-transform:uppercase}
+.hist-title-row button{background:none;border:1px solid #2E4A6A;color:var(--cinza);border-radius:4px;font-size:11px;padding:3px 8px;cursor:pointer}
+.hist-list{display:flex;flex-direction:column;gap:6px}
+.hist-item{background:var(--azul2);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px;font-size:14px}
+.hdot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.hdot.and{background:var(--laranja)}
+.hdot.ok{background:var(--verde)}
+.hped{font-weight:700;flex:1}
+.hinfo{font-size:11px;color:#7a9ab8;line-height:1.4}
+.h-btn-ok{background:var(--verde);border:none;color:#0d2b0d;border-radius:6px;padding:6px 10px;font-size:13px;font-weight:700;cursor:pointer}
 
-.pedido-num { font-size: 34px; font-weight: 700; letter-spacing: .08em; margin-bottom: 8px; }
-.info { font-size: 13px; color: rgba(255,255,255,.7); line-height: 1.6; }
-
-.btns { display: flex; gap: 10px; margin-top: 14px; }
-.btn {
-  flex: 1; padding: 17px 10px; border: none; border-radius: 12px;
-  font-size: 17px; font-weight: 700; cursor: pointer;
-  transition: transform .1s, opacity .1s;
-}
-.btn:active { transform: scale(.96); opacity: .85; }
-.btn-iniciar  { background: var(--laranja); color: white; }
-.btn-concluir { background: var(--verde); color: #0d2b0d; }
-.btn-cancelar { background: var(--verm); color: white; flex: 0 0 auto; padding: 17px 14px; }
-.btn-novo     { background: #2E75B6; color: white; }
-.empty { text-align: center; padding: 28px 16px; color: #5a7a9a; font-size: 14px; }
-
-/* ── HISTÓRICO ── */
-.hist-section { padding: 0 14px 18px; }
-.hist-title {
-  font-size: 11px; color: var(--cinza); letter-spacing: .05em;
-  text-transform: uppercase; margin-bottom: 8px;
-  display: flex; align-items: center; justify-content: space-between;
-}
-.hist-title button {
-  background: none; border: 1px solid #2E4A6A; color: var(--cinza);
-  border-radius: 4px; font-size: 11px; padding: 3px 8px; cursor: pointer;
-}
-.hist-list { display: flex; flex-direction: column; gap: 6px; }
-.hist-item {
-  background: var(--azul2); border-radius: 8px; padding: 10px 12px;
-  display: flex; align-items: center; gap: 10px; font-size: 14px;
-}
-.hist-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.hist-dot.andamento { background: var(--laranja); }
-.hist-dot.ok        { background: var(--verde); }
-.hist-pedido { font-weight: 700; flex: 1; }
-.hist-time   { font-size: 11px; color: #7a9ab8; }
-.hist-dur    { font-size: 11px; color: #5a8a7a; }
-.hist-btn {
-  background: var(--verde); border: none; color: #0d2b0d;
-  border-radius: 6px; padding: 6px 10px; font-size: 13px; font-weight: 700; cursor: pointer;
-}
-
-/* ── TOAST ── */
-.toast {
-  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-  background: #1a1a2e; color: white; padding: 12px 22px;
-  border-radius: 30px; font-size: 14px; font-weight: 600;
-  box-shadow: 0 4px 20px rgba(0,0,0,.5);
-  opacity: 0; pointer-events: none; transition: opacity .3s;
-  z-index: 999; white-space: nowrap;
-}
-.toast.show { opacity: 1; }
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:white;padding:11px 20px;border-radius:28px;font-size:14px;font-weight:600;box-shadow:0 4px 18px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .3s;z-index:999;white-space:nowrap}
+.toast.show{opacity:1}
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">AVACY <span>Coletor</span></div>
-  <div class="header-right">
-    <span id="db-dot" title="Conectando..."></span>
-    <span id="usuario-badge" onclick="logout()" title="Toque para sair">👤 <span id="usuario-nome"></span></span>
+  <div class="logo">AVACY <span>Separação</span></div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span id="db-dot"></span>
+    <span id="badge-user" onclick="logout()" title="Toque para sair">👤 <span id="badge-nome"></span></span>
   </div>
 </header>
 
-<!-- ── TELA DE LOGIN ── -->
+<!-- LOGIN -->
 <div id="tela-login">
   <div class="login-box">
     <h2>🔐 Identificação</h2>
-    <p>Entre com seu usuário e senha para iniciar</p>
-
+    <p>Entre com seu usuário e senha</p>
     <div class="field">
       <label>USUÁRIO</label>
-      <input type="text" id="inp-user" placeholder="Seu nome" autocomplete="off"
-        autocorrect="off" autocapitalize="characters" spellcheck="false">
+      <input id="inp-user" type="text" placeholder="Seu nome"
+        autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
     </div>
     <div class="field">
       <label>SENHA</label>
-      <input type="password" id="inp-senha" placeholder="••••••"
-        onkeydown="if(event.key==='Enter') fazerLogin()">
+      <input id="inp-senha" type="password" placeholder="••••••"
+        onkeydown="if(event.key==='Enter')login()">
     </div>
-
-    <button id="btn-login" onclick="fazerLogin()">Entrar</button>
+    <button id="btn-login" onclick="login()">Entrar</button>
     <div id="login-erro"></div>
   </div>
 </div>
 
-<!-- ── TELA DO COLETOR ── -->
+<!-- COLETOR -->
 <div id="tela-coletor">
-  <div class="scan-zone">
-    <label>📷 Escanear ou digitar pedido</label>
-    <div class="scan-input-wrap">
-      <input type="text" id="scan-input" placeholder="G00000"
-        autocomplete="off" autocorrect="off" autocapitalize="characters"
-        spellcheck="false" inputmode="text">
-      <span class="scan-icon">▦</span>
+
+  <!-- 1. PEDIDOS ATIVOS (em separação deste usuário) -->
+  <div id="secao-ativos">
+    <div class="ativos-title">📦 Seus pedidos em separação</div>
+    <div id="ativos-lista"><div class="nenhum-ativo">Nenhum pedido em andamento.</div></div>
+  </div>
+
+  <!-- 2. SCAN NOVO PEDIDO -->
+  <div id="secao-scan" style="margin-top:14px">
+    <span class="scan-label">📷 Escanear novo pedido</span>
+    <div class="scan-wrap">
+      <input id="scan-input" type="text" placeholder="G00000"
+        autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+        onkeydown="if(event.key==='Enter'){processar(this.value.trim().toUpperCase());this.value=''}">
+      <button class="btn-scan-ok"
+        onclick="processar(document.getElementById('scan-input').value.trim().toUpperCase());document.getElementById('scan-input').value=''">
+        OK
+      </button>
     </div>
   </div>
 
-  <div id="result-area">
-    <div class="empty">Aguardando leitura do pedido...</div>
-  </div>
+  <!-- 3. RESULTADO DO SCAN -->
+  <div id="secao-result"></div>
 
-  <div class="hist-section">
-    <div class="hist-title">
+  <!-- 4. HISTÓRICO DO DIA -->
+  <div id="secao-hist" style="margin-top:14px">
+    <div class="hist-title-row">
       <span>Histórico de hoje</span>
-      <button onclick="carregarHistorico()">↺</button>
+      <button onclick="carregarHistorico()">↺ Atualizar</button>
     </div>
-    <div id="hist-list" class="hist-list">
-      <div class="empty">Carregando...</div>
+    <div id="hist-lista" class="hist-list">
+      <div class="nenhum-ativo">Carregando...</div>
     </div>
   </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-const SUPABASE_URL = 'https://wureelywtpcdxbmyblqj.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
+const SUPA_URL = 'https://wureelywtpcdxbmyblqj.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 
 let db = null;
-let usuarioLogado = null; // { id, nome }
-let pedidoAtual   = null;
+let usuario = null;
 
-// ── INIT ──────────────────────────────────────────────────────────────────────
 async function init() {
-  db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  db = supabase.createClient(SUPA_URL, SUPA_KEY);
   try {
     await db.from('separadores').select('id').limit(1);
     document.getElementById('db-dot').className = 'ok';
-  } catch {
-    document.getElementById('db-dot').className = 'err';
-  }
+  } catch { document.getElementById('db-dot').className = 'err'; }
 
-  // Verificar sessão salva
-  const sessao = JSON.parse(localStorage.getItem('coletor_sessao') || 'null');
-  if (sessao && sessao.id && sessao.nome) {
-    usuarioLogado = sessao;
-    entrarNoColetor();
+  const sess = JSON.parse(localStorage.getItem('col_sess') || 'null');
+  if (sess?.id && sess?.nome) {
+    usuario = sess;
+    mostrarColetor();
   } else {
     document.getElementById('inp-user').focus();
   }
 }
 
-// ── LOGIN ─────────────────────────────────────────────────────────────────────
-async function fazerLogin() {
-  const nome  = document.getElementById('inp-user').value.trim().toUpperCase();
-  const senha = document.getElementById('inp-senha').value.trim();
-  const erroEl = document.getElementById('login-erro');
-  erroEl.textContent = '';
-
-  if (!nome || !senha) { erroEl.textContent = 'Preencha usuário e senha.'; return; }
+// ── LOGIN / LOGOUT ────────────────────────────────────────────────────────────
+async function login() {
+  const nome  = (document.getElementById('inp-user').value || '').trim().toUpperCase();
+  const senha = (document.getElementById('inp-senha').value || '').trim();
+  const err   = document.getElementById('login-erro');
+  err.textContent = '';
+  if (!nome || !senha) { err.textContent = 'Preencha usuário e senha.'; return; }
 
   document.getElementById('btn-login').textContent = 'Verificando...';
+  const { data, error } = await db.from('separadores')
+    .select('id,nome,ativo').eq('nome', nome).eq('senha', senha).single();
+  document.getElementById('btn-login').textContent = 'Entrar';
 
-  try {
-    const { data, error } = await db
-      .from('separadores')
-      .select('id, nome, ativo')
-      .eq('nome', nome)
-      .eq('senha', senha)
-      .single();
+  if (error || !data) { err.textContent = '❌ Usuário ou senha incorretos.'; return; }
+  if (!data.ativo)    { err.textContent = '❌ Usuário inativo.'; return; }
 
-    if (error || !data) {
-      erroEl.textContent = '❌ Usuário ou senha incorretos.';
-      document.getElementById('btn-login').textContent = 'Entrar';
-      return;
-    }
-    if (!data.ativo) {
-      erroEl.textContent = '❌ Usuário inativo. Fale com o supervisor.';
-      document.getElementById('btn-login').textContent = 'Entrar';
-      return;
-    }
-
-    usuarioLogado = { id: data.id, nome: data.nome };
-    localStorage.setItem('coletor_sessao', JSON.stringify(usuarioLogado));
-    document.getElementById('btn-login').textContent = 'Entrar';
-    entrarNoColetor();
-  } catch(e) {
-    erroEl.textContent = '⚠️ Sem conexão. Tente novamente.';
-    document.getElementById('btn-login').textContent = 'Entrar';
-  }
-}
-
-function entrarNoColetor() {
-  document.getElementById('tela-login').style.display = 'none';
-  document.getElementById('tela-coletor').style.display = 'flex';
-  document.getElementById('usuario-badge').style.display = 'flex';
-  document.getElementById('usuario-nome').textContent = usuarioLogado.nome;
-  document.getElementById('scan-input').addEventListener('keydown', onScanKeydown);
-  focusScan();
-  carregarHistorico();
+  usuario = { id: data.id, nome: data.nome };
+  localStorage.setItem('col_sess', JSON.stringify(usuario));
+  document.getElementById('inp-senha').value = '';
+  mostrarColetor();
 }
 
 function logout() {
-  if (!confirm('Sair da conta ' + usuarioLogado.nome + '?')) return;
-  localStorage.removeItem('coletor_sessao');
-  usuarioLogado = null;
-  pedidoAtual = null;
+  if (!confirm('Sair da conta ' + usuario.nome + '?')) return;
+  localStorage.removeItem('col_sess');
+  usuario = null;
   document.getElementById('tela-coletor').style.display = 'none';
   document.getElementById('tela-login').style.display = 'flex';
-  document.getElementById('usuario-badge').style.display = 'none';
+  document.getElementById('badge-user').style.display = 'none';
   document.getElementById('inp-user').value = '';
-  document.getElementById('inp-senha').value = '';
   document.getElementById('login-erro').textContent = '';
-  document.getElementById('result-area').innerHTML = '<div class="empty">Aguardando leitura do pedido...</div>';
-  document.getElementById('scan-input').removeEventListener('keydown', onScanKeydown);
-  document.getElementById('inp-user').focus();
+  setTimeout(() => document.getElementById('inp-user').focus(), 100);
 }
 
-// ── SCAN ─────────────────────────────────────────────────────────────────────
-function focusScan() {
-  const el = document.getElementById('scan-input');
-  el.focus(); el.select();
+// ── TELA COLETOR ──────────────────────────────────────────────────────────────
+function mostrarColetor() {
+  document.getElementById('tela-login').style.display = 'none';
+  document.getElementById('tela-coletor').style.display = 'flex';
+  document.getElementById('badge-user').style.display = 'inline-flex';
+  document.getElementById('badge-nome').textContent = usuario.nome;
+  carregarAtivos();
+  carregarHistorico();
+  setTimeout(() => document.getElementById('scan-input').focus(), 150);
 }
 
-async function onScanKeydown(e) {
-  if (e.key === 'Enter') {
-    const val = e.target.value.trim().toUpperCase();
-    if (!val) return;
-    e.target.value = '';
-    await processarScan(val);
+// ── PEDIDOS ATIVOS ────────────────────────────────────────────────────────────
+async function carregarAtivos() {
+  const { data } = await db.from('separacoes').select('*')
+    .eq('separador_id', usuario.id).eq('status', 'em_separacao')
+    .order('inicio', { ascending: false });
+
+  const el = document.getElementById('ativos-lista');
+  if (!data || data.length === 0) {
+    el.innerHTML = '<div class="nenhum-ativo">Nenhum pedido em andamento.</div>';
+    return;
   }
+  el.innerHTML = data.map(s => {
+    const ini = new Date(s.inicio);
+    const min = Math.floor((new Date() - ini) / 60000);
+    const dur = min < 60 ? `${min} min` : `${Math.floor(min/60)}h ${min%60}min`;
+    const iniStr = ini.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+    return `<div class="ativo-card">
+      <div style="flex:1">
+        <div class="ativo-pedido">${s.pedido}</div>
+        <div class="ativo-info">Iniciado ${iniStr} · ⏱ ${dur}</div>
+      </div>
+      <button class="btn-concluir-card" onclick="concluir(${s.id})">✓ Separado</button>
+    </div>`;
+  }).join('');
 }
 
-async function processarScan(pedidoCod) {
-  const { data, error } = await db
-    .from('separacoes')
-    .select('*')
-    .eq('pedido', pedidoCod)
-    .eq('status', 'em_separacao')
-    .order('inicio', { ascending: false })
-    .limit(1);
-
-  if (error) { toast('Erro: ' + error.message); return; }
+// ── SCAN ──────────────────────────────────────────────────────────────────────
+async function processar(cod) {
+  if (!cod) return;
+  const { data } = await db.from('separacoes').select('*')
+    .eq('pedido', cod).eq('status', 'em_separacao')
+    .order('inicio', {ascending:false}).limit(1);
 
   if (data && data.length > 0) {
-    pedidoAtual = data[0];
-    renderCardAndamento(pedidoAtual);
+    renderAndamento(data[0]);
   } else {
-    pedidoAtual = null;
-    renderCardNovo(pedidoCod);
+    renderNovo(cod);
   }
-  focusScan();
+  setTimeout(() => document.getElementById('scan-input').focus(), 50);
 }
 
-// ── CARDS ─────────────────────────────────────────────────────────────────────
-function renderCardNovo(pedidoCod) {
-  document.getElementById('result-area').innerHTML = `
+// ── CARDS RESULTADO ───────────────────────────────────────────────────────────
+function renderNovo(cod) {
+  document.getElementById('secao-result').innerHTML = `
     <div class="result-card novo">
-      <div class="badge">Novo Pedido</div>
-      <div class="pedido-num">${pedidoCod}</div>
-      <div class="info">Pressione Iniciar para começar</div>
-      <div class="btns" style="margin-top:16px">
-        <button class="btn btn-iniciar" onclick="iniciarSeparacao('${pedidoCod}')">▶ Iniciar</button>
-        <button class="btn btn-cancelar" onclick="limparCard()">✕</button>
+      <div class="rc-badge">Novo Pedido</div>
+      <div class="rc-pedido">${cod}</div>
+      <div class="rc-info">Pedido não iniciado. Confirme para começar.</div>
+      <div class="rc-btns">
+        <button class="rc-btn rc-btn-ini" onclick="iniciar('${cod}')">▶ Em Separação</button>
+        <button class="rc-btn rc-btn-x" onclick="limparResult()">✕</button>
       </div>
     </div>`;
 }
 
-function renderCardAndamento(sep) {
-  const ini = new Date(sep.inicio);
-  const diffMin = Math.floor((new Date() - ini) / 60000);
-  const diffStr = diffMin < 60 ? `${diffMin} min` : `${Math.floor(diffMin/60)}h ${diffMin%60}min`;
-  const iniStr = ini.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  document.getElementById('result-area').innerHTML = `
+function renderAndamento(s) {
+  const ini = new Date(s.inicio);
+  const min = Math.floor((new Date() - ini) / 60000);
+  const dur = min < 60 ? `${min} min` : `${Math.floor(min/60)}h ${min%60}min`;
+  const iniStr = ini.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+  document.getElementById('secao-result').innerHTML = `
     <div class="result-card andamento">
-      <div class="badge">⏱ Em Separação</div>
-      <div class="pedido-num">${sep.pedido}</div>
-      <div class="info">Iniciado às ${iniStr} · ${diffStr}<br>Separador: <b>${sep.separador||'—'}</b></div>
-      <div class="btns" style="margin-top:16px">
-        <button class="btn btn-concluir" onclick="concluirSeparacao(${sep.id})">✓ Concluído</button>
-        <button class="btn btn-cancelar" onclick="limparCard()">✕</button>
+      <div class="rc-badge">⏱ Em Separação</div>
+      <div class="rc-pedido">${s.pedido}</div>
+      <div class="rc-info">Iniciado ${iniStr} · ${dur} · ${s.separador||'—'}</div>
+      <div class="rc-btns">
+        <button class="rc-btn rc-btn-ok" onclick="concluir(${s.id})">✓ Separado</button>
+        <button class="rc-btn rc-btn-x" onclick="limparResult()">✕</button>
       </div>
     </div>`;
 }
 
-function renderCardOk(sep) {
-  const diffMin = Math.floor((new Date(sep.fim) - new Date(sep.inicio)) / 60000);
-  const durStr = diffMin < 60 ? `${diffMin} min` : `${Math.floor(diffMin/60)}h ${diffMin%60}min`;
-  document.getElementById('result-area').innerHTML = `
+function renderOk(s) {
+  const min = Math.floor((new Date(s.fim) - new Date(s.inicio)) / 60000);
+  const dur = min < 60 ? `${min} min` : `${Math.floor(min/60)}h ${min%60}min`;
+  document.getElementById('secao-result').innerHTML = `
     <div class="result-card ok">
-      <div class="badge">✓ Separado</div>
-      <div class="pedido-num">${sep.pedido}</div>
-      <div class="info">Duração: <b>${durStr}</b></div>
-      <div class="btns" style="margin-top:16px">
-        <button class="btn btn-novo" onclick="limparCard()">↩ Próximo</button>
-      </div>
+      <div class="rc-badge">✓ Separado</div>
+      <div class="rc-pedido">${s.pedido}</div>
+      <div class="rc-info">Concluído em <b>${dur}</b></div>
     </div>`;
-  setTimeout(limparCard, 4000);
+  setTimeout(limparResult, 3500);
 }
 
-function limparCard() {
-  pedidoAtual = null;
-  document.getElementById('result-area').innerHTML = '<div class="empty">Aguardando leitura do pedido...</div>';
-  focusScan();
+function limparResult() {
+  document.getElementById('secao-result').innerHTML = '';
+  document.getElementById('scan-input').focus();
 }
 
 // ── AÇÕES ─────────────────────────────────────────────────────────────────────
-async function iniciarSeparacao(pedidoCod) {
+async function iniciar(cod) {
   const { data, error } = await db.from('separacoes').insert({
-    pedido: pedidoCod,
-    status: 'em_separacao',
-    separador_id: usuarioLogado.id,
-    separador: usuarioLogado.nome
+    pedido: cod, status: 'em_separacao',
+    separador_id: usuario.id, separador: usuario.nome
   }).select().single();
   if (error) { toast('Erro: ' + error.message); return; }
-  pedidoAtual = data;
-  toast('▶ Iniciado: ' + pedidoCod);
-  renderCardAndamento(data);
+  toast('▶ Iniciado: ' + cod);
+  limparResult();
+  carregarAtivos();
   carregarHistorico();
 }
 
-async function concluirSeparacao(sepId) {
+async function concluir(sepId) {
   const { data, error } = await db.from('separacoes')
     .update({ status: 'separado', fim: new Date().toISOString() })
     .eq('id', sepId).select().single();
   if (error) { toast('Erro: ' + error.message); return; }
   toast('✓ Separado: ' + data.pedido);
-  renderCardOk(data);
+  renderOk(data);
+  carregarAtivos();
   carregarHistorico();
 }
 
@@ -442,29 +348,28 @@ async function carregarHistorico() {
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   const { data } = await db.from('separacoes').select('*')
     .gte('inicio', hoje.toISOString())
-    .order('inicio', { ascending: false }).limit(30);
+    .order('inicio', {ascending:false}).limit(40);
 
-  const el = document.getElementById('hist-list');
+  const el = document.getElementById('hist-lista');
   if (!data || data.length === 0) {
-    el.innerHTML = '<div class="empty">Nenhuma separação hoje.</div>'; return;
+    el.innerHTML = '<div class="nenhum-ativo">Nenhuma separação hoje.</div>'; return;
   }
   el.innerHTML = data.map(s => {
     const ini = new Date(s.inicio);
-    const iniStr = ini.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+    const iniStr = ini.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
     let durStr = '';
     if (s.fim) {
-      const m = Math.floor((new Date(s.fim) - ini) / 60000);
-      durStr = m < 60 ? `${m} min` : `${Math.floor(m/60)}h ${m%60}min`;
+      const m = Math.floor((new Date(s.fim)-ini)/60000);
+      durStr = ' · ⏱ ' + (m < 60 ? `${m}min` : `${Math.floor(m/60)}h${m%60}min`);
     }
     const isAnd = s.status === 'em_separacao';
     return `<div class="hist-item">
-      <div class="hist-dot ${isAnd ? 'andamento' : 'ok'}"></div>
-      <div class="hist-pedido">${s.pedido}</div>
+      <div class="hdot ${isAnd?'and':'ok'}"></div>
       <div>
-        <div class="hist-time">${iniStr}${s.separador ? ' · '+s.separador : ''}</div>
-        ${durStr ? `<div class="hist-dur">⏱ ${durStr}</div>` : ''}
+        <div class="hped">${s.pedido}</div>
+        <div class="hinfo">${s.separador||'—'} · ${iniStr}${durStr}</div>
       </div>
-      ${isAnd ? `<button class="hist-btn" onclick="concluirSeparacao(${s.id})">✓</button>` : ''}
+      ${isAnd ? `<button class="h-btn-ok" onclick="concluir(${s.id})">✓</button>` : ''}
     </div>`;
   }).join('');
 }
@@ -474,11 +379,14 @@ let _tt;
 function toast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg; el.classList.add('show');
-  clearTimeout(_tt); _tt = setTimeout(() => el.classList.remove('show'), 2600);
+  clearTimeout(_tt); _tt = setTimeout(() => el.classList.remove('show'), 2500);
 }
 
+// foco automático ao tocar fora de input/button
 document.addEventListener('click', e => {
-  if (usuarioLogado && !e.target.closest('button') && !e.target.closest('input')) focusScan();
+  if (usuario && !e.target.closest('button') && !e.target.closest('input')) {
+    document.getElementById('scan-input').focus();
+  }
 });
 
 init();

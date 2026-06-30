@@ -468,21 +468,22 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
 
     <!-- ABA: SEPARAÇÃO -->
     <div class="tab-panel" id="tab-separacao">
-      <!-- LOGIN COLETOR -->
-      <div id="sep-login-area" style="max-width:380px;margin:0 auto">
+
+      <!-- LOGIN -->
+      <div id="sep-login-area" style="max-width:360px;margin:0 auto">
         <div class="card">
           <h3>🔐 Identificação do Separador</h3>
-          <p style="font-size:13px;color:#666;margin:8px 0 16px">Entre com seu usuário e senha para registrar separações.</p>
+          <p style="font-size:13px;color:#666;margin:8px 0 16px">Entre para registrar início e fim da separação.</p>
           <div style="margin-bottom:12px">
             <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">USUÁRIO</label>
             <input type="text" id="sep-login-user" placeholder="Seu nome"
-              style="width:100%;padding:10px 12px;border:1px solid var(--borda);border-radius:6px;font-size:15px;font-weight:700;letter-spacing:.04em"
+              style="width:100%;padding:10px 12px;border:1px solid var(--borda);border-radius:6px;font-size:16px;font-weight:700"
               autocomplete="off" autocorrect="off" autocapitalize="characters">
           </div>
           <div style="margin-bottom:16px">
             <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">SENHA</label>
             <input type="password" id="sep-login-senha" placeholder="••••••"
-              style="width:100%;padding:10px 12px;border:1px solid var(--borda);border-radius:6px;font-size:15px"
+              style="width:100%;padding:10px 12px;border:1px solid var(--borda);border-radius:6px;font-size:16px"
               onkeydown="if(event.key==='Enter')sepFazerLogin()">
           </div>
           <button onclick="sepFazerLogin()"
@@ -495,16 +496,29 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
 
       <!-- COLETOR ATIVO -->
       <div id="sep-coletor-area" style="display:none">
-        <!-- Header do separador logado -->
+
+        <!-- Barra do usuário logado -->
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding:10px 16px;background:var(--azul-escuro);color:white;border-radius:8px">
-          <span>👤 <strong id="sep-usuario-nome"></strong> — separador ativo</span>
+          <span style="font-size:14px">👤 <strong id="sep-usuario-nome"></strong> — separador ativo</span>
           <button onclick="sepLogout()"
             style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:white;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:13px">
             Sair
           </button>
         </div>
 
-        <!-- Campo de scan -->
+        <!-- PEDIDOS ATIVOS DO USUÁRIO -->
+        <div class="card" style="margin-bottom:14px;border-left:4px solid var(--laranja)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <h3>⏱ Seus pedidos em separação</h3>
+            <button onclick="sepCarregarAtivos()"
+              style="background:none;border:1px solid var(--borda);border-radius:4px;padding:3px 10px;font-size:12px;cursor:pointer;color:#666">↺</button>
+          </div>
+          <div id="sep-ativos-lista">
+            <p style="font-size:13px;color:#aaa">Nenhum pedido em andamento.</p>
+          </div>
+        </div>
+
+        <!-- SCAN -->
         <div class="card" style="margin-bottom:14px">
           <label style="font-size:12px;color:#666;letter-spacing:.05em;text-transform:uppercase;display:block;margin-bottom:8px">
             📷 Escanear ou digitar código do pedido
@@ -519,15 +533,13 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
               OK
             </button>
           </div>
+          <div id="sep-result-area" style="margin-top:10px"></div>
         </div>
 
-        <!-- Card resultado do scan -->
-        <div id="sep-result-area"></div>
-
-        <!-- Histórico do dia -->
+        <!-- HISTÓRICO GERAL -->
         <div class="card">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-            <h3>📋 Separações de hoje</h3>
+            <h3>📋 Todas as separações de hoje</h3>
             <button onclick="sepCarregarHistorico()"
               style="background:none;border:1px solid var(--borda);border-radius:4px;padding:3px 10px;font-size:12px;cursor:pointer;color:#666">
               ↺ Atualizar
@@ -590,7 +602,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 // ════════════════════════════════════════════════════════════════════════════
 // ── VERSÃO — atualizar a cada deploy no GitHub ─────────────────────────────
 // ════════════════════════════════════════════════════════════════════════════
-const APP_VERSION     = 'V2.4';               // ← atualizar a cada deploy
+const APP_VERSION     = 'V2.5';               // ← atualizar a cada deploy
 const GITHUB_REPO     = 'Avacydistribuidora/expedicao-avacy';
 const GITHUB_FILE     = 'Extrator_DANFE.html';
 
@@ -1611,11 +1623,12 @@ function setStatus(msg, type) {
 // ════════════════════════════════════════════════════════════════════════════
 // ── ABA SEPARAÇÃO ────────────────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════════════════════
-let sepUsuario = null; // { id, nome }
+let sepUsuario = null;
+let _sepRefresh = null;
 
 function sepIniciarAba() {
   const sessao = JSON.parse(localStorage.getItem('sep_sessao') || 'null');
-  if (sessao && sessao.id && sessao.nome) {
+  if (sessao?.id && sessao?.nome) {
     sepUsuario = sessao;
     sepMostrarColetor();
   } else {
@@ -1624,6 +1637,7 @@ function sepIniciarAba() {
 }
 
 function sepMostrarLogin() {
+  clearInterval(_sepRefresh);
   document.getElementById('sep-login-area').style.display = '';
   document.getElementById('sep-coletor-area').style.display = 'none';
   setTimeout(() => document.getElementById('sep-login-user').focus(), 100);
@@ -1634,8 +1648,12 @@ function sepMostrarColetor() {
   document.getElementById('sep-coletor-area').style.display = '';
   document.getElementById('sep-usuario-nome').textContent = sepUsuario.nome;
   document.getElementById('sep-result-area').innerHTML = '';
-  setTimeout(() => document.getElementById('sep-scan-input').focus(), 100);
+  sepCarregarAtivos();
   sepCarregarHistorico();
+  // Auto-refresh a cada 30s
+  clearInterval(_sepRefresh);
+  _sepRefresh = setInterval(() => { sepCarregarAtivos(); sepCarregarHistorico(); }, 30000);
+  setTimeout(() => document.getElementById('sep-scan-input').focus(), 100);
 }
 
 async function sepFazerLogin() {
@@ -1648,7 +1666,6 @@ async function sepFazerLogin() {
 
   const { data, error } = await db.from('separadores')
     .select('id, nome, ativo').eq('nome', nome).eq('senha', senha).single();
-
   if (error || !data) { erroEl.textContent = '❌ Usuário ou senha incorretos.'; return; }
   if (!data.ativo)    { erroEl.textContent = '❌ Usuário inativo.'; return; }
 
@@ -1660,11 +1677,43 @@ async function sepFazerLogin() {
 
 function sepLogout() {
   if (!confirm('Sair da conta ' + (sepUsuario?.nome || '') + '?')) return;
+  clearInterval(_sepRefresh);
   localStorage.removeItem('sep_sessao');
   sepUsuario = null;
   sepMostrarLogin();
 }
 
+// ── PEDIDOS ATIVOS (do usuário logado) ───────────────────────────────────────
+async function sepCarregarAtivos() {
+  if (!db || !sepUsuario) return;
+  const { data } = await db.from('separacoes').select('*')
+    .eq('separador_id', sepUsuario.id).eq('status', 'em_separacao')
+    .order('inicio', { ascending: false });
+
+  const el = document.getElementById('sep-ativos-lista');
+  if (!data || data.length === 0) {
+    el.innerHTML = '<p style="font-size:13px;color:#aaa">Nenhum pedido em andamento.</p>';
+    return;
+  }
+  el.innerHTML = data.map(s => {
+    const ini = new Date(s.inicio);
+    const min = Math.floor((new Date() - ini) / 60000);
+    const dur = min < 60 ? `${min} min` : `${Math.floor(min/60)}h ${min%60}min`;
+    const iniStr = ini.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fff8f0;border:1px solid var(--laranja);border-radius:8px;margin-bottom:8px">
+      <div style="flex:1">
+        <div style="font-size:20px;font-weight:700;letter-spacing:.06em;color:var(--texto)">${s.pedido}</div>
+        <div style="font-size:12px;color:#888">Iniciado ${iniStr} · ⏱ ${dur}</div>
+      </div>
+      <button onclick="sepConcluir(${s.id})"
+        style="padding:10px 16px;background:var(--verde);color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap">
+        ✓ Separado
+      </button>
+    </div>`;
+  }).join('');
+}
+
+// ── SCAN ─────────────────────────────────────────────────────────────────────
 async function sepProcessarScan(pedidoCod) {
   if (!pedidoCod) return;
   if (!db) { alert('Sem conexão com Supabase.'); return; }
@@ -1683,61 +1732,58 @@ async function sepProcessarScan(pedidoCod) {
 
 function sepRenderNovo(pedidoCod) {
   document.getElementById('sep-result-area').innerHTML = `
-    <div class="card" style="border-left:4px solid var(--azul-medio);margin-bottom:14px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-        <span style="background:var(--azul-medio);color:white;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700">NOVO</span>
-        <span style="font-size:22px;font-weight:700;letter-spacing:.06em">${pedidoCod}</span>
+    <div style="border:2px solid var(--azul-medio);border-radius:8px;padding:12px 14px;background:#f0f6ff">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <span style="background:var(--azul-medio);color:white;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700">NOVO</span>
+        <span style="font-size:20px;font-weight:700;color:var(--texto)">${pedidoCod}</span>
       </div>
-      <p style="font-size:13px;color:#666;margin-bottom:12px">Pedido não iniciado. Confirme para começar a separação.</p>
       <div style="display:flex;gap:8px">
         <button onclick="sepIniciar('${pedidoCod}')"
-          style="flex:1;padding:12px;background:var(--laranja);color:white;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">
-          ▶ Iniciar Separação
+          style="flex:1;padding:10px;background:var(--laranja);color:white;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">
+          ▶ Em Separação
         </button>
         <button onclick="document.getElementById('sep-result-area').innerHTML=''"
-          style="padding:12px 14px;background:#c0392b;color:white;border:none;border-radius:8px;font-size:15px;cursor:pointer">✕</button>
+          style="padding:10px 14px;background:#c0392b;color:white;border:none;border-radius:8px;font-size:15px;cursor:pointer">✕</button>
       </div>
     </div>`;
 }
 
 function sepRenderAndamento(sep) {
   const ini = new Date(sep.inicio);
-  const diffMin = Math.floor((new Date() - ini) / 60000);
-  const durStr = diffMin < 60 ? `${diffMin} min` : `${Math.floor(diffMin/60)}h ${diffMin%60}min`;
-  const iniStr = ini.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+  const min = Math.floor((new Date() - ini) / 60000);
+  const dur = min < 60 ? `${min} min` : `${Math.floor(min/60)}h ${min%60}min`;
+  const iniStr = ini.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
   document.getElementById('sep-result-area').innerHTML = `
-    <div class="card" style="border-left:4px solid var(--laranja);margin-bottom:14px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        <span style="background:var(--laranja);color:white;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700">⏱ EM SEPARAÇÃO</span>
-        <span style="font-size:22px;font-weight:700;letter-spacing:.06em">${sep.pedido}</span>
+    <div style="border:2px solid var(--laranja);border-radius:8px;padding:12px 14px;background:#fff8f0">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span style="background:var(--laranja);color:white;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700">⏱ EM SEPARAÇÃO</span>
+        <span style="font-size:20px;font-weight:700;color:var(--texto)">${sep.pedido}</span>
       </div>
-      <p style="font-size:13px;color:#666;margin-bottom:12px">
-        Iniciado às ${iniStr} · ${durStr} decorridos · Separador: <b>${sep.separador||'—'}</b>
-      </p>
+      <div style="font-size:12px;color:#888;margin-bottom:8px">Iniciado ${iniStr} · ${dur} · ${sep.separador||'—'}</div>
       <div style="display:flex;gap:8px">
         <button onclick="sepConcluir(${sep.id})"
-          style="flex:1;padding:12px;background:var(--verde);color:white;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">
-          ✓ Concluído
+          style="flex:1;padding:10px;background:var(--verde);color:white;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">
+          ✓ Separado
         </button>
         <button onclick="document.getElementById('sep-result-area').innerHTML=''"
-          style="padding:12px 14px;background:#c0392b;color:white;border:none;border-radius:8px;font-size:15px;cursor:pointer">✕</button>
+          style="padding:10px 14px;background:#c0392b;color:white;border:none;border-radius:8px;font-size:15px;cursor:pointer">✕</button>
       </div>
     </div>`;
 }
 
 function sepRenderOk(sep) {
-  const diffMin = Math.floor((new Date(sep.fim) - new Date(sep.inicio)) / 60000);
-  const durStr  = diffMin < 60 ? `${diffMin} min` : `${Math.floor(diffMin/60)}h ${diffMin%60}min`;
+  const min = Math.floor((new Date(sep.fim) - new Date(sep.inicio)) / 60000);
+  const dur = min < 60 ? `${min} min` : `${Math.floor(min/60)}h ${min%60}min`;
   document.getElementById('sep-result-area').innerHTML = `
-    <div class="card" style="border-left:4px solid var(--verde);margin-bottom:14px;text-align:center">
-      <div style="font-size:36px;margin-bottom:6px">✅</div>
-      <div style="font-size:22px;font-weight:700;letter-spacing:.06em;margin-bottom:4px">${sep.pedido}</div>
-      <div style="font-size:14px;color:#666">Separado em <b>${durStr}</b></div>
+    <div style="border:2px solid var(--verde);border-radius:8px;padding:14px;text-align:center;background:#f0fff4">
+      <div style="font-size:32px">✅</div>
+      <div style="font-size:20px;font-weight:700;color:var(--texto)">${sep.pedido}</div>
+      <div style="font-size:13px;color:#666">Separado em <b>${dur}</b></div>
     </div>`;
   setTimeout(() => {
     document.getElementById('sep-result-area').innerHTML = '';
     document.getElementById('sep-scan-input').focus();
-  }, 4000);
+  }, 3500);
 }
 
 async function sepIniciar(pedidoCod) {
@@ -1747,6 +1793,7 @@ async function sepIniciar(pedidoCod) {
   }).select().single();
   if (error) { alert('Erro: ' + error.message); return; }
   sepRenderAndamento(data);
+  sepCarregarAtivos();
   sepCarregarHistorico();
 }
 
@@ -1756,6 +1803,7 @@ async function sepConcluir(sepId) {
     .eq('id', sepId).select().single();
   if (error) { alert('Erro: ' + error.message); return; }
   sepRenderOk(data);
+  sepCarregarAtivos();
   sepCarregarHistorico();
 }
 
@@ -1764,40 +1812,34 @@ async function sepCarregarHistorico() {
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   const { data } = await db.from('separacoes').select('*')
     .gte('inicio', hoje.toISOString())
-    .order('inicio', { ascending: false }).limit(50);
+    .order('inicio', { ascending: false }).limit(60);
 
   const el = document.getElementById('sep-hist-list');
   if (!data || data.length === 0) {
-    el.innerHTML = '<p style="font-size:13px;color:#aaa;text-align:center;padding:16px 0">Nenhuma separação registrada hoje.</p>';
+    el.innerHTML = '<p style="font-size:13px;color:#aaa;padding:12px 0">Nenhuma separação registrada hoje.</p>';
     return;
   }
   el.innerHTML = `<div class="table-wrap"><table>
-    <thead><tr>
-      <th>Pedido</th><th>Separador</th><th>Início</th><th>Fim</th><th>Duração</th><th>Status</th><th></th>
-    </tr></thead><tbody>
-    ${data.map(s => {
+    <thead><tr><th>Pedido</th><th>Separador</th><th>Início</th><th>Fim</th><th>Duração</th><th>Status</th><th></th></tr></thead>
+    <tbody>${data.map(s => {
       const ini = new Date(s.inicio);
       const iniStr = ini.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
       let fimStr = '—', durStr = '—';
       if (s.fim) {
         fimStr = new Date(s.fim).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
         const m = Math.floor((new Date(s.fim)-ini)/60000);
-        durStr = m < 60 ? `${m} min` : `${Math.floor(m/60)}h ${m%60}min`;
+        durStr = m < 60 ? `${m}min` : `${Math.floor(m/60)}h ${m%60}min`;
       }
       const isAnd = s.status === 'em_separacao';
       const badge = isAnd
         ? `<span style="background:var(--laranja);color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">Em Separação</span>`
         : `<span style="background:var(--verde);color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">Separado</span>`;
-      const btnConcluir = isAnd
-        ? `<button onclick="sepConcluir(${s.id})" style="background:var(--verde);color:white;border:none;border-radius:4px;padding:3px 8px;font-size:12px;font-weight:700;cursor:pointer">✓</button>` : '';
       return `<tr>
-        <td><b>${s.pedido}</b></td>
-        <td>${s.separador||'—'}</td>
-        <td>${iniStr}</td><td>${fimStr}</td><td>${durStr}</td>
-        <td>${badge}</td><td>${btnConcluir}</td>
+        <td><b>${s.pedido}</b></td><td>${s.separador||'—'}</td>
+        <td>${iniStr}</td><td>${fimStr}</td><td>${durStr}</td><td>${badge}</td>
+        <td>${isAnd ? `<button onclick="sepConcluir(${s.id})" style="background:var(--verde);color:white;border:none;border-radius:4px;padding:3px 8px;font-size:12px;font-weight:700;cursor:pointer">✓</button>` : ''}</td>
       </tr>`;
-    }).join('')}
-    </tbody></table></div>`;
+    }).join('')}</tbody></table></div>`;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
