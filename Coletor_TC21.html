@@ -9,109 +9,143 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-:root{--azul:#1F3864;--azul2:#162b50;--azul3:#0d1a2e;--verde:#2ecc71;--laranja:#e67e22;--verm:#e74c3c;--cinza:#8aaac8}
-body{font-family:Calibri,Arial,sans-serif;background:var(--azul);color:white;min-height:100vh;display:flex;flex-direction:column}
+:root{
+  --azul:#1F3864;--azul2:#162b50;--azul3:#0d1a2e;
+  --verde:#1e7e34;--verde-claro:#2ecc71;
+  --laranja:#e67e22;--verm:#c0392b;--cinza:#8aaac8;
+  --borda:#dde3ec;--texto:#1a1a2e;--fundo:#f0f4f8;
+}
+body{font-family:Calibri,Arial,sans-serif;min-height:100vh;display:flex;flex-direction:column;background:var(--azul);color:white}
 
-header{background:var(--azul2);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--azul3);flex-shrink:0}
-.logo{font-size:18px;font-weight:700}.logo span{color:#7ec8f4}
-#db-dot{width:9px;height:9px;border-radius:50%;background:#888;display:inline-block}
+/* ── HEADER ── */
+header{background:var(--azul2);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--azul3);flex-shrink:0;gap:8px}
+.logo{font-size:17px;font-weight:700;white-space:nowrap}.logo span{color:#7ec8f4}
+.header-mid{flex:1;display:flex;align-items:center;justify-content:center;gap:8px}
+.admin-tabs{display:none;gap:6px}
+.atab{padding:5px 14px;border-radius:16px;border:1px solid rgba(255,255,255,.25);background:none;color:rgba(255,255,255,.6);font-size:13px;font-weight:700;cursor:pointer;transition:.15s}
+.atab.active{background:rgba(255,255,255,.18);color:white;border-color:rgba(255,255,255,.5)}
+.header-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+#db-dot{width:9px;height:9px;border-radius:50%;background:#888;flex-shrink:0}
 #db-dot.ok{background:#2ecc71;box-shadow:0 0 5px #2ecc71}
 #db-dot.err{background:var(--verm)}
-#badge-user{font-size:13px;font-weight:700;color:#7ec8f4;background:rgba(126,200,244,.15);padding:4px 10px;border-radius:20px;border:1px solid rgba(126,200,244,.3);cursor:pointer;display:none}
+#badge-user{font-size:12px;font-weight:700;color:#7ec8f4;background:rgba(126,200,244,.15);padding:4px 10px;border-radius:16px;border:1px solid rgba(126,200,244,.3);cursor:pointer;display:none;align-items:center;gap:5px;white-space:nowrap}
+.badge-admin{background:rgba(230,126,34,.25);border-color:rgba(230,126,34,.5);color:#f5c87a}
 
-/* LOGIN */
+/* ── TELA LOGIN ── */
 #tela-login{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 18px}
 .login-box{width:100%;max-width:340px;background:var(--azul2);border-radius:16px;padding:26px 20px;border:1px solid #2E4A6A}
 .login-box h2{font-size:20px;margin-bottom:4px}
 .login-box p{font-size:13px;color:var(--cinza);margin-bottom:20px}
-.field{margin-bottom:14px}
-.field label{font-size:11px;color:var(--cinza);display:block;margin-bottom:5px;letter-spacing:.04em}
-.field input{width:100%;padding:13px 12px;background:#1F3864;border:2px solid #2E4A6A;border-radius:10px;color:white;font-size:18px;outline:none;transition:border-color .2s}
-.field input:focus{border-color:#2E75B6}
-.field input::placeholder{color:#3a5a7a}
-#btn-login{width:100%;padding:15px;background:#2E75B6;border:none;border-radius:10px;color:white;font-size:17px;font-weight:700;cursor:pointer}
+.lfield{margin-bottom:14px}
+.lfield label{font-size:11px;color:var(--cinza);display:block;margin-bottom:5px;letter-spacing:.05em}
+.lfield input{width:100%;padding:13px 12px;background:#1F3864;border:2px solid #2E4A6A;border-radius:10px;color:white;font-size:18px;outline:none;transition:border-color .2s}
+.lfield input:focus{border-color:#2E75B6}
+.lfield input::placeholder{color:#3a5a7a}
+#btn-login{width:100%;padding:14px;background:#2E75B6;border:none;border-radius:10px;color:white;font-size:17px;font-weight:700;cursor:pointer}
 #login-erro{margin-top:10px;text-align:center;color:#ff7675;font-size:14px;font-weight:700;min-height:18px}
 
-/* COLETOR */
-#tela-coletor{flex:1;display:none;flex-direction:column;overflow-y:auto;padding-bottom:20px}
+/* ── CONTEÚDO GERAL ── */
+.tela{flex:1;display:none;flex-direction:column;overflow-y:auto}
+.tela.ativa{display:flex}
+.section{padding:12px 14px 0}
 
-/* SEÇÃO ATIVOS — pedidos em separação do usuário */
-#secao-ativos{padding:12px 14px 0}
-.ativos-title{font-size:11px;color:var(--cinza);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
-.ativo-card{background:var(--azul2);border:2px solid var(--laranja);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px}
-.ativo-pedido{font-size:24px;font-weight:700;letter-spacing:.06em;flex:1}
-.ativo-info{font-size:12px;color:var(--cinza);margin-top:2px}
-.btn-concluir-card{background:var(--verde);border:none;color:#0d2b0d;padding:12px 16px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap}
-.btn-concluir-card:active{opacity:.8}
-.nenhum-ativo{font-size:13px;color:#5a7a9a;padding:10px 0 4px}
+/* ── CARTÃO BASE ── */
+.card{background:white;border-radius:10px;padding:14px 16px;margin-bottom:14px;border:1px solid var(--borda);color:var(--texto)}
+.card h3{font-size:14px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.card h3 button{background:none;border:1px solid var(--borda);border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer;color:#666}
 
-/* SEÇÃO SCAN */
-#secao-scan{padding:12px 14px 0}
-.scan-label{font-size:11px;color:var(--cinza);letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:6px}
+/* ── PEDIDOS ATIVOS ── */
+.ativo-card{display:flex;align-items:center;gap:12px;padding:11px 12px;border:2px solid var(--laranja);border-radius:8px;margin-bottom:8px;background:#fff8f0}
+.ativo-ped{font-size:20px;font-weight:700;letter-spacing:.06em;flex:1;color:var(--texto)}
+.ativo-info{font-size:11px;color:#888;margin-top:2px}
+.btn-sep{padding:10px 14px;background:var(--verde-claro);color:#0d2b0d;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.sem-ativos{font-size:13px;color:#aaa;padding:6px 0}
+
+/* ── SCAN ── */
 .scan-wrap{display:flex;gap:8px}
-.scan-wrap input{flex:1;padding:13px 14px;background:white;border:3px solid #2E75B6;border-radius:10px;font-size:21px;font-weight:700;color:#1a1a2e;letter-spacing:.06em;outline:none}
-.scan-wrap input:focus{border-color:#5ba3e0}
-.btn-scan-ok{padding:13px 18px;background:#2E75B6;color:white;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer}
+.scan-input{flex:1;padding:12px 14px;border:2px solid #2E75B6;border-radius:8px;font-size:20px;font-weight:700;letter-spacing:.06em;outline:none;color:var(--texto);background:white}
+.scan-input:focus{border-color:#1F3864}
+.btn-scan-ok{padding:12px 18px;background:#2E75B6;color:white;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer}
 
-/* RESULTADO DO SCAN */
-#secao-result{padding:10px 14px 0}
-.result-card{border-radius:12px;padding:16px;margin-bottom:0;animation:fadeIn .2s}
-@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.result-card.novo{background:#0f3460;border:2px solid #2E75B6}
-.result-card.andamento{background:#7f4900;border:2px solid var(--laranja)}
-.result-card.ok{background:#0d4a1f;border:2px solid var(--verde);text-align:center}
-.rc-badge{display:inline-block;padding:3px 12px;border-radius:16px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
-.result-card.novo .rc-badge{background:#2E75B6;color:white}
-.result-card.andamento .rc-badge{background:var(--laranja);color:white}
-.result-card.ok .rc-badge{background:var(--verde);color:#0d2b0d}
-.rc-pedido{font-size:28px;font-weight:700;letter-spacing:.08em;margin-bottom:6px}
-.rc-info{font-size:13px;color:rgba(255,255,255,.7);line-height:1.5}
-.rc-btns{display:flex;gap:8px;margin-top:12px}
-.rc-btn{flex:1;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer}
-.rc-btn:active{opacity:.8}
-.rc-btn-ini{background:var(--laranja);color:white}
-.rc-btn-ok{background:var(--verde);color:#0d2b0d}
-.rc-btn-x{background:var(--verm);color:white;flex:0 0 auto;padding:14px 15px}
+/* ── RESULT ── */
+#sep-result{margin-top:10px}
+.rcard{border-radius:8px;padding:12px 14px;animation:fi .2s}
+@keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.rcard.novo{background:#e8f2ff;border:2px solid #2E75B6}
+.rcard.and{background:#fff8f0;border:2px solid var(--laranja)}
+.rcard.ok{background:#f0fff4;border:2px solid var(--verde-claro);text-align:center}
+.rbadge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
+.rcard.novo .rbadge{background:#2E75B6;color:white}
+.rcard.and .rbadge{background:var(--laranja);color:white}
+.rcard.ok .rbadge{background:var(--verde-claro);color:#0d2b0d}
+.rped{font-size:22px;font-weight:700;color:var(--texto);margin-bottom:5px}
+.rinfo{font-size:12px;color:#777;margin-bottom:8px}
+.rbtns{display:flex;gap:8px}
+.rbtn{flex:1;padding:11px;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer}
+.rbtn:active{opacity:.8}
+.rbtn-ini{background:var(--laranja);color:white}
+.rbtn-ok{background:var(--verde-claro);color:#0d2b0d}
+.rbtn-x{background:var(--verm);color:white;flex:0 0 auto;padding:11px 13px}
 
-/* HISTÓRICO */
-#secao-hist{padding:12px 14px 0}
-.hist-title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.hist-title-row span{font-size:11px;color:var(--cinza);letter-spacing:.06em;text-transform:uppercase}
-.hist-title-row button{background:none;border:1px solid #2E4A6A;color:var(--cinza);border-radius:4px;font-size:11px;padding:3px 8px;cursor:pointer}
-.hist-list{display:flex;flex-direction:column;gap:6px}
-.hist-item{background:var(--azul2);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px;font-size:14px}
-.hdot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
-.hdot.and{background:var(--laranja)}
-.hdot.ok{background:var(--verde)}
-.hped{font-weight:700;flex:1}
-.hinfo{font-size:11px;color:#7a9ab8;line-height:1.4}
-.h-btn-ok{background:var(--verde);border:none;color:#0d2b0d;border-radius:6px;padding:6px 10px;font-size:13px;font-weight:700;cursor:pointer}
+/* ── TABELAS ── */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--azul);color:white;padding:7px 9px;text-align:left;white-space:nowrap;font-size:12px}
+td{padding:7px 9px;border-bottom:1px solid var(--borda);vertical-align:middle}
+tr:hover td{background:#f5f8ff}
+tfoot td{background:#1F3864;color:white;font-weight:700}
 
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:white;padding:11px 20px;border-radius:28px;font-size:14px;font-weight:600;box-shadow:0 4px 18px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .3s;z-index:999;white-space:nowrap}
+/* ── ADMIN: FORM USUÁRIO ── */
+.uform{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-bottom:12px}
+.uform input{padding:8px 10px;border:1px solid var(--borda);border-radius:6px;font-size:14px;font-weight:700;color:var(--texto);outline:none}
+.uform input:focus{border-color:#2E75B6}
+.uform .btn-add{padding:8px 16px;background:#2E75B6;color:white;border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap}
+#usu-msg{font-size:13px;font-weight:700;min-height:16px;margin-bottom:8px}
+
+/* badges status */
+.sbadge{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;white-space:nowrap}
+.sbadge.and{background:var(--laranja);color:white}
+.sbadge.ok{background:var(--verde-claro);color:#0d2b0d}
+.sbadge.atv{background:#d4edda;color:#155724}
+.sbadge.inativ{background:#f8d7da;color:#721c24}
+
+.btn-sm{padding:3px 10px;border:none;border-radius:4px;font-size:12px;font-weight:700;cursor:pointer}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:white;padding:11px 20px;border-radius:28px;font-size:14px;font-weight:600;box-shadow:0 4px 18px rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .3s;z-index:999;white-space:nowrap}
 .toast.show{opacity:1}
 </style>
 </head>
 <body>
 
+<!-- HEADER -->
 <header>
   <div class="logo">AVACY <span>Separação</span></div>
-  <div style="display:flex;align-items:center;gap:10px">
+  <div class="header-mid">
+    <div class="admin-tabs" id="admin-tabs">
+      <button class="atab active" onclick="adminShowTab('sep')" id="atab-sep">📋 Separações</button>
+      <button class="atab" onclick="adminShowTab('usu')" id="atab-usu">👥 Usuários</button>
+    </div>
+  </div>
+  <div class="header-right">
     <span id="db-dot"></span>
-    <span id="badge-user" onclick="logout()" title="Toque para sair">👤 <span id="badge-nome"></span></span>
+    <span id="badge-user" onclick="logout()" title="Toque para sair">
+      👤 <span id="badge-nome"></span>
+    </span>
   </div>
 </header>
 
-<!-- LOGIN -->
-<div id="tela-login">
+<!-- ══ TELA LOGIN ══ -->
+<div id="tela-login" class="tela ativa" style="background:var(--azul)">
   <div class="login-box">
     <h2>🔐 Identificação</h2>
     <p>Entre com seu usuário e senha</p>
-    <div class="field">
+    <div class="lfield">
       <label>USUÁRIO</label>
       <input id="inp-user" type="text" placeholder="Seu nome"
         autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
     </div>
-    <div class="field">
+    <div class="lfield">
       <label>SENHA</label>
       <input id="inp-senha" type="password" placeholder="••••••"
         onkeydown="if(event.key==='Enter')login()">
@@ -121,43 +155,79 @@ header{background:var(--azul2);padding:12px 16px;display:flex;align-items:center
   </div>
 </div>
 
-<!-- COLETOR -->
-<div id="tela-coletor">
+<!-- ══ TELA SEPARADOR ══ -->
+<div id="tela-sep" class="tela" style="background:var(--fundo)">
 
-  <!-- 1. PEDIDOS ATIVOS (em separação deste usuário) -->
-  <div id="secao-ativos">
-    <div class="ativos-title">📦 Seus pedidos em separação</div>
-    <div id="ativos-lista"><div class="nenhum-ativo">Nenhum pedido em andamento.</div></div>
-  </div>
+  <div class="section">
+    <!-- Pedidos ativos do usuário -->
+    <div class="card">
+      <h3>⏱ Seus pedidos em separação <button onclick="carregarAtivos()">↺</button></h3>
+      <div id="ativos-lista"><div class="sem-ativos">Nenhum pedido em andamento.</div></div>
+    </div>
 
-  <!-- 2. SCAN NOVO PEDIDO -->
-  <div id="secao-scan" style="margin-top:14px">
-    <span class="scan-label">📷 Escanear novo pedido</span>
-    <div class="scan-wrap">
-      <input id="scan-input" type="text" placeholder="G00000"
-        autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
-        onkeydown="if(event.key==='Enter'){processar(this.value.trim().toUpperCase());this.value=''}">
-      <button class="btn-scan-ok"
-        onclick="processar(document.getElementById('scan-input').value.trim().toUpperCase());document.getElementById('scan-input').value=''">
-        OK
-      </button>
+    <!-- Scan -->
+    <div class="card">
+      <h3>📷 Escanear / digitar pedido</h3>
+      <div class="scan-wrap">
+        <input type="text" id="scan-input" class="scan-input" placeholder="G00000"
+          autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+          onkeydown="if(event.key==='Enter'){processar(this.value.trim().toUpperCase());this.value=''}">
+        <button class="btn-scan-ok"
+          onclick="processar(document.getElementById('scan-input').value.trim().toUpperCase());document.getElementById('scan-input').value=''">
+          OK
+        </button>
+      </div>
+      <div id="sep-result"></div>
+    </div>
+
+    <!-- Histórico do dia -->
+    <div class="card">
+      <h3>📋 Todas as separações de hoje <button onclick="carregarHistorico()">↺</button></h3>
+      <div id="sep-hist">Carregando...</div>
     </div>
   </div>
 
-  <!-- 3. RESULTADO DO SCAN -->
-  <div id="secao-result"></div>
+</div>
 
-  <!-- 4. HISTÓRICO DO DIA -->
-  <div id="secao-hist" style="margin-top:14px">
-    <div class="hist-title-row">
-      <span>Histórico de hoje</span>
-      <button onclick="carregarHistorico()">↺ Atualizar</button>
-    </div>
-    <div id="hist-lista" class="hist-list">
-      <div class="nenhum-ativo">Carregando...</div>
+<!-- ══ TELA ADMIN — SEPARAÇÕES ══ -->
+<div id="tela-admin-sep" class="tela" style="background:var(--fundo)">
+  <div class="section">
+    <div class="card">
+      <h3>📋 Monitor de Separações <button onclick="adminCarregarSep()">↺ Atualizar</button></h3>
+      <div id="admin-sep-lista">Carregando...</div>
     </div>
   </div>
+</div>
 
+<!-- ══ TELA ADMIN — USUÁRIOS ══ -->
+<div id="tela-admin-usu" class="tela" style="background:var(--fundo)">
+  <div class="section">
+    <div class="card">
+      <h3>➕ Novo usuário</h3>
+      <div class="uform">
+        <div>
+          <div style="font-size:11px;color:#666;margin-bottom:4px">NOME</div>
+          <input id="usu-nome" type="text" placeholder="Ex: JOÃO" autocorrect="off" autocapitalize="characters">
+        </div>
+        <div>
+          <div style="font-size:11px;color:#666;margin-bottom:4px">SENHA</div>
+          <input id="usu-senha" type="text" placeholder="Ex: avacy123">
+        </div>
+        <button class="btn-add" onclick="usuSalvar()">💾 Salvar</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <label style="font-size:13px;color:#666;display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="usu-is-admin"> Este usuário é administrador
+        </label>
+      </div>
+      <div id="usu-msg"></div>
+    </div>
+
+    <div class="card">
+      <h3>👥 Usuários cadastrados <button onclick="usuCarregar()">↺</button></h3>
+      <div id="usu-lista">Carregando...</div>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -167,91 +237,130 @@ const SUPA_URL = 'https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 
 let db = null;
-let usuario = null;
+let usuario = null; // { id, nome, admin }
+let _refresh = null;
 
+// ── INIT ──────────────────────────────────────────────────────────────────────
 async function init() {
   db = supabase.createClient(SUPA_URL, SUPA_KEY);
   try {
     await db.from('separadores').select('id').limit(1);
-    document.getElementById('db-dot').className = 'ok';
-  } catch { document.getElementById('db-dot').className = 'err'; }
+    setDot('ok');
+  } catch { setDot('err'); }
 
   const sess = JSON.parse(localStorage.getItem('col_sess') || 'null');
   if (sess?.id && sess?.nome) {
     usuario = sess;
-    mostrarColetor();
+    entrar();
   } else {
-    document.getElementById('inp-user').focus();
+    mostrar('tela-login');
+    setTimeout(() => document.getElementById('inp-user').focus(), 100);
   }
 }
+
+function setDot(cls) { document.getElementById('db-dot').className = cls; }
 
 // ── LOGIN / LOGOUT ────────────────────────────────────────────────────────────
 async function login() {
   const nome  = (document.getElementById('inp-user').value || '').trim().toUpperCase();
   const senha = (document.getElementById('inp-senha').value || '').trim();
-  const err   = document.getElementById('login-erro');
-  err.textContent = '';
-  if (!nome || !senha) { err.textContent = 'Preencha usuário e senha.'; return; }
+  const erroEl = document.getElementById('login-erro');
+  erroEl.textContent = '';
+  if (!nome || !senha) { erroEl.textContent = 'Preencha usuário e senha.'; return; }
 
-  document.getElementById('btn-login').textContent = 'Verificando...';
+  const btn = document.getElementById('btn-login');
+  btn.textContent = 'Verificando...'; btn.disabled = true;
+
   const { data, error } = await db.from('separadores')
-    .select('id,nome,ativo').eq('nome', nome).eq('senha', senha).single();
-  document.getElementById('btn-login').textContent = 'Entrar';
+    .select('id, nome, ativo, admin').eq('nome', nome).eq('senha', senha).single();
 
-  if (error || !data) { err.textContent = '❌ Usuário ou senha incorretos.'; return; }
-  if (!data.ativo)    { err.textContent = '❌ Usuário inativo.'; return; }
+  btn.textContent = 'Entrar'; btn.disabled = false;
 
-  usuario = { id: data.id, nome: data.nome };
+  if (error || !data) { erroEl.textContent = '❌ Usuário ou senha incorretos.'; return; }
+  if (!data.ativo)    { erroEl.textContent = '❌ Usuário inativo. Fale com o administrador.'; return; }
+
+  usuario = { id: data.id, nome: data.nome, admin: data.admin };
   localStorage.setItem('col_sess', JSON.stringify(usuario));
   document.getElementById('inp-senha').value = '';
-  mostrarColetor();
+  entrar();
+}
+
+function entrar() {
+  const badge = document.getElementById('badge-user');
+  badge.style.display = 'inline-flex';
+  badge.className = usuario.admin ? 'badge-admin' : '';
+  badge.id = 'badge-user';
+  document.getElementById('badge-nome').textContent = usuario.nome + (usuario.admin ? ' ★' : '');
+
+  clearInterval(_refresh);
+  if (usuario.admin) {
+    document.getElementById('admin-tabs').style.display = 'flex';
+    adminShowTab('sep');
+  } else {
+    document.getElementById('admin-tabs').style.display = 'none';
+    mostrar('tela-sep');
+    carregarAtivos();
+    carregarHistorico();
+    _refresh = setInterval(() => { carregarAtivos(); carregarHistorico(); }, 30000);
+    setTimeout(() => document.getElementById('scan-input').focus(), 150);
+  }
 }
 
 function logout() {
-  if (!confirm('Sair da conta ' + usuario.nome + '?')) return;
+  if (!confirm('Sair da conta ' + (usuario?.nome || '') + '?')) return;
+  clearInterval(_refresh);
   localStorage.removeItem('col_sess');
   usuario = null;
-  document.getElementById('tela-coletor').style.display = 'none';
-  document.getElementById('tela-login').style.display = 'flex';
   document.getElementById('badge-user').style.display = 'none';
+  document.getElementById('admin-tabs').style.display = 'none';
+  mostrar('tela-login');
   document.getElementById('inp-user').value = '';
   document.getElementById('login-erro').textContent = '';
   setTimeout(() => document.getElementById('inp-user').focus(), 100);
 }
 
-// ── TELA COLETOR ──────────────────────────────────────────────────────────────
-function mostrarColetor() {
-  document.getElementById('tela-login').style.display = 'none';
-  document.getElementById('tela-coletor').style.display = 'flex';
-  document.getElementById('badge-user').style.display = 'inline-flex';
-  document.getElementById('badge-nome').textContent = usuario.nome;
-  carregarAtivos();
-  carregarHistorico();
-  setTimeout(() => document.getElementById('scan-input').focus(), 150);
+// ── NAVEGAÇÃO ─────────────────────────────────────────────────────────────────
+function mostrar(id) {
+  document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa'));
+  document.getElementById(id).classList.add('ativa');
 }
 
-// ── PEDIDOS ATIVOS ────────────────────────────────────────────────────────────
+function adminShowTab(tab) {
+  document.querySelectorAll('.atab').forEach(b => b.classList.remove('active'));
+  document.getElementById('atab-' + tab).classList.add('active');
+  if (tab === 'sep') {
+    mostrar('tela-admin-sep');
+    adminCarregarSep();
+    clearInterval(_refresh);
+    _refresh = setInterval(adminCarregarSep, 30000);
+  } else {
+    mostrar('tela-admin-usu');
+    usuCarregar();
+    clearInterval(_refresh);
+  }
+}
+
+// ── PEDIDOS ATIVOS (separador) ────────────────────────────────────────────────
 async function carregarAtivos() {
+  if (!db || !usuario) return;
   const { data } = await db.from('separacoes').select('*')
     .eq('separador_id', usuario.id).eq('status', 'em_separacao')
     .order('inicio', { ascending: false });
 
   const el = document.getElementById('ativos-lista');
   if (!data || data.length === 0) {
-    el.innerHTML = '<div class="nenhum-ativo">Nenhum pedido em andamento.</div>';
-    return;
+    el.innerHTML = '<div class="sem-ativos">Nenhum pedido em andamento.</div>'; return;
   }
   el.innerHTML = data.map(s => {
     const ini = new Date(s.inicio);
     const min = Math.floor((new Date() - ini) / 60000);
     const dur = min < 60 ? `${min} min` : `${Math.floor(min/60)}h ${min%60}min`;
-    const iniStr = ini.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
     return `<div class="ativo-card">
       <div style="flex:1">
-        <div class="ativo-pedido">${s.pedido}</div>
-        <div class="ativo-info">Iniciado ${iniStr} · ⏱ ${dur}</div>
+        <div class="ativo-ped">${s.pedido}</div>
+        <div class="ativo-info">Iniciado ${ini.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · ⏱ ${dur}</div>
       </div>
-      <button class="btn-concluir-card" onclick="concluir(${s.id})">✓ Separado</button>
+      <button class="btn-sep" onclick="concluir(${s.id})">✓ Separado</button>
     </div>`;
   }).join('');
 }
@@ -263,24 +372,19 @@ async function processar(cod) {
     .eq('pedido', cod).eq('status', 'em_separacao')
     .order('inicio', {ascending:false}).limit(1);
 
-  if (data && data.length > 0) {
-    renderAndamento(data[0]);
-  } else {
-    renderNovo(cod);
-  }
+  data && data.length > 0 ? renderAndamento(data[0]) : renderNovo(cod);
   setTimeout(() => document.getElementById('scan-input').focus(), 50);
 }
 
-// ── CARDS RESULTADO ───────────────────────────────────────────────────────────
 function renderNovo(cod) {
-  document.getElementById('secao-result').innerHTML = `
-    <div class="result-card novo">
-      <div class="rc-badge">Novo Pedido</div>
-      <div class="rc-pedido">${cod}</div>
-      <div class="rc-info">Pedido não iniciado. Confirme para começar.</div>
-      <div class="rc-btns">
-        <button class="rc-btn rc-btn-ini" onclick="iniciar('${cod}')">▶ Em Separação</button>
-        <button class="rc-btn rc-btn-x" onclick="limparResult()">✕</button>
+  document.getElementById('sep-result').innerHTML = `
+    <div class="rcard novo">
+      <div class="rbadge">Novo Pedido</div>
+      <div class="rped">${cod}</div>
+      <div class="rinfo">Pedido não iniciado. Confirme para começar.</div>
+      <div class="rbtns">
+        <button class="rbtn rbtn-ini" onclick="iniciar('${cod}')">▶ Em Separação</button>
+        <button class="rbtn rbtn-x" onclick="document.getElementById('sep-result').innerHTML=''">✕</button>
       </div>
     </div>`;
 }
@@ -289,15 +393,14 @@ function renderAndamento(s) {
   const ini = new Date(s.inicio);
   const min = Math.floor((new Date() - ini) / 60000);
   const dur = min < 60 ? `${min} min` : `${Math.floor(min/60)}h ${min%60}min`;
-  const iniStr = ini.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
-  document.getElementById('secao-result').innerHTML = `
-    <div class="result-card andamento">
-      <div class="rc-badge">⏱ Em Separação</div>
-      <div class="rc-pedido">${s.pedido}</div>
-      <div class="rc-info">Iniciado ${iniStr} · ${dur} · ${s.separador||'—'}</div>
-      <div class="rc-btns">
-        <button class="rc-btn rc-btn-ok" onclick="concluir(${s.id})">✓ Separado</button>
-        <button class="rc-btn rc-btn-x" onclick="limparResult()">✕</button>
+  document.getElementById('sep-result').innerHTML = `
+    <div class="rcard and">
+      <div class="rbadge">⏱ Em Separação</div>
+      <div class="rped">${s.pedido}</div>
+      <div class="rinfo">Iniciado ${ini.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · ${dur} · ${s.separador||'—'}</div>
+      <div class="rbtns">
+        <button class="rbtn rbtn-ok" onclick="concluir(${s.id})">✓ Separado</button>
+        <button class="rbtn rbtn-x" onclick="document.getElementById('sep-result').innerHTML=''">✕</button>
       </div>
     </div>`;
 }
@@ -305,18 +408,16 @@ function renderAndamento(s) {
 function renderOk(s) {
   const min = Math.floor((new Date(s.fim) - new Date(s.inicio)) / 60000);
   const dur = min < 60 ? `${min} min` : `${Math.floor(min/60)}h ${min%60}min`;
-  document.getElementById('secao-result').innerHTML = `
-    <div class="result-card ok">
-      <div class="rc-badge">✓ Separado</div>
-      <div class="rc-pedido">${s.pedido}</div>
-      <div class="rc-info">Concluído em <b>${dur}</b></div>
+  document.getElementById('sep-result').innerHTML = `
+    <div class="rcard ok">
+      <div class="rbadge">✓ Separado</div>
+      <div class="rped">${s.pedido}</div>
+      <div class="rinfo">Concluído em <b>${dur}</b></div>
     </div>`;
-  setTimeout(limparResult, 3500);
-}
-
-function limparResult() {
-  document.getElementById('secao-result').innerHTML = '';
-  document.getElementById('scan-input').focus();
+  setTimeout(() => {
+    document.getElementById('sep-result').innerHTML = '';
+    document.getElementById('scan-input').focus();
+  }, 3500);
 }
 
 // ── AÇÕES ─────────────────────────────────────────────────────────────────────
@@ -327,9 +428,8 @@ async function iniciar(cod) {
   }).select().single();
   if (error) { toast('Erro: ' + error.message); return; }
   toast('▶ Iniciado: ' + cod);
-  limparResult();
-  carregarAtivos();
-  carregarHistorico();
+  renderAndamento(data);
+  carregarAtivos(); carregarHistorico();
 }
 
 async function concluir(sepId) {
@@ -339,39 +439,148 @@ async function concluir(sepId) {
   if (error) { toast('Erro: ' + error.message); return; }
   toast('✓ Separado: ' + data.pedido);
   renderOk(data);
-  carregarAtivos();
-  carregarHistorico();
+  carregarAtivos(); carregarHistorico();
 }
 
-// ── HISTÓRICO ─────────────────────────────────────────────────────────────────
+// ── HISTÓRICO (separador) ─────────────────────────────────────────────────────
 async function carregarHistorico() {
+  if (!db) return;
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   const { data } = await db.from('separacoes').select('*')
     .gte('inicio', hoje.toISOString())
-    .order('inicio', {ascending:false}).limit(40);
+    .order('inicio', { ascending: false }).limit(60);
 
-  const el = document.getElementById('hist-lista');
+  const el = document.getElementById('sep-hist');
   if (!data || data.length === 0) {
-    el.innerHTML = '<div class="nenhum-ativo">Nenhuma separação hoje.</div>'; return;
+    el.innerHTML = '<p style="font-size:13px;color:#aaa;padding:8px 0">Nenhuma separação hoje.</p>'; return;
   }
-  el.innerHTML = data.map(s => {
-    const ini = new Date(s.inicio);
-    const iniStr = ini.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
-    let durStr = '';
-    if (s.fim) {
-      const m = Math.floor((new Date(s.fim)-ini)/60000);
-      durStr = ' · ⏱ ' + (m < 60 ? `${m}min` : `${Math.floor(m/60)}h${m%60}min`);
-    }
-    const isAnd = s.status === 'em_separacao';
-    return `<div class="hist-item">
-      <div class="hdot ${isAnd?'and':'ok'}"></div>
-      <div>
-        <div class="hped">${s.pedido}</div>
-        <div class="hinfo">${s.separador||'—'} · ${iniStr}${durStr}</div>
+  el.innerHTML = buildHistTable(data, true);
+}
+
+// ── ADMIN: MONITOR SEPARAÇÕES ─────────────────────────────────────────────────
+async function adminCarregarSep() {
+  if (!db) return;
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const { data } = await db.from('separacoes').select('*')
+    .gte('inicio', hoje.toISOString())
+    .order('inicio', { ascending: false }).limit(100);
+
+  const el = document.getElementById('admin-sep-lista');
+  if (!data || data.length === 0) {
+    el.innerHTML = '<p style="font-size:13px;color:#aaa;padding:8px 0">Nenhuma separação registrada hoje.</p>'; return;
+  }
+
+  const emAnd = data.filter(s => s.status === 'em_separacao').length;
+  const sep   = data.filter(s => s.status === 'separado').length;
+  el.innerHTML = `
+    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <div style="background:#fff8f0;border:1px solid var(--laranja);border-radius:8px;padding:8px 14px;text-align:center;min-width:90px">
+        <div style="font-size:22px;font-weight:700;color:var(--laranja)">${emAnd}</div>
+        <div style="font-size:11px;color:#888">Em Separação</div>
       </div>
-      ${isAnd ? `<button class="h-btn-ok" onclick="concluir(${s.id})">✓</button>` : ''}
-    </div>`;
-  }).join('');
+      <div style="background:#f0fff4;border:1px solid var(--verde-claro);border-radius:8px;padding:8px 14px;text-align:center;min-width:90px">
+        <div style="font-size:22px;font-weight:700;color:var(--verde)">${sep}</div>
+        <div style="font-size:11px;color:#888">Separados</div>
+      </div>
+      <div style="background:#f5f8ff;border:1px solid #2E75B6;border-radius:8px;padding:8px 14px;text-align:center;min-width:90px">
+        <div style="font-size:22px;font-weight:700;color:#2E75B6">${data.length}</div>
+        <div style="font-size:11px;color:#888">Total hoje</div>
+      </div>
+    </div>
+    ${buildHistTable(data, true)}`;
+}
+
+function buildHistTable(data, showConcluir) {
+  return `<div class="table-wrap"><table>
+    <thead><tr><th>Pedido</th><th>Separador</th><th>Início</th><th>Fim</th><th>Duração</th><th>Status</th>${showConcluir?'<th></th>':''}</tr></thead>
+    <tbody>${data.map(s => {
+      const ini = new Date(s.inicio);
+      const iniStr = ini.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      let fimStr='—', durStr='—';
+      if (s.fim) {
+        fimStr = new Date(s.fim).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+        const m = Math.floor((new Date(s.fim)-ini)/60000);
+        durStr = m < 60 ? `${m}min` : `${Math.floor(m/60)}h ${m%60}min`;
+      }
+      const isAnd = s.status === 'em_separacao';
+      return `<tr>
+        <td><b>${s.pedido}</b></td>
+        <td>${s.separador||'—'}</td>
+        <td>${iniStr}</td><td>${fimStr}</td><td>${durStr}</td>
+        <td><span class="sbadge ${isAnd?'and':'ok'}">${isAnd?'Em Separação':'Separado'}</span></td>
+        ${showConcluir ? `<td>${isAnd?`<button class="btn-sm" style="background:var(--verde-claro);color:#0d2b0d" onclick="concluir(${s.id})">✓</button>`:''}</td>` : ''}
+      </tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+// ── ADMIN: USUÁRIOS ───────────────────────────────────────────────────────────
+async function usuCarregar() {
+  if (!db) return;
+  const { data } = await db.from('separadores').select('*').order('nome');
+  const el = document.getElementById('usu-lista');
+  if (!data || data.length === 0) {
+    el.innerHTML = '<p style="font-size:13px;color:#aaa">Nenhum usuário.</p>'; return;
+  }
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Nome</th><th>Senha</th><th>Perfil</th><th>Status</th><th></th></tr></thead>
+    <tbody>${data.map(u => `<tr>
+      <td><b>${u.nome}</b></td>
+      <td style="font-family:monospace;font-size:12px">${u.senha}</td>
+      <td><span class="sbadge" style="${u.admin?'background:#fff3cd;color:#856404':'background:#e8f2ff;color:#1F3864'}">${u.admin?'★ Admin':'Separador'}</span></td>
+      <td>
+        <button class="btn-sm" onclick="usuToggle(${u.id},${u.ativo},'ativo')"
+          style="background:${u.ativo?'#d4edda':'#f8d7da'};color:${u.ativo?'#155724':'#721c24'}">
+          ${u.ativo ? '✓ Ativo' : '✗ Inativo'}
+        </button>
+      </td>
+      <td style="display:flex;gap:4px">
+        <button class="btn-sm" onclick="usuSenha(${u.id},'${u.nome}')"
+          style="background:#e8f2ff;color:#1F3864">🔑</button>
+        <button class="btn-sm" onclick="usuExcluir(${u.id},'${u.nome}')"
+          style="background:#f8d7da;color:#721c24">🗑</button>
+      </td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+
+async function usuSalvar() {
+  const nome  = (document.getElementById('usu-nome').value || '').trim().toUpperCase();
+  const senha = (document.getElementById('usu-senha').value || '').trim();
+  const isAdm = document.getElementById('usu-is-admin').checked;
+  const msg   = document.getElementById('usu-msg');
+  msg.style.color = 'var(--verm)'; msg.textContent = '';
+  if (!nome || !senha) { msg.textContent = 'Preencha nome e senha.'; return; }
+
+  const { error } = await db.from('separadores').insert({ nome, senha, admin: isAdm });
+  if (error) { msg.textContent = error.code === '23505' ? '❌ Nome já existe.' : '❌ ' + error.message; return; }
+
+  msg.style.color = 'var(--verde)';
+  msg.textContent = '✓ Usuário ' + nome + ' criado!';
+  document.getElementById('usu-nome').value = '';
+  document.getElementById('usu-senha').value = '';
+  document.getElementById('usu-is-admin').checked = false;
+  usuCarregar();
+  setTimeout(() => msg.textContent = '', 3000);
+}
+
+async function usuToggle(id, val, campo) {
+  await db.from('separadores').update({ [campo]: !val }).eq('id', id);
+  usuCarregar();
+}
+
+async function usuSenha(id, nome) {
+  const nova = prompt(`Nova senha para ${nome}:`);
+  if (!nova || !nova.trim()) return;
+  const { error } = await db.from('separadores').update({ senha: nova.trim() }).eq('id', id);
+  if (error) { toast('Erro: ' + error.message); return; }
+  toast('✓ Senha de ' + nome + ' alterada');
+  usuCarregar();
+}
+
+async function usuExcluir(id, nome) {
+  if (!confirm(`Excluir ${nome}?`)) return;
+  await db.from('separadores').delete().eq('id', id);
+  usuCarregar();
+  toast('🗑 ' + nome + ' excluído');
 }
 
 // ── TOAST ─────────────────────────────────────────────────────────────────────
@@ -379,13 +588,13 @@ let _tt;
 function toast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg; el.classList.add('show');
-  clearTimeout(_tt); _tt = setTimeout(() => el.classList.remove('show'), 2500);
+  clearTimeout(_tt); _tt = setTimeout(() => el.classList.remove('show'), 2600);
 }
 
-// foco automático ao tocar fora de input/button
 document.addEventListener('click', e => {
-  if (usuario && !e.target.closest('button') && !e.target.closest('input')) {
-    document.getElementById('scan-input').focus();
+  if (usuario && !usuario.admin && !e.target.closest('button') && !e.target.closest('input')) {
+    const si = document.getElementById('scan-input');
+    if (si) si.focus();
   }
 });
 
