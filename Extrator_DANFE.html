@@ -315,6 +315,10 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
     <div class="sub">Extração automática de DANFEs &amp; Romaneios · AVACY Distribuidora</div>
   </div>
   <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+    <span id="versionBadge" title="Versão do sistema"
+      style="font-size:11px;padding:3px 10px;border-radius:12px;background:rgba(255,255,255,.15);color:white;cursor:default">
+      🏷️ …
+    </span>
     <span id="dbStatus" style="font-size:11px;padding:3px 10px;border-radius:12px;background:rgba(255,255,255,.15);color:white">
       ⏳ Conectando…
     </span>
@@ -463,6 +467,39 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+// ════════════════════════════════════════════════════════════════════════════
+// ── VERSÃO — atualizar a cada deploy no GitHub ─────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+const APP_VERSION     = '2026-06-30';          // data da última atualização
+const GITHUB_REPO     = 'Avacydistribuidora/expedicao-avacy';
+const GITHUB_FILE     = 'Extrator_DANFE.html';
+
+async function checkVersion() {
+  const badge = document.getElementById('versionBadge');
+  if (badge) badge.textContent = `🏷️ v${APP_VERSION}`;
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${GITHUB_REPO}/commits?path=${GITHUB_FILE}&per_page=1`,
+      { headers: { Accept: 'application/vnd.github.v3+json' } }
+    );
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.length) return;
+    const lastCommit = data[0].commit.committer.date.slice(0, 10); // "YYYY-MM-DD"
+    if (badge) {
+      if (lastCommit > APP_VERSION) {
+        badge.textContent = `⚠️ v${APP_VERSION} → nova v${lastCommit}`;
+        badge.style.background = 'rgba(230,120,0,.6)';
+        badge.title = `Versão local: ${APP_VERSION} | GitHub: ${lastCommit} — Atualize o arquivo!`;
+      } else {
+        badge.textContent = `✅ v${APP_VERSION}`;
+        badge.style.background = 'rgba(30,180,80,.35)';
+        badge.title = `Versão atualizada (${APP_VERSION})`;
+      }
+    }
+  } catch { /* sem internet ou API fora — ignora */ }
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 // ── SUPABASE CONFIG — preencha suas credenciais ────────────────────────────
@@ -1359,6 +1396,7 @@ function setStatus(msg, type) {
 document.getElementById('dataProg').valueAsDate = new Date();
 document.getElementById('dtColeta').valueAsDate = new Date();
 initDB().then(() => renderSidebar());
+checkVersion();
 </script>
 </body>
 </html>
