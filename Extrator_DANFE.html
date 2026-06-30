@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>FOB Alpargatas 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --azul-escuro: #1F3864;
+  --azul-medio: #2E75B6;
+  --azul-claro: #D6E4F0;
+  --azul-hover: #e8f2fd;
+  --verde: #1e7e34;
+  --laranja: #e67e22;
+  --vermelho: #c0392b;
+  --cinza: #f0f4f8;
+  --borda: #dde3ec;
+  --texto: #1a1a2e;
+  --sidebar-w: 260px;
+  --header-h: 52px;
+}
+
+body { font-family: Calibri, Arial, sans-serif; background: var(--cinza); color: var(--texto); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+/* ── HEADER ── */
+header {
+  height: var(--header-h);
+  background: var(--azul-escuro);
+  color: white;
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  gap: 12px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,.35);
+  z-index: 100;
+}
+header .logo { font-size: 22px; }
+header h1 { font-size: 16px; font-weight: 700; }
+header .sub { font-size: 11px; opacity: .75; margin-top: 1px; }
+
+/* ── LAYOUT PRINCIPAL ── */
+.layout { display: flex; flex: 1; overflow: hidden; }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: #192740;
+  color: #c8d8f0;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-right: 1px solid #0d1a2e;
+}
+.sidebar-header {
+  padding: 12px 14px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #8aaac8;
+  border-bottom: 1px solid #0d1a2e;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sidebar-header button {
+  background: var(--azul-medio);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-weight: 700;
+}
+.sidebar-header button:hover { background: #1F3864; }
+
+.tree { flex: 1; overflow-y: auto; padding: 6px 0; }
+.tree::-webkit-scrollbar { width: 4px; }
+.tree::-webkit-scrollbar-thumb { background: #2E4A6A; border-radius: 4px; }
+
+.tree-year { }
+.year-label {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  font-size: 13px; font-weight: 700; color: #a0c0e0;
+  cursor: pointer; user-select: none;
+}
+.year-label:hover { background: rgba(255,255,255,.05); }
+.year-label .arrow { font-size: 10px; transition: transform .2s; }
+.year-label.open .arrow { transform: rotate(90deg); }
+
+.month-block { display: none; }
+.month-block.open { display: block; }
+
+.month-label {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px 6px 26px;
+  font-size: 12px; font-weight: 700; color: #7a9fc0;
+  cursor: pointer; user-select: none;
+  text-transform: uppercase; letter-spacing: .05em;
+}
+.month-label:hover { background: rgba(255,255,255,.04); }
+.month-label .arrow { font-size: 9px; transition: transform .2s; }
+.month-label.open .arrow { transform: rotate(90deg); }
+
+.carretas-list { display: none; }
+.carretas-list.open { display: block; }
+
+.carreta-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 14px 6px 38px;
+  font-size: 12px; color: #b0cce0; cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: all .15s;
+}
+.carreta-item:hover { background: rgba(46,117,182,.2); color: white; }
+.carreta-item.active {
+  background: rgba(46,117,182,.35);
+  border-left-color: var(--azul-medio);
+  color: white;
+  font-weight: 700;
+}
+.carreta-item .icon { font-size: 13px; }
+
+/* resumo no sidebar */
+.sidebar-stats {
+  padding: 10px 14px;
+  border-top: 1px solid #0d1a2e;
+  font-size: 11px;
+  color: #6a8aaa;
+}
+.sidebar-stats span { display: block; margin-bottom: 3px; }
+.sidebar-stats strong { color: #a0c0e0; }
+
+/* ── CONTEÚDO PRINCIPAL ── */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* abas */
+.tabs-bar {
+  display: flex;
+  background: white;
+  border-bottom: 2px solid var(--azul-medio);
+  flex-shrink: 0;
+  padding: 0 16px;
+  gap: 2px;
+}
+.tab-btn {
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #667;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.tab-btn:hover { color: var(--azul-medio); background: var(--azul-hover); }
+.tab-btn.active { color: var(--azul-escuro); border-bottom-color: var(--azul-medio); background: none; }
+.tab-btn .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-left: 6px; background: transparent; vertical-align: middle; }
+.tab-btn .dot.novo { background: var(--laranja); }
+
+/* painéis de abas */
+.tab-panel { display: none; flex: 1; overflow-y: auto; padding: 20px 24px; }
+.tab-panel.active { display: block; }
+.tab-panel::-webkit-scrollbar { width: 6px; }
+.tab-panel::-webkit-scrollbar-thumb { background: #ccd; border-radius: 4px; }
+
+/* ── COMPONENTES COMUNS ── */
+.card {
+  background: white;
+  border-radius: 10px;
+  padding: 18px 22px;
+  margin-bottom: 18px;
+  box-shadow: 0 1px 5px rgba(0,0,0,.08);
+}
+.card h3 {
+  font-size: 14px; font-weight: 700; color: var(--azul-escuro);
+  margin-bottom: 14px; padding-bottom: 8px;
+  border-bottom: 2px solid var(--azul-claro);
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* ── DROP ZONE ── */
+.drop-zone {
+  border: 3px dashed var(--azul-medio);
+  border-radius: 14px;
+  background: white;
+  padding: 40px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .2s;
+  margin-bottom: 18px;
+}
+.drop-zone.drag-over { background: var(--azul-hover); border-color: var(--azul-escuro); }
+.drop-zone .dz-icon { font-size: 46px; margin-bottom: 10px; }
+.drop-zone h2 { font-size: 17px; color: var(--azul-medio); margin-bottom: 5px; }
+.drop-zone p  { color: #666; font-size: 13px; }
+.drop-zone input[type=file] { display: none; }
+
+/* ── FORM ── */
+.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.fg label { display: block; font-size: 11px; color: #555; margin-bottom: 4px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.fg input, .fg select {
+  width: 100%; padding: 8px 10px;
+  border: 1px solid var(--borda); border-radius: 6px;
+  font-size: 13px; font-family: inherit; color: var(--texto);
+}
+.fg input:focus, .fg select:focus { outline: none; border-color: var(--azul-medio); box-shadow: 0 0 0 3px rgba(46,117,182,.1); }
+
+/* ── BOTÕES ── */
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; align-items: center; }
+.btn {
+  padding: 9px 18px; border: none; border-radius: 8px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  transition: all .15s; display: flex; align-items: center; gap: 6px;
+}
+.btn-primary { background: var(--azul-medio); color: white; }
+.btn-primary:hover { background: var(--azul-escuro); }
+.btn-success { background: var(--verde); color: white; }
+.btn-success:hover { background: #155724; }
+.btn-warn    { background: var(--laranja); color: white; }
+.btn-warn:hover { background: #ca6f1e; }
+.btn-danger  { background: var(--vermelho); color: white; }
+.btn-danger:hover { background: #922b21; }
+.btn-ghost   { background: white; color: var(--azul-escuro); border: 2px solid var(--azul-medio); }
+.btn-ghost:hover { background: var(--azul-hover); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ── STATUS BAR ── */
+.status-bar {
+  padding: 10px 14px; border-radius: 8px;
+  font-size: 13px; margin-bottom: 14px; display: none;
+}
+.status-bar.info    { background: #d1ecf1; color: #0c5460; display: block; }
+.status-bar.success { background: #d4edda; color: #155724; display: block; }
+.status-bar.error   { background: #f8d7da; color: #721c24; display: block; }
+.status-bar.loading { background: #fff3cd; color: #856404; display: block; }
+
+/* ── TABELA ── */
+.table-wrap { overflow-x: auto; border-radius: 8px; box-shadow: 0 1px 5px rgba(0,0,0,.1); }
+table { width: 100%; border-collapse: collapse; background: white; font-size: 12px; min-width: 700px; }
+thead th { background: var(--azul-escuro); color: white; padding: 9px 10px; text-align: center; white-space: nowrap; font-size: 11px; }
+tbody tr:nth-child(even) { background: #f5f9ff; }
+tbody tr:hover { background: var(--azul-hover); }
+tbody td { padding: 8px 10px; text-align: center; border-bottom: 1px solid #e8edf5; font-size: 12px; }
+tbody td.l { text-align: left; }
+tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text-align: center; font-weight: 700; font-size: 12px; }
+
+/* ── ESTATÍSTICAS (CARDS NUMÉRICOS) ── */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.stat-card {
+  background: white; border-radius: 10px; padding: 16px;
+  box-shadow: 0 1px 5px rgba(0,0,0,.08);
+  border-left: 4px solid var(--azul-medio);
+  text-align: left;
+}
+.stat-card .label { font-size: 11px; color: #888; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; }
+.stat-card .value { font-size: 22px; font-weight: 700; color: var(--azul-escuro); }
+.stat-card .sub   { font-size: 11px; color: #aaa; margin-top: 2px; }
+.stat-card.verde { border-left-color: var(--verde); }
+.stat-card.laranja { border-left-color: var(--laranja); }
+.stat-card.vermelho { border-left-color: var(--vermelho); }
+
+/* inputs inline na tabela */
+.ti { width:100%; padding:3px 5px; border:1px solid #c8d8ec; border-radius:4px; font-size:12px; font-family:inherit; background:white; text-align:center; }
+.ti:focus { outline:none; border-color:var(--azul-medio); background:#f0f7ff; }
+.ti-orig { width:52px; font-weight:700; }
+.ti-dt   { width:100px; }
+.ti-num  { width:58px; }
+.ti-nf   { width:88px; font-weight:700; }
+.ti-val  { width:92px; text-align:right; }
+.ti-rem  { width:88px; font-size:11px; }
+
+/* badges */
+.badge { padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+.badge-ok   { background: #d4edda; color: #155724; }
+.badge-err  { background: #f8d7da; color: #721c24; }
+.badge-info { background: var(--azul-claro); color: var(--azul-escuro); }
+
+/* spinner */
+.spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 5px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* lista de arquivos selecionados */
+.files-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.file-tag {
+  background: var(--azul-claro); color: var(--azul-escuro);
+  border-radius: 6px; padding: 4px 10px; font-size: 12px;
+  display: flex; align-items: center; gap: 5px;
+}
+.file-tag .rm { cursor: pointer; color: var(--vermelho); font-weight: 700; }
+
+/* empty */
+.empty { text-align: center; padding: 50px 20px; color: #aaa; }
+.empty .icon { font-size: 48px; margin-bottom: 10px; }
+.empty p { font-size: 14px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">📦</div>
+  <div>
+    <div class="h1" style="font-size:16px;font-weight:700;">FOB Alpargatas — Controle de Carretas</div>
+    <div class="sub">Extração automática de DANFEs &amp; Romaneios · AVACY Distribuidora</div>
+  </div>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+    <span id="dbStatus" style="font-size:11px;padding:3px 10px;border-radius:12px;background:rgba(255,255,255,.15);color:white">
+      ⏳ Conectando…
+    </span>
+  </div>
+</header>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      📋 Carretas
+      <button onclick="abrirAbaCarregar()">+ Nova</button>
+    </div>
+    <div class="tree" id="sidebarTree">
+      <!-- gerado por JS -->
+    </div>
+    <div class="sidebar-stats" id="sidebarStats"></div>
+  </nav>
+
+  <!-- CONTEÚDO -->
+  <div class="main">
+    <!-- ABAS -->
+    <div class="tabs-bar" id="tabsBar">
+      <button class="tab-btn active" onclick="showTab('tab-carregar')" id="btn-tab-carregar">
+        📥 Carregar DANFEs
+      </button>
+      <button class="tab-btn" onclick="showTab('tab-carreta')" id="btn-tab-carreta" style="display:none">
+        🚛 <span id="tab-carreta-label">Carreta</span>
+      </button>
+      <button class="tab-btn" onclick="showTab('tab-resumo')" id="btn-tab-resumo">
+        📊 Resumo Geral
+      </button>
+    </div>
+
+    <!-- ABA: CARREGAR DANFEs -->
+    <div class="tab-panel active" id="tab-carregar">
+
+      <!-- Drop Zone -->
+      <div class="drop-zone" id="dropZone">
+        <div class="dz-icon">🗂️</div>
+        <h2>Arraste PDFs de DANFEs ou Romaneios aqui</h2>
+        <p>ou clique para selecionar · Múltiplos arquivos · Detecta automaticamente o tipo</p>
+        <input type="file" id="fileInput" multiple accept=".pdf">
+      </div>
+      <div class="files-list" id="filesList"></div>
+
+      <!-- Dados da carreta -->
+      <div class="card" style="margin-top:14px">
+        <h3>📋 Dados da Programação</h3>
+        <div class="form-grid">
+          <div class="fg">
+            <label>Nº da Carreta</label>
+            <input type="number" id="numCarreta" placeholder="Ex: 59">
+          </div>
+          <div class="fg">
+            <label>Data da Programação</label>
+            <input type="date" id="dataProg">
+          </div>
+          <div class="fg">
+            <label>Transportadora</label>
+            <input type="text" id="transportadora" value="Jr Roldão">
+          </div>
+          <div class="fg">
+            <label>Frete (R$)</label>
+            <input type="text" id="frete" placeholder="Ex: 15300" oninput="if(dadosExtraidos.length)atualizarTotais()">
+          </div>
+          <div class="fg">
+            <label>DT Coleta</label>
+            <input type="date" id="dtColeta">
+          </div>
+          <div class="fg">
+            <label>DT Entrega</label>
+            <input type="date" id="dtEntrega">
+          </div>
+          <div class="fg">
+            <label>DT Sistema</label>
+            <input type="date" id="dtSistema">
+          </div>
+          <div class="fg">
+            <label>Shipment</label>
+            <input type="text" id="shipment" placeholder="Opcional">
+          </div>
+          <div class="fg">
+            <label>Placa</label>
+            <input type="text" id="placa" placeholder="Opcional">
+          </div>
+          <div class="fg">
+            <label>Seguiu Viagem</label>
+            <input type="date" id="seguiuViagem">
+          </div>
+          <div class="fg">
+            <label>ORIGEM (padrão)</label>
+            <input type="text" id="origemPadrao" placeholder="Ex: CG" maxlength="5"
+              oninput="aplicarOrigemPadrao(this.value)">
+          </div>
+          <div class="fg">
+            <label>Vol M³</label>
+            <input type="text" id="volM3" placeholder="Ex: 42,50">
+          </div>
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div class="status-bar" id="status"></div>
+
+      <!-- Botões -->
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btnProcessar" onclick="processarPDFs()" disabled>
+          🔍 Extrair Dados dos PDFs
+        </button>
+        <button class="btn btn-success" id="btnSalvar" onclick="salvarCarreta()" disabled>
+          💾 Salvar Carreta
+        </button>
+        <button class="btn btn-warn" id="btnExcel" onclick="exportarExcel()" disabled>
+          📥 Baixar Excel
+        </button>
+        <button class="btn btn-ghost" id="btnCopiar" onclick="copiarTabela()" disabled>
+          📋 Copiar p/ Planilha
+        </button>
+      </div>
+
+      <!-- Resultado extração -->
+      <div id="resultadoExtracao"></div>
+    </div>
+
+    <!-- ABA: CARRETA SELECIONADA -->
+    <div class="tab-panel" id="tab-carreta">
+      <div id="carretaDetalhe">
+        <div class="empty"><div class="icon">🚛</div><p>Selecione uma carreta no menu lateral</p></div>
+      </div>
+    </div>
+
+    <!-- ABA: RESUMO GERAL -->
+    <div class="tab-panel" id="tab-resumo">
+      <div id="resumoGeral"></div>
+    </div>
+
+  </div><!-- .main -->
+</div><!-- .layout -->
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+               'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+// ════════════════════════════════════════════════════════════════════════════
+// ── SUPABASE CONFIG — preencha suas credenciais ────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+const SUPABASE_URL      = 'https://wureelywtpcdxbmyblqj.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
+// ════════════════════════════════════════════════════════════════════════════
+
+let db = null;
+let carretasCache = [];   // cache local — UI sempre lê daqui (síncrono)
+
+function setDbStatus(ok, msg) {
+  const el = document.getElementById('dbStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.background = ok ? 'rgba(46,200,90,.35)' : 'rgba(200,60,60,.35)';
+}
+
+// ── STORAGE (Supabase + cache local) ─────────────────────────────────────────
+async function initDB() {
+  try {
+    db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { data, error } = await db
+      .from('carretas')
+      .select('*, nfs(*)')
+      .order('num', { ascending: true });
+    if (error) throw error;
+    carretasCache = (data || []).map(dbToApp);
+    setDbStatus(true, '🟢 Supabase conectado');
+  } catch(e) {
+    console.warn('Supabase indisponível, usando localStorage:', e.message);
+    setDbStatus(false, '🔴 Offline (local)');
+    // fallback: localStorage
+    try { carretasCache = JSON.parse(localStorage.getItem('fob_carretas') || '[]'); } catch {}
+  }
+}
+
+// Converte registro do banco para formato do app
+function dbToApp(c) {
+  return {
+    id: c.id, num: c.num, data: c.data,
+    dtColeta: c.dt_coleta, dtEntrega: c.dt_entrega, dtSistema: c.dt_sistema,
+    seguiuViagem: c.seguiu_viagem, transportadora: c.transportadora,
+    frete: parseFloat(c.frete) || 0, shipment: c.shipment, placa: c.placa,
+    volM3: c.vol_m3,
+    totalCaixas: c.total_caixas, totalPares: c.total_pares,
+    totalValor: parseFloat(c.total_valor) || 0, criadoEm: c.criado_em,
+    nfs: (c.nfs || []).sort((a,b)=>(a.nf||0)-(b.nf||0)).map(n => ({
+      nf: n.nf, nfRaw: n.nf_raw, dtStr: n.dt_str,
+      valorNF: parseFloat(n.valor_nf) || 0,
+      qtdCaixas: n.qtd_caixas, qtdPares: n.qtd_pares,
+      origem: n.origem, remessa: n.remessa,
+      peso: n.peso ? parseFloat(n.peso) : null,
+      vlmM3: n.vlm_m3, arquivo: n.arquivo, tipoDoc: n.tipo_doc || 'danfe', ok: true,
+    }))
+  };
+}
+
+function getCarretas() { return carretasCache; }
+
+async function salvarCarretaNoBanco(c) {
+  if (!db) {
+    // fallback localStorage
+    carretasCache = carretasCache.filter(x => x.num !== c.num);
+    carretasCache.push(c);
+    localStorage.setItem('fob_carretas', JSON.stringify(carretasCache));
+    return;
+  }
+  // Upsert carreta
+  const { error: ce } = await db.from('carretas').upsert({
+    id: c.id, num: c.num, data: c.data,
+    dt_coleta:    c.dtColeta    || null, dt_entrega:   c.dtEntrega   || null,
+    dt_sistema:   c.dtSistema   || null, seguiu_viagem: c.seguiuViagem || null,
+    transportadora: c.transportadora || null, frete: c.frete || 0,
+    shipment: c.shipment || null, placa: c.placa || null, vol_m3: c.volM3 || null,
+    total_caixas: c.totalCaixas || 0, total_pares: c.totalPares || 0,
+    total_valor: c.totalValor || 0,
+  });
+  if (ce) throw ce;
+
+  // Substitui NFs
+  await db.from('nfs').delete().eq('carreta_id', c.id);
+  if (c.nfs.length) {
+    const { error: ne } = await db.from('nfs').insert(
+      c.nfs.map(n => ({
+        carreta_id: c.id, nf: n.nf || null, nf_raw: n.nfRaw || null,
+        dt_str: n.dtStr || null, valor_nf: n.valorNF || null,
+        qtd_caixas: n.qtdCaixas || null, qtd_pares: n.qtdPares || null,
+        origem: n.origem || null, remessa: n.remessa || null,
+        peso: n.peso || null, vlm_m3: n.vlmM3 || null,
+        arquivo: n.arquivo || null, tipo_doc: n.tipoDoc || 'danfe',
+      }))
+    );
+    if (ne) throw ne;
+  }
+  // Atualiza cache
+  carretasCache = carretasCache.filter(x => x.num !== c.num);
+  carretasCache.push(c);
+  carretasCache.sort((a,b) => a.num - b.num);
+}
+
+async function excluirCarretaDoBanco(id) {
+  if (db) await db.from('carretas').delete().eq('id', id);
+  carretasCache = carretasCache.filter(c => c.id !== id);
+  if (!db) localStorage.setItem('fob_carretas', JSON.stringify(carretasCache));
+}
+
+// ── ABAS ─────────────────────────────────────────────────────────────────────
+function showTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById('btn-' + id).classList.add('active');
+  if (id === 'tab-resumo') renderResumo();
+}
+function abrirAbaCarregar() {
+  showTab('tab-carregar');
+}
+
+// ── SIDEBAR ───────────────────────────────────────────────────────────────────
+function renderSidebar() {
+  const carretas = getCarretas();
+  const tree = document.getElementById('sidebarTree');
+
+  if (carretas.length === 0) {
+    tree.innerHTML = '<div style="padding:20px 14px;font-size:12px;color:#6a8aaa;text-align:center;">Nenhuma carreta cadastrada.<br>Carregue DANFEs para começar.</div>';
+    updateSidebarStats(carretas);
+    return;
+  }
+
+  // Agrupar por ano e mês
+  const grupos = {};
+  for (const c of carretas) {
+    const d = new Date(c.data + 'T12:00:00');
+    const ano = d.getFullYear();
+    const mes = d.getMonth();
+    const key = `${ano}|${mes}`;
+    if (!grupos[key]) grupos[key] = { ano, mes, items: [] };
+    grupos[key].items.push(c);
+  }
+
+  // Ordenar
+  const anosMap = {};
+  for (const key of Object.keys(grupos).sort()) {
+    const { ano, mes, items } = grupos[key];
+    if (!anosMap[ano]) anosMap[ano] = {};
+    anosMap[ano][mes] = items.sort((a,b) => a.num - b.num);
+  }
+
+  let html = '';
+  for (const ano of Object.keys(anosMap).sort().reverse()) {
+    html += `<div class="tree-year">
+      <div class="year-label open" onclick="toggleYear(this)">
+        <span class="arrow">▶</span> 📅 ${ano}
+      </div>
+      <div class="month-block open">`;
+
+    for (const mes of Object.keys(anosMap[ano]).sort((a,b)=>a-b)) {
+      const items = anosMap[ano][mes];
+      html += `<div>
+        <div class="month-label open" onclick="toggleMonth(this)">
+          <span class="arrow">▶</span> 📁 ${MESES[mes]}
+        </div>
+        <div class="carretas-list open">`;
+      for (const c of items) {
+        html += `<div class="carreta-item" data-id="${c.id}" onclick="selecionarCarreta('${c.id}')">
+          <span class="icon">🚛</span> ${c.num}ª Carreta
+        </div>`;
+      }
+      html += `</div></div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  tree.innerHTML = html;
+  updateSidebarStats(carretas);
+}
+
+function updateSidebarStats(carretas) {
+  const totNFs   = carretas.reduce((s,c) => s + (c.nfs ? c.nfs.length : 0), 0);
+  const totValor = carretas.reduce((s,c) => s + (c.totalValor || 0), 0);
+  document.getElementById('sidebarStats').innerHTML =
+    `<span>🚛 <strong>${carretas.length}</strong> carreta(s)</span>
+     <span>📄 <strong>${totNFs}</strong> NFs registradas</span>
+     <span>💰 <strong>R$ ${totValor.toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong></span>`;
+}
+
+function toggleYear(el) {
+  el.classList.toggle('open');
+  el.nextElementSibling.classList.toggle('open');
+}
+function toggleMonth(el) {
+  el.classList.toggle('open');
+  el.nextElementSibling.classList.toggle('open');
+}
+
+// ── SELECIONAR CARRETA ────────────────────────────────────────────────────────
+let carretaSelecionadaId = null;
+
+function selecionarCarreta(id) {
+  carretaSelecionadaId = id;
+  document.querySelectorAll('.carreta-item').forEach(el => el.classList.remove('active'));
+  const el = document.querySelector(`.carreta-item[data-id="${id}"]`);
+  if (el) el.classList.add('active');
+
+  const carretas = getCarretas();
+  const c = carretas.find(x => x.id === id);
+  if (!c) return;
+
+  // Atualizar aba
+  document.getElementById('tab-carreta-label').textContent = `${c.num}ª Carreta`;
+  document.getElementById('btn-tab-carreta').style.display = '';
+  showTab('tab-carreta');
+  renderDetalheCarreta(c);
+}
+
+function renderDetalheCarreta(c) {
+  const frete = c.frete || 0;
+  const totVal = c.totalValor || 0;
+  const totCx  = c.totalCaixas || 0;
+  const totPar = c.totalPares || 0;
+  const pct = totVal > 0 ? (frete / totVal * 100).toFixed(2) : '—';
+
+  let html = `
+  <div class="stats-grid">
+    <div class="stat-card"><div class="label">NFs</div><div class="value">${c.nfs.length}</div><div class="sub">notas fiscais</div></div>
+    <div class="stat-card laranja"><div class="label">Caixas</div><div class="value">${totCx}</div><div class="sub">${totPar} pares</div></div>
+    <div class="stat-card verde"><div class="label">Valor Total NFs</div><div class="value">R$ ${totVal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
+    <div class="stat-card vermelho"><div class="label">Frete</div><div class="value">R$ ${frete.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="sub">${c.transportadora||'—'}</div></div>
+    <div class="stat-card" style="border-left-color:#8e44ad"><div class="label">% Frete / NF</div><div class="value" style="color:#8e44ad">${pct}</div><div class="sub">frete ÷ valor total</div></div>
+  </div>
+
+  <div class="card">
+    <h3>🚛 ${c.num}ª Carreta · Programação ${fmtData(c.data)}</h3>
+    <div style="font-size:12px;color:#666;margin-bottom:14px;display:flex;gap:20px;flex-wrap:wrap;">
+      ${c.dtColeta ? `<span>📅 Coleta: <b>${fmtData(c.dtColeta)}</b></span>` : ''}
+      ${c.dtEntrega ? `<span>🏁 Entrega: <b>${fmtData(c.dtEntrega)}</b></span>` : ''}
+      ${c.dtSistema ? `<span>💻 Sistema: <b>${fmtData(c.dtSistema)}</b></span>` : ''}
+      ${c.shipment ? `<span>🔗 Shipment: <b>${c.shipment}</b></span>` : ''}
+      ${c.placa ? `<span>🚗 Placa: <b>${c.placa}</b></span>` : ''}
+      ${c.volM3 ? `<span>📦 Vol: <b>${c.volM3} m³</b></span>` : ''}
+    </div>
+    <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>#</th><th>ORIGEM</th><th>FORNECEDOR</th><th>DT FATURAMENTO</th>
+        <th>QTDS CAIXAS</th><th>QTDS PARES</th><th>VALOR NF</th><th>VLM M³</th><th>PESO KG</th><th>NF</th><th>REMESSA</th>
+      </tr></thead>
+      <tbody>
+  `;
+
+  c.nfs.forEach((nf, i) => {
+    html += `<tr>
+      <td>${i+1}</td>
+      <td>${nf.origem||''}</td>
+      <td>ALPARGATAS</td>
+      <td>${nf.dtStr||''}</td>
+      <td>${nf.qtdCaixas??''}</td>
+      <td>${nf.qtdPares??''}</td>
+      <td>R$ ${(nf.valorNF||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+      <td style="font-size:11px">${nf.vlmM3||''}</td>
+      <td style="font-size:11px">${nf.peso!=null?nf.peso.toLocaleString('pt-BR',{maximumFractionDigits:3}):''}</td>
+      <td><b>${nf.nfRaw||nf.nf||''}</b></td>
+      <td style="font-size:11px">${nf.remessa||''}</td>
+    </tr>`;
+  });
+
+  const totPeso = c.nfs.reduce((s,n)=>s+(n.peso||0),0);
+  html += `</tbody>
+    <tfoot><tr>
+      <td colspan="4">TOTAL</td>
+      <td>${totCx}</td><td>${totPar}</td>
+      <td>R$ ${totVal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+      <td>${c.volM3||''}</td>
+      <td>${totPeso>0?totPeso.toLocaleString('pt-BR',{maximumFractionDigits:3}):''}</td>
+      <td>${c.nfs.length} NFs</td><td></td>
+    </tr></tfoot>
+    </table></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-warn" onclick="exportarExcelCarreta('${c.id}')">📥 Baixar Excel</button>
+    <button class="btn btn-ghost" onclick="copiarCarreta('${c.id}')">📋 Copiar p/ Planilha</button>
+    <button class="btn btn-danger" onclick="excluirCarreta('${c.id}')">🗑️ Excluir</button>
+  </div>`;
+
+  document.getElementById('carretaDetalhe').innerHTML = html;
+}
+
+function fmtData(iso) {
+  if (!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+async function excluirCarreta(id) {
+  if (!confirm('Excluir esta carreta?')) return;
+  try {
+    await excluirCarretaDoBanco(id);
+  } catch(e) {
+    alert('Erro ao excluir: ' + (e.message || e)); return;
+  }
+  document.getElementById('btn-tab-carreta').style.display = 'none';
+  document.getElementById('carretaDetalhe').innerHTML =
+    '<div class="empty"><div class="icon">🚛</div><p>Carreta excluída.</p></div>';
+  showTab('tab-carregar');
+  renderSidebar();
+}
+
+// ── DRAG & DROP ───────────────────────────────────────────────────────────────
+let arquivosSelecionados = [];
+let dadosExtraidos = [];
+
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  handleFiles(Array.from(e.dataTransfer.files).filter(f => f.name.toLowerCase().endsWith('.pdf')));
+});
+fileInput.addEventListener('change', () => handleFiles(Array.from(fileInput.files)));
+
+function handleFiles(files) {
+  arquivosSelecionados = files;
+  dadosExtraidos = [];
+  ['btnExcel','btnSalvar','btnCopiar'].forEach(id => document.getElementById(id).disabled = true);
+  document.getElementById('resultadoExtracao').innerHTML = '';
+
+  if (!files.length) { setStatus('Nenhum PDF selecionado.', 'error'); return; }
+
+  const list = document.getElementById('filesList');
+  list.innerHTML = files.map((f,i) =>
+    `<div class="file-tag">📄 ${f.name} <span class="rm" onclick="removerArquivo(${i})">✕</span></div>`
+  ).join('');
+
+  setStatus(`${files.length} arquivo(s) selecionado(s). Preencha os dados da carreta e clique em Extrair.`, 'info');
+  document.getElementById('btnProcessar').disabled = false;
+}
+
+function removerArquivo(idx) {
+  const arr = Array.from(arquivosSelecionados);
+  arr.splice(idx, 1);
+  handleFiles(arr);
+}
+
+// ── EXTRAÇÃO ──────────────────────────────────────────────────────────────────
+async function extrairTexto(file) {
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  let t = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const pg = await pdf.getPage(i);
+    const ct = await pg.getTextContent();
+    t += ct.items.map(x => x.str).join(' ') + '\n';
+  }
+  return t;
+}
+
+function parseBR(s) {
+  if (!s) return 0;
+  return parseFloat(String(s).replace(/\./g,'').replace(',','.')) || 0;
+}
+
+function parseDanfe(texto, nome) {
+  const find = p => { const m = texto.match(p); return m ? m[1] : null; };
+
+  // NF: tenta várias formas como o pdf.js pode extrair o caractere º/°
+  let nfRaw = find(/N[°º°]\s*([\d]{3}\.[\d]{3}\.[\d]{3})/);
+  if (!nfRaw) nfRaw = find(/(?:^|\s)(\d{3}\.\d{3}\.\d{3})(?=\s|$)/m);
+  if (!nfRaw) nfRaw = find(/NOTA FISCAL[\s\S]{0,40}?(\d{3}\.\d{3}\.\d{3})/);
+  const nf = nfRaw ? parseInt(nfRaw.replace(/\./g,'')) : null;
+
+  let dtStr = find(/61\.234\.829\/\d{4}-\d{2}\s+(\d{2}\/\d{2}\/\d{4})/);
+  if (!dtStr) dtStr = find(/DATA DE EMISS[ÃA]O\s*:?\s*(\d{2}\/\d{2}\/\d{4})/);
+  if (!dtStr) dtStr = find(/EMISS[ÃA]O\s*:?\s*(\d{2}\/\d{2}\/\d{4})/);
+  if (!dtStr) dtStr = find(/DATA\s+EMISS[ÃA]O\s*(\d{2}\/\d{2}\/\d{4})/);
+  if (!dtStr) dtStr = find(/FATURAMENTO\s*:?\s*(\d{2}\/\d{2}\/\d{4})/);
+  if (!dtStr) { const all = texto.match(/\b(\d{2}\/\d{2}\/20\d{2})\b/g); if (all) dtStr = all[0]; }
+
+  // VALOR TOTAL DA NOTA — 4 estratégias em cascata
+  let valorNF = null;
+
+  // 1) Somar linhas de produto "PAR QTDE V.UNIT VALOR_TOTAL ..."
+  //    Mais confiável: pdf.js extrai a tabela de itens de forma consistente
+  const parMatches = [...texto.matchAll(/PAR\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)/g)];
+  if (parMatches.length) {
+    const soma = parMatches.reduce((s, m) => s + parseBR(m[3]), 0);
+    if (soma > 0) valorNF = Math.round(soma * 100) / 100;
+  }
+
+  // 2) "VALOR TOTAL DA NOTA" seguido diretamente de número(s) — mesma linha
+  if (!valorNF) {
+    const m2 = texto.match(/VALOR TOTAL DA NOTA\s+((?:[\d.,]+\s+){0,5})([\d.,]+)/);
+    if (m2) valorNF = parseBR(m2[2]);
+  }
+
+  // 3) Bloco de zeros antes do total: "0,00 0,00 0,00 0,00 0,00 27.074,88"
+  //    Captura o último número monetário após sequência de zeros
+  if (!valorNF) {
+    const m3 = texto.match(/(?:0,00\s+){3,}([\d.]+,\d{2})/);
+    if (m3) valorNF = parseBR(m3[1]);
+  }
+
+  // 4) VALOR TOTAL DOS PRODUTOS (igual ao total da nota quando frete=0)
+  if (!valorNF) {
+    const m4 = texto.match(/VALOR TOTAL DOS PRODUTOS\s+([\d.,]+(?:\s+[\d.,]+){0,3}\s+([\d.,]+))/);
+    if (m4) {
+      const nums = m4[1].trim().split(/\s+/).map(parseBR).filter(n => n > 0);
+      if (nums.length) valorNF = nums[nums.length - 1];
+    }
+  }
+
+  const cxM = find(/(\d+),\d+\s*VOLUME\./);
+  const qtdCaixas = cxM ? parseInt(cxM) : null;
+  const qtdeM = find(/QTDE\.TOTAL:\s*0*(\d+)/);
+  const qtdPares = qtdeM ? parseInt(qtdeM) : (qtdCaixas ? qtdCaixas * 12 : null);
+
+  const origem = /Campina Grande|CAMPINA GRANDE/.test(texto) ? 'CG'
+               : /Monte Carmelo|MONTE CARMELO/.test(texto) ? 'MC' : '?';
+  const remessa = find(/REMESSA:\s*(\d+)/);
+
+  // PESO BRUTO
+  let peso = null;
+  const pesoM = find(/PESO\s*BRUTO\s*[:\s]\s*([\d.,]+)/);
+  if (pesoM) peso = parseBR(pesoM);
+  if (!peso) { const pesoM2 = find(/PESO\s*L[IÍ]Q(?:UIDO)?\.?\s*[:\s]\s*([\d.,]+)/); if (pesoM2) peso = parseBR(pesoM2); }
+
+  return { nfRaw, nf, dtStr, valorNF, qtdCaixas, qtdPares, origem, remessa, peso, arquivo: nome };
+}
+
+// ── ROMANEIO ─────────────────────────────────────────────────────────────────
+function isRomaneio(texto) {
+  return /Romaneio\s*de\s*Transport/i.test(texto) ||
+         /RomaneiodeTransport/i.test(texto) ||
+         /Recibo\s*de\s*Coleta/i.test(texto);
+}
+
+function parseRomaneio(texto, nome) {
+  const find = p => { const m = texto.match(p); return m ? m[1] : null; };
+
+  // Data do cabeçalho: "Data:29.06.2026" ou "Data: 29.06.2026"
+  const dataM = find(/Data[:\s]+(\d{2}[.\/]\d{2}[.\/]\d{4})/);
+  const dtStrBR = dataM ? dataM.replace(/[.\/]/g, '/') : null;
+
+  const shipment = find(/Shipment[:\s:]+(\d+)/i);
+  const placa = find(/Placa\s*Ve[ií]culo\s+([A-Z0-9]{5,8})/i) ||
+                find(/PlacaVe[ií]culo\s+([A-Z0-9]{5,8})/i);
+
+  // Origem pela fábrica
+  const origem = /MonteClaros|MontesClaros|Montes\s*Claros|MONTE\s*CLAROS?/i.test(texto) ? 'MC'
+               : /CampinaGrande|Campina\s*Grande|CAMPINA\s*GRANDE/i.test(texto) ? 'CG' : '?';
+
+  const nfs = [];
+
+  // Padrão principal: remessa (80XXXXXXXXX) Normal ... NF(9 dígitos) valor volume peso cubagem
+  const re1 = /(80\d{7,10})\s+Normal(?:[\s\S]{0,60}?)\s+(0{1,3}\d{6,8})\s+([\d.]+,\d{2})\s+(\d+)\s+([\d.]+,\d{3})\s+([\d.,]+)/g;
+  let m;
+  while ((m = re1.exec(texto)) !== null) {
+    const remessa = m[1];
+    const nfStr   = m[2];
+    const nfNum   = parseInt(nfStr);
+    const nfRaw   = nfStr.padStart(9,'0').replace(/(\d{3})(\d{3})(\d{3})/, '$1.$2.$3');
+    const valorNF = parseBR(m[3]);
+    const qtdCaixas = parseInt(m[4]);
+    const vlmM3   = m[6];
+    const peso    = parseBR(m[5]);
+    nfs.push({
+      remessa, nf: nfNum, nfRaw, valorNF,
+      qtdCaixas, qtdPares: qtdCaixas * 12,
+      peso, vlmM3, dtStr: dtStrBR, origem,
+      arquivo: nome, ok: true, tipoDoc: 'romaneio',
+    });
+  }
+
+  // Fallback: NF 9 dígitos + valor + volume + peso + cubagem (sem depender do "Normal")
+  if (!nfs.length) {
+    const re2 = /\b(0{1,3}\d{6,8})\b\s+([\d.]+,\d{2})\s+(\d+)\s+([\d.]+,\d{3})\s+([\d.,]+)/g;
+    while ((m = re2.exec(texto)) !== null) {
+      const nfStr = m[1].padStart(9,'0');
+      const nfNum = parseInt(nfStr);
+      if (nfNum < 100000) continue;   // ignorar números pequenos demais
+      const nfRaw = nfStr.replace(/(\d{3})(\d{3})(\d{3})/, '$1.$2.$3');
+      const qtdCaixas = parseInt(m[3]);
+      nfs.push({
+        nf: nfNum, nfRaw, valorNF: parseBR(m[2]),
+        qtdCaixas, qtdPares: qtdCaixas * 12,
+        peso: parseBR(m[4]), vlmM3: m[5],
+        dtStr: dtStrBR, origem,
+        arquivo: nome, ok: true, tipoDoc: 'romaneio',
+      });
+    }
+  }
+
+  return { tipo: 'romaneio', dtStr: dtStrBR, shipment, placa, origem, nfs };
+}
+
+async function processarPDFs() {
+  setStatus('<span class="spinner"></span>Lendo PDFs...', 'loading');
+  document.getElementById('btnProcessar').disabled = true;
+  dadosExtraidos = [];
+
+  for (const arquivo of arquivosSelecionados) {
+    try {
+      const texto = await extrairTexto(arquivo);
+
+      if (isRomaneio(texto)) {
+        const rom = parseRomaneio(texto, arquivo.name);
+        if (rom.nfs.length) {
+          // Auto-preencher campos do formulário com dados do cabeçalho do romaneio
+          const preencherSe = (id, val) => {
+            const el = document.getElementById(id);
+            if (el && !el.value && val) el.value = val;
+          };
+          preencherSe('dataProg', toISO(rom.dtStr));
+          preencherSe('dtColeta', toISO(rom.dtStr));
+          preencherSe('shipment', rom.shipment);
+          preencherSe('placa',    rom.placa);
+          dadosExtraidos.push(...rom.nfs);
+        } else {
+          dadosExtraidos.push({ arquivo: arquivo.name, ok: false, erro: 'Romaneio: nenhuma NF encontrada' });
+        }
+      } else {
+        dadosExtraidos.push({ ...parseDanfe(texto, arquivo.name), ok: true });
+      }
+    } catch(e) {
+      dadosExtraidos.push({ arquivo: arquivo.name, ok: false, erro: e.message });
+    }
+  }
+
+  renderTabela();
+  document.getElementById('btnProcessar').disabled = false;
+}
+
+// ── HELPERS DE DATA ──────────────────────────────────────────────────────────
+function toISO(dtBR) {
+  if (!dtBR) return '';
+  const p = dtBR.split('/');
+  return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : '';
+}
+function toBR(iso) {
+  if (!iso) return '';
+  const p = iso.split('-');
+  return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : '';
+}
+
+// Recalcula totais e % frete na tabela e no status bar
+function atualizarTotais() {
+  const ok     = dadosExtraidos.filter(d => d.ok);
+  const totCx  = ok.reduce((s,d) => s+(d.qtdCaixas||0), 0);
+  const totPar = ok.reduce((s,d) => s+(d.qtdPares||0), 0);
+  const totVal = ok.reduce((s,d) => s+(d.valorNF||0), 0);
+  const frete  = parseBR((document.getElementById('frete').value||'0').replace(/[^\d,]/g,''));
+  const pct    = totVal > 0 ? (frete/totVal*100).toFixed(2)+'%' : '—';
+
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('tf-cx',  totCx);
+  set('tf-par', totPar);
+  set('tf-val', 'R$ '+totVal.toLocaleString('pt-BR',{minimumFractionDigits:2}));
+  set('tf-pct', pct);
+  set('tf-nfs', ok.length+' NFs');
+
+  setStatus(
+    `✅ ${ok.length} NF(s) · ${totCx} caixas · ${totPar} pares · `+
+    `R$ ${totVal.toLocaleString('pt-BR',{minimumFractionDigits:2})} · `+
+    `<b>Frete ${pct}</b>`, 'success'
+  );
+}
+
+function renderTabela() {
+  // Aplicar ORIGEM padrão se preenchida
+  const origemPadrao = (document.getElementById('origemPadrao').value||'').trim();
+  if (origemPadrao) dadosExtraidos.forEach(d => { if (d.ok) d.origem = origemPadrao; });
+
+  const ok = dadosExtraidos.filter(d => d.ok);
+
+  // ── Auto-fill Data da Programação com a data da DANFE ──────────────────
+  const dpInput = document.getElementById('dataProg');
+  if (dpInput && !dpInput.value && ok[0]?.dtStr) {
+    dpInput.value = toISO(ok[0].dtStr);
+  }
+  // ── Auto-fill DT Coleta ────────────────────────────────────────────────
+  const dcInput = document.getElementById('dtColeta');
+  if (dcInput && !dcInput.value && ok[0]?.dtStr) {
+    dcInput.value = toISO(ok[0].dtStr);
+  }
+  // ── Auto-fill ORIGEM padrão ────────────────────────────────────────────
+  const origemInput = document.getElementById('origemPadrao');
+  if (origemInput && !origemInput.value && ok[0]?.origem) {
+    origemInput.value = ok[0].origem;
+  }
+
+  const frete = parseBR((document.getElementById('frete').value||'0').replace(/[^\d,]/g,''));
+  const totVal = ok.reduce((s,d)=>s+(d.valorNF||0),0);
+  const pct    = totVal > 0 ? (frete/totVal*100).toFixed(2)+'%' : '—';
+
+  let html = `
+  <div class="card">
+    <h3>📊 Resultado — ${ok.length} NF(s) extraída(s) &nbsp;<span style="font-size:12px;font-weight:400;color:#666">Todos os campos são editáveis</span></h3>
+    <div class="table-wrap"><table id="tbl-resultado">
+      <thead><tr>
+        <th>✓</th><th>ORIGEM</th><th>FORNECEDOR</th><th>DT FATURAMENTO</th>
+        <th>CAIXAS</th><th>PARES</th><th>VALOR NF</th><th>% FRETE</th><th>VLM M³</th><th>PESO KG</th><th>NF</th><th>REMESSA</th>
+      </tr></thead><tbody>`;
+
+  dadosExtraidos.forEach((d, idx) => {
+    if (!d.ok) {
+      html += `<tr><td><span class="badge badge-err">ERRO</span></td>
+        <td colspan="9" class="l" style="color:var(--vermelho);font-size:11px">${d.arquivo}</td></tr>`;
+      return;
+    }
+    const pctRow = d.valorNF && frete ? (frete/d.valorNF*100).toFixed(2)+'%' : '—';
+    html += `<tr>
+      <td><span class="badge ${d.tipoDoc==='romaneio'?'badge-info':'badge-ok'}">${d.tipoDoc==='romaneio'?'ROM':'OK'}</span></td>
+      <td><input class="ti ti-orig" id="origem_${idx}" value="${d.origem||''}"
+            oninput="dadosExtraidos[${idx}].origem=this.value"></td>
+      <td style="font-size:11px;white-space:nowrap">ALPARGATAS</td>
+      <td><input class="ti ti-dt" type="date" id="dtfat_${idx}" value="${toISO(d.dtStr)||''}"
+            onchange="dadosExtraidos[${idx}].dtStr=toBR(this.value)"></td>
+      <td><input class="ti ti-num" type="number" id="cx_${idx}" value="${d.qtdCaixas??''}" min="0"
+            oninput="dadosExtraidos[${idx}].qtdCaixas=parseInt(this.value)||0;
+                     document.getElementById('par_${idx}').value=(parseInt(this.value)||0)*12;
+                     dadosExtraidos[${idx}].qtdPares=(parseInt(this.value)||0)*12;
+                     atualizarTotais()"></td>
+      <td><input class="ti ti-num" type="number" id="par_${idx}" value="${d.qtdPares??''}" min="0"
+            oninput="dadosExtraidos[${idx}].qtdPares=parseInt(this.value)||0;atualizarTotais()"></td>
+      <td><input class="ti ti-val" id="val_${idx}"
+            value="${(d.valorNF||0).toFixed(2).replace('.',',')}"
+            onchange="dadosExtraidos[${idx}].valorNF=parseBR(this.value);atualizarTotais()"></td>
+      <td style="font-size:11px;color:#666">${pctRow}</td>
+      <td><input class="ti ti-num" id="vlm_${idx}" value="${d.vlmM3||''}" placeholder="m³"
+            oninput="dadosExtraidos[${idx}].vlmM3=this.value"></td>
+      <td><input class="ti ti-num" id="peso_${idx}" value="${d.peso!=null?d.peso:''}" placeholder="kg"
+            oninput="dadosExtraidos[${idx}].peso=parseBR(this.value)||null"></td>
+      <td><input class="ti ti-nf" id="nf_${idx}" value="${d.nfRaw||d.nf||''}"
+            oninput="dadosExtraidos[${idx}].nfRaw=this.value;dadosExtraidos[${idx}].nf=parseInt(this.value.replace(/\\./g,''))||null"></td>
+      <td><input class="ti ti-rem" id="rem_${idx}" value="${d.remessa||''}"
+            oninput="dadosExtraidos[${idx}].remessa=this.value"></td>
+    </tr>`;
+  });
+
+  const totCx  = ok.reduce((s,d)=>s+(d.qtdCaixas||0),0);
+  const totPar = ok.reduce((s,d)=>s+(d.qtdPares||0),0);
+
+  html += `</tbody>
+    <tfoot><tr style="background:var(--azul-escuro);color:white;font-weight:700;font-size:12px">
+      <td colspan="4" style="padding:9px 10px;text-align:center">TOTAL</td>
+      <td id="tf-cx"   style="padding:9px 10px;text-align:center">${totCx}</td>
+      <td id="tf-par"  style="padding:9px 10px;text-align:center">${totPar}</td>
+      <td id="tf-val"  style="padding:9px 10px;text-align:center">R$ ${totVal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+      <td id="tf-pct"  style="padding:9px 10px;text-align:center">${pct}</td>
+      <td style="padding:9px 10px"></td>
+      <td id="tf-peso" style="padding:9px 10px;text-align:center"></td>
+      <td id="tf-nfs"  style="padding:9px 10px;text-align:center">${ok.length} NFs</td>
+      <td style="padding:9px 10px"></td>
+    </tr></tfoot>
+  </table></div></div>`;
+
+  document.getElementById('resultadoExtracao').innerHTML = html;
+  atualizarTotais();
+  document.getElementById('btnSalvar').disabled = ok.length === 0;
+  document.getElementById('btnExcel').disabled  = ok.length === 0;
+  document.getElementById('btnCopiar').disabled = ok.length === 0;
+}
+
+// ── SALVAR CARRETA ────────────────────────────────────────────────────────────
+async function salvarCarreta() {
+  const num  = parseInt(document.getElementById('numCarreta').value);
+  const data = document.getElementById('dataProg').value;
+  if (!num || !data) { alert('Informe o número da carreta e a data da programação.'); return; }
+
+  const ok = dadosExtraidos.filter(d => d.ok);
+
+  const c = {
+    id: `c${num}_${Date.now()}`,
+    num,
+    data,
+    dtColeta:     document.getElementById('dtColeta').value,
+    dtEntrega:    document.getElementById('dtEntrega').value,
+    dtSistema:    document.getElementById('dtSistema').value,
+    seguiuViagem: document.getElementById('seguiuViagem').value,
+    transportadora: document.getElementById('transportadora').value,
+    frete:        parseBR(document.getElementById('frete').value.replace(/[^\d,]/g,'')),
+    shipment:     document.getElementById('shipment').value,
+    placa:        document.getElementById('placa').value,
+    volM3:        document.getElementById('volM3').value,
+    nfs:          ok,
+    totalCaixas:  ok.reduce((s,d)=>s+(d.qtdCaixas||0),0),
+    totalPares:   ok.reduce((s,d)=>s+(d.qtdPares||0),0),
+    totalValor:   ok.reduce((s,d)=>s+(d.valorNF||0),0),
+    criadoEm:     new Date().toISOString(),
+  };
+
+  setStatus('<span class="spinner"></span>Salvando…', 'loading');
+  try {
+    await salvarCarretaNoBanco(c);
+  } catch(e) {
+    setStatus('❌ Erro ao salvar: ' + (e.message || e), 'error');
+    return;
+  }
+  renderSidebar();
+  setStatus(`✅ ${num}ª Carreta salva com sucesso! Veja no menu lateral.`, 'success');
+
+  // Limpar form
+  document.getElementById('resultadoExtracao').innerHTML = '';
+  document.getElementById('filesList').innerHTML = '';
+  arquivosSelecionados = []; dadosExtraidos = [];
+  ['btnSalvar','btnExcel','btnCopiar','btnProcessar'].forEach(id => document.getElementById(id).disabled = true);
+
+  // Abrir a carreta salva
+  setTimeout(() => selecionarCarreta(c.id), 300);
+}
+
+// ── RESUMO GERAL ──────────────────────────────────────────────────────────────
+function renderResumo() {
+  const carretas = getCarretas().sort((a,b) => a.num - b.num);
+  if (!carretas.length) {
+    document.getElementById('resumoGeral').innerHTML =
+      '<div class="empty"><div class="icon">📊</div><p>Nenhuma carreta registrada ainda.</p></div>';
+    return;
+  }
+
+  const totNFs   = carretas.reduce((s,c) => s+(c.nfs?.length||0), 0);
+  const totCx    = carretas.reduce((s,c) => s+(c.totalCaixas||0), 0);
+  const totPar   = carretas.reduce((s,c) => s+(c.totalPares||0), 0);
+  const totVal   = carretas.reduce((s,c) => s+(c.totalValor||0), 0);
+  const totFrete = carretas.reduce((s,c) => s+(c.frete||0), 0);
+
+  let html = `
+  <div class="stats-grid">
+    <div class="stat-card"><div class="label">Carretas</div><div class="value">${carretas.length}</div><div class="sub">programações</div></div>
+    <div class="stat-card"><div class="label">NFs</div><div class="value">${totNFs}</div><div class="sub">notas fiscais</div></div>
+    <div class="stat-card verde"><div class="label">Valor Total NFs</div><div class="value" style="font-size:15px">R$ ${totVal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
+    <div class="stat-card laranja"><div class="label">Total Caixas</div><div class="value">${totCx}</div><div class="sub">${totPar} pares</div></div>
+    <div class="stat-card vermelho"><div class="label">Total Frete</div><div class="value" style="font-size:15px">R$ ${totFrete.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
+  </div>
+
+  <div class="card">
+    <h3>📋 Todas as Carretas</h3>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th>#</th><th>DATA PROG.</th><th>TRANSPORTADORA</th><th>NFs</th>
+        <th>CAIXAS</th><th>PARES</th><th>VALOR NFs</th><th>FRETE</th><th>%</th>
+      </tr></thead><tbody>`;
+
+  for (const c of carretas) {
+    const pct = c.totalValor > 0 ? (c.frete/c.totalValor*100).toFixed(1)+'%' : '—';
+    html += `<tr onclick="selecionarCarreta('${c.id}')" style="cursor:pointer">
+      <td><b>${c.num}ª</b></td>
+      <td>${fmtData(c.data)}</td>
+      <td>${c.transportadora||'—'}</td>
+      <td>${c.nfs?.length||0}</td>
+      <td>${c.totalCaixas||0}</td>
+      <td>${c.totalPares||0}</td>
+      <td>R$ ${(c.totalValor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+      <td>R$ ${(c.frete||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+      <td>${pct}</td>
+    </tr>`;
+  }
+
+  html += `</tbody><tfoot><tr>
+    <td colspan="3">TOTAL</td><td>${totNFs}</td>
+    <td>${totCx}</td><td>${totPar}</td>
+    <td>R$ ${totVal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+    <td>R$ ${totFrete.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td></td>
+  </tr></tfoot></table></div>
+  </div>`;
+
+  document.getElementById('resumoGeral').innerHTML = html;
+}
+
+// ── EXPORTAR EXCEL ────────────────────────────────────────────────────────────
+function montarLinhasExcel(c) {
+  const headers = ['ORIGEM','FORNECEDOR','DT FATURAMENTO','DT COLETA','SEGUIU VIAGEM',
+    'DT ENTREGA','DT SISTEMA','QTDS PARES','QTDS CAIXAS','VALOR NF',
+    'NF','TRANSPORTADORA','FRETE','%','SHIPMENT','PLACA','PESO','VLM m3'];
+  const dataStr = c.data ? new Date(c.data+'T12:00:00').toLocaleDateString('pt-BR') : '';
+  const rows = [[`${c.num}ª PROGRAMAÇÃO ${dataStr}`], headers];
+
+  const nfs = [...c.nfs].sort((a,b) => (a.nf||0)-(b.nf||0));
+  nfs.forEach((nf, i) => {
+    const isPrimeiro = i === 0;
+    const dtFat = nf.dtStr ? new Date(nf.dtStr.split('/').reverse().join('-')+'T12:00:00') : '';
+    const dtCol = c.dtColeta && isPrimeiro ? new Date(c.dtColeta+'T12:00:00') : '';
+    const dtEnt = c.dtEntrega && isPrimeiro ? new Date(c.dtEntrega+'T12:00:00') : '';
+    const dtSis = c.dtSistema && isPrimeiro ? new Date(c.dtSistema+'T12:00:00') : '';
+    rows.push([
+      isPrimeiro ? nf.origem : '', isPrimeiro ? 'ALPARGATAS' : '',
+      dtFat, isPrimeiro ? dtCol : '', isPrimeiro ? dtCol : '',
+      isPrimeiro ? dtEnt : '', isPrimeiro ? dtSis : '',
+      nf.qtdPares, nf.qtdCaixas, nf.valorNF, nf.nfRaw || nf.nf,
+      isPrimeiro ? c.transportadora : '', isPrimeiro ? c.frete : '',
+      '', isPrimeiro && c.shipment ? c.shipment : '',
+      isPrimeiro && c.placa ? c.placa : '', '', ''
+    ]);
+  });
+
+  const totCx = nfs.reduce((s,d)=>s+(d.qtdCaixas||0),0);
+  const totPar = nfs.reduce((s,d)=>s+(d.qtdPares||0),0);
+  const totVal = nfs.reduce((s,d)=>s+(d.valorNF||0),0);
+  rows.push(['','','','','','','',totPar,totCx,totVal,nfs.length,'','','','','','','']);
+  return rows;
+}
+
+function exportarExcel() {
+  const num  = document.getElementById('numCarreta').value || '?';
+  const ok   = dadosExtraidos.filter(d => d.ok);
+  const c = {
+    num, data: document.getElementById('dataProg').value,
+    dtColeta: document.getElementById('dtColeta').value,
+    dtEntrega: document.getElementById('dtEntrega').value,
+    dtSistema: document.getElementById('dtSistema').value,
+    transportadora: document.getElementById('transportadora').value,
+    frete: parseBR(document.getElementById('frete').value),
+    shipment: document.getElementById('shipment').value,
+    placa: document.getElementById('placa').value,
+    nfs: ok,
+  };
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(montarLinhasExcel(c));
+  ws['!cols'] = [{wch:6},{wch:14},{wch:14},{wch:12},{wch:14},{wch:12},{wch:12},{wch:12},{wch:12},{wch:14},{wch:10},{wch:18},{wch:12},{wch:8},{wch:12},{wch:10},{wch:10},{wch:8}];
+  XLSX.utils.book_append_sheet(wb, ws, `${num}ª CARRETA`);
+  XLSX.writeFile(wb, `FOB_2026_${num}a_CARRETA.xlsx`);
+}
+
+function exportarExcelCarreta(id) {
+  const c = getCarretas().find(x => x.id === id);
+  if (!c) return;
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(montarLinhasExcel(c));
+  ws['!cols'] = [{wch:6},{wch:14},{wch:14},{wch:12},{wch:14},{wch:12},{wch:12},{wch:12},{wch:12},{wch:14},{wch:10},{wch:18},{wch:12},{wch:8},{wch:12},{wch:10},{wch:10},{wch:8}];
+  XLSX.utils.book_append_sheet(wb, ws, `${c.num}ª CARRETA`);
+  XLSX.writeFile(wb, `FOB_2026_${c.num}a_CARRETA.xlsx`);
+}
+
+// ── COPIAR ────────────────────────────────────────────────────────────────────
+// Aplica ORIGEM padrão a todas as linhas — funciona antes e depois de extrair
+function aplicarOrigemPadrao(valor) {
+  dadosExtraidos.forEach((d, idx) => {
+    if (!d.ok) return;
+    d.origem = valor;
+    const input = document.getElementById('origem_' + idx);
+    if (input) input.value = valor;
+  });
+}
+
+function buildTSV(c) {
+  const nfs = [...(c.nfs||dadosExtraidos.filter(d=>d.ok))].sort((a,b)=>(a.nf||0)-(b.nf||0));
+  const dtCol = c.dtColeta ? fmtData(c.dtColeta) : '';
+  const dtEnt = c.dtEntrega ? fmtData(c.dtEntrega) : '';
+  let tsv = 'ORIGEM\tFORNECEDOR\tDT FATURAMENTO\tDT COLETA\tSEGUIU VIAGEM\tDT ENTREGA\tDT SISTEMA\tQTDS PARES\tQTDS CAIXAS\tVALOR NF\tNF\tTRANSPORTADORA\tFRETE\t%\tSHIPMENT\tPLACA\n';
+  nfs.forEach((nf, i) => {
+    const ip = i === 0;
+    tsv += [ip?nf.origem:'', ip?'ALPARGATAS':'', nf.dtStr||'', ip?dtCol:'', ip?dtCol:'',
+      ip?dtEnt:'', '', nf.qtdPares??'', nf.qtdCaixas??'', nf.valorNF??'',
+      (nf.nfRaw||nf.nf)??'', ip?(c.transportadora||''):'', ip?(c.frete||''):'', '',
+      ip?(c.shipment||''):'', ip?(c.placa||''):''
+    ].join('\t')+'\n';
+  });
+  return tsv;
+}
+
+function copiarTabela() {
+  const c = {
+    dtColeta: document.getElementById('dtColeta').value,
+    dtEntrega: document.getElementById('dtEntrega').value,
+    transportadora: document.getElementById('transportadora').value,
+    frete: document.getElementById('frete').value,
+    shipment: document.getElementById('shipment').value,
+    placa: document.getElementById('placa').value,
+  };
+  navigator.clipboard.writeText(buildTSV(c))
+    .then(() => setStatus('✅ Copiado! Cole na planilha com Ctrl+V.', 'success'))
+    .catch(() => setStatus('⚠️ Não foi possível copiar. Use Baixar Excel.', 'error'));
+}
+
+function copiarCarreta(id) {
+  const c = getCarretas().find(x => x.id === id);
+  if (!c) return;
+  navigator.clipboard.writeText(buildTSV(c))
+    .then(() => alert('✅ Copiado! Cole na planilha com Ctrl+V.'))
+    .catch(() => alert('⚠️ Use o botão Baixar Excel.'));
+}
+
+// ── STATUS ────────────────────────────────────────────────────────────────────
+function setStatus(msg, type) {
+  const el = document.getElementById('status');
+  el.innerHTML = msg; el.className = 'status-bar ' + type;
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+document.getElementById('dataProg').valueAsDate = new Date();
+document.getElementById('dtColeta').valueAsDate = new Date();
+initDB().then(() => renderSidebar());
+</script>
+</body>
+</html>
