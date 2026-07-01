@@ -136,6 +136,7 @@ tbody tr:last-child td{border-bottom:none}
 .badge-sm{display:inline-block;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700}
 .b-sep {background:rgba(249,115,22,.15);color:var(--orange)}
 .b-sepd{background:rgba(124,58,237,.15);color:var(--purple)}
+.b-novo{background:rgba(13,148,136,.15);color:var(--teal)}
 
 /* ── ADMIN ── */
 .adm-section{padding:12px 14px 0}
@@ -204,7 +205,7 @@ tbody tr:last-child td{border-bottom:none}
 
 <!-- HEADER -->
 <header>
-  <div class="logo">Avacy<span class="ver">v3.1</span></div>
+  <div class="logo">Avacy<span class="ver">v3.2</span></div>
   <div class="header-center">
     <div class="admin-tabs" id="admin-tabs">
       <button class="atab active" onclick="adminShowTab('sep')" id="atab-sep">📋 Separações</button>
@@ -479,7 +480,6 @@ function entrar() {
     adminShowTab('sep');
   } else {
     mostrar('tela-sep');
-    // Nenhum modo selecionado ainda — aguarda o usuário clicar
     carregarHistorico();
     refreshTm = setInterval(() => carregarHistorico(), 30000);
   }
@@ -498,7 +498,6 @@ function sair() {
   document.getElementById('scan-card').style.display = 'none';
   document.getElementById('hist-card').style.display = 'none';
   document.getElementById('scan-feedback').innerHTML = '';
-  // Reset modo buttons
   document.getElementById('mbtn-sep').className  = 'mbtn';
   document.getElementById('mbtn-sepd').className = 'mbtn';
   mostrar('tela-login');
@@ -511,11 +510,9 @@ function sair() {
 function setModo(modo) {
   modoAtual = modo;
 
-  // Botões
   document.getElementById('mbtn-sep').className  = 'mbtn' + (modo === 'sep'  ? ' active-sep'  : '');
   document.getElementById('mbtn-sepd').className = 'mbtn' + (modo === 'sepd' ? ' active-sepd' : '');
 
-  // Pill e classe do input
   const pill = document.getElementById('scan-mode-pill');
   const inp  = document.getElementById('scan-inp');
   const btn  = document.getElementById('btn-scan-ok');
@@ -531,7 +528,6 @@ function setModo(modo) {
     btn.style.background = '#7c3aed';
   }
 
-  // Exibe scan card e histórico
   document.getElementById('scan-card').style.display = '';
   document.getElementById('hist-card').style.display = '';
   document.getElementById('scan-inp').value = '';
@@ -541,7 +537,7 @@ function setModo(modo) {
 }
 
 // ══════════════════════════════════════════════════════
-// EXECUTAR SCAN — busca e age automaticamente
+// EXECUTAR SCAN
 // ══════════════════════════════════════════════════════
 async function executarScan() {
   const inp    = document.getElementById('scan-inp');
@@ -563,14 +559,35 @@ async function executarScan() {
 
     if (errR) throw errR;
 
+    let rec;
+    let novoPedido = false;
+
     if (!recs || recs.length === 0) {
-      showFb('err', codigo, '❌', 'Pedido não encontrado no sistema');
-      syncDot('ok');
-      inp.focus();
-      return;
+      // ── PEDIDO NÃO CADASTRADO: cria stub em avacy_records ──
+      // O dashboard usa "nota" como PRIMARY KEY e faz upsert incremental,
+      // então quando o CSV for importado, este registro será atualizado
+      // automaticamente com os dados completos, preservando o status.
+      const stubRec = {
+        nota: codigo,
+        fat:  codigo,
+        loja: '',
+        nome_cliente: '(aguardando importação CSV)',
+        vendedor: '',
+        transportadora: '',
+        data_emissao: '',
+        romaneio: '',
+        mensagem: '',
+        origem: '',
+        xconf: '',
+        updated_at: new Date().toISOString()
+      };
+      await sbPost('avacy_records', stubRec);
+      rec = stubRec;
+      novoPedido = true;
+    } else {
+      rec = recs[0];
     }
 
-    const rec  = recs[0];
     const nota = rec.nota;
 
     // 2. Busca status atual
@@ -604,7 +621,13 @@ async function executarScan() {
       await db.from('separacoes').insert({
         pedido: nota, status: 'em_separacao', separador_id: cu.id, separador: cu.nome
       });
-      showFb('ok', nota, '▶', 'Em Separação — ' + (rec.nome_cliente ? rec.nome_cliente.split(' ')[0] : ''));
+      const clienteLabel = rec.nome_cliente && rec.nome_cliente !== '(aguardando importação CSV)'
+        ? rec.nome_cliente.split(' ')[0]
+        : (novoPedido ? '⚠ novo — importar CSV depois' : '');
+      showFb(novoPedido ? 'warn' : 'ok', nota, '▶',
+        novoPedido
+          ? 'Em Separação — pedido registrado (sem CSV ainda)'
+          : 'Em Separação — ' + clienteLabel);
     } else {
       await sbPost('avacy_status', {
         nota, status: 'Separado', ts_sepd: n,
@@ -614,7 +637,13 @@ async function executarScan() {
       await db.from('separacoes')
         .update({ status: 'separado', fim: new Date().toISOString() })
         .eq('pedido', nota).eq('separador_id', cu.id).eq('status', 'em_separacao');
-      showFb('ok', nota, '✓', 'Separado — ' + (rec.nome_cliente ? rec.nome_cliente.split(' ')[0] : ''));
+      const clienteLabel = rec.nome_cliente && rec.nome_cliente !== '(aguardando importação CSV)'
+        ? rec.nome_cliente.split(' ')[0]
+        : '';
+      showFb('ok', nota, '✓',
+        novoPedido
+          ? 'Separado — pedido registrado (sem CSV ainda)'
+          : 'Separado — ' + clienteLabel);
     }
 
     syncDot('ok');
@@ -692,7 +721,6 @@ async function carregarMonitor() {
   const admHist= document.getElementById('adm-hist-tbody');
   syncDot('sync');
   try {
-    // avacy_status
     const st = await sbFetch('/rest/v1/avacy_status?status=in.(Em Separação,Separado)&order=updated_at.desc&limit=100');
     document.getElementById('k-sep').textContent  = st.filter(r => r.status === 'Em Separação').length;
     document.getElementById('k-sepd').textContent = st.filter(r => r.status === 'Separado').length;
@@ -701,7 +729,6 @@ async function carregarMonitor() {
     if (!st.length) {
       tbody.innerHTML = '<tr><td colspan="6" style="color:rgba(255,255,255,.3);text-align:center;padding:14px">Nenhum pedido em separação</td></tr>';
     } else {
-      // Busca records para nome/fat
       const notas = st.map(r => r.nota);
       const recMap = {};
       for (let i = 0; i < notas.length; i += 20) {
@@ -715,10 +742,12 @@ async function carregarMonitor() {
         const user = r.scan_log?.user || r.sep_log?.user || '—';
         const ts   = r.scan_log?.ts   || r.sep_log?.ts   || '—';
         const hora = ts.includes(' ') ? ts.split(' ')[1] : ts;
+        // Indica se é um pedido ainda sem CSV
+        const semCsv = rec.nome_cliente === '(aguardando importação CSV)';
         return `<tr>
-          <td style="font-family:monospace;font-weight:700;color:white;font-size:12px">${esc(r.nota)}</td>
+          <td style="font-family:monospace;font-weight:700;color:white;font-size:12px">${esc(r.nota)}${semCsv ? ' <span style="font-size:9px;color:#fcd34d">⚠CSV</span>' : ''}</td>
           <td style="font-size:11px;color:rgba(255,255,255,.5)">${esc(rec.fat || rec.loja || '—')}</td>
-          <td style="font-size:11px;color:rgba(255,255,255,.7);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(rec.nome_cliente || '—')}</td>
+          <td style="font-size:11px;color:rgba(255,255,255,.7);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(semCsv ? '(sem CSV)' : (rec.nome_cliente || '—'))}</td>
           <td><span class="badge-sm ${cls}">${esc(r.status)}</span></td>
           <td style="font-size:11px;color:rgba(255,255,255,.5)">${esc(user)}</td>
           <td style="font-size:11px;color:rgba(255,255,255,.4)">${esc(hora)}</td>
@@ -726,7 +755,6 @@ async function carregarMonitor() {
       }).join('');
     }
 
-    // Histórico coletor do dia
     const hoje   = new Date();
     const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).toISOString();
     const { data: hist } = await db.from('separacoes')
