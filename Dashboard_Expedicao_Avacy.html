@@ -395,7 +395,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.8 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.9 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -403,7 +403,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.8</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.9</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1203,6 +1203,23 @@ async function importCSV(){
       if(existMap.has(nota)){
         const rec=existMap.get(nota);Object.assign(rec,fd);upd++;
         if(!stMap[nota])stMap[nota]={obs:''};
+        // Detecta e remove stub de pré-bipe (por FAT ou LOJA) mesmo no caminho existente
+        {const _sk=(fd.fat&&fd.fat!==nota&&existMap.has(fd.fat))?fd.fat:
+               (fd.loja&&fd.loja!==nota&&existMap.has(fd.loja))?fd.loja:null;
+         if(_sk){
+           const _ps=stMap[_sk];
+           if(_ps){['ts_sep','ts_sepd','ts_conf','ts_exp'].forEach(k=>{
+             if(_ps[k]&&(!stMap[nota][k]||_ps[k]<stMap[nota][k]))stMap[nota][k]=_ps[k];
+           });
+           if((PROG[_ps.status]||0)>(PROG[stMap[nota].status||'Faturado']||0)){
+             stMap[nota].status=_ps.status;
+             if(_ps.separador)stMap[nota].separador=_ps.separador;
+           }}
+           delete stMap[_sk];existMap.delete(_sk);
+           if(SB_URL&&SB_KEY){const _b=SB_URL.replace(/\/+$/,''),_h={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+             fetch(`${_b}/rest/v1/avacy_records?nota=eq.${encodeURIComponent(_sk)}`,{method:'DELETE',headers:_h}).catch(()=>{});
+             fetch(`${_b}/rest/v1/avacy_status?nota=eq.${encodeURIComponent(_sk)}`,{method:'DELETE',headers:_h}).catch(()=>{});}
+         }}
         const curSt=stMap[nota].status||'Faturado';
         if(rom){
           // Romaneio preenchido → sempre Expedido
