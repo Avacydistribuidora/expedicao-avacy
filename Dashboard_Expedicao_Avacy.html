@@ -256,6 +256,7 @@ td{padding:7px 10px;vertical-align:middle}
 .row-popover a.rp-sepd{color:var(--purple)}
 .row-popover a.rp-pend{color:var(--red)}
 .row-popover a.rp-resume{color:var(--green)}
+.row-popover a.rp-del{color:var(--red);border-top:1px solid var(--border)!important;margin-top:2px}
 
 /* Priority star */
 .prio-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:0 2px;
@@ -1359,6 +1360,24 @@ function retomar(nota){
   const sd=stMap[nota];if(!sd)return;
   sd.status=sd.pend_prev||'Faturado';delete sd.pend_prev;sd._ts=new Date().toISOString();saveLS();sbSyncStatus(nota);onFilterChange();hlRow(nota,'hl');
 }
+function deleteRecord(nota){
+  if(getCurrentUser()?.role!=='admin'){alert('Apenas o administrador pode excluir registros.');return}
+  const rec=[...activeRecs,...expedidoRecs].find(x=>x.nota===nota);
+  const label=rec?.nome_cliente?`${rec.nome_cliente} (${nota})`:`Nota ${nota}`;
+  if(!confirm(`Excluir o registro:\n${label}\n\nEsta ação não pode ser desfeita.`))return;
+  activeRecs=activeRecs.filter(x=>x.nota!==nota);
+  expedidoRecs=expedidoRecs.filter(x=>x.nota!==nota);
+  delete stMap[nota];
+  saveLS();
+  if(SB_URL&&SB_KEY){
+    const base=SB_URL.replace(/\/+$/,'');
+    const hdr={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+    fetch(`${base}/rest/v1/avacy_records?nota=eq.${encodeURIComponent(nota)}`,{method:'DELETE',headers:hdr}).catch(()=>{});
+    fetch(`${base}/rest/v1/avacy_status?nota=eq.${encodeURIComponent(nota)}`,{method:'DELETE',headers:hdr}).catch(()=>{});
+  }
+  onFilterChange();
+}
+
 function togglePriority(nota){
   const sd=stMap[nota]||{obs:''};sd.priority=!sd.priority;sd._ts=new Date().toISOString();stMap[nota]=sd;saveLS();sbSyncStatus(nota);render();
 }
@@ -1372,11 +1391,13 @@ function toggleRowMenu(nota,btn){
   if(_openPopNota===nota){closeRowMenu();return}
   closeRowMenu();
   const sd=stMap[nota]||{};const st=sd.status||'Faturado';
+  const isAdmin=getCurrentUser()?.role==='admin';
   const items=[];
   if(st==='Faturado'){items.push({cls:'rp-sep',icon:'▶',label:'Em Separação',fn:`advance('${nota}')`});items.push({cls:'rp-pend',icon:'⚠',label:'Pendente',fn:`setPendente('${nota}')`})}
   else if(st==='Em Separação'){items.push({cls:'rp-sepd',icon:'✓',label:'Separado',fn:`advance('${nota}')`})}
   else if(st==='Separado'){}
   else if(st==='Pendente'){items.push({cls:'rp-resume',icon:'↩',label:'Retomar',fn:`retomar('${nota}')`})}
+  if(isAdmin)items.push({cls:'rp-del',icon:'🗑',label:'Excluir registro',fn:`deleteRecord('${nota}')`});
   if(!items.length)return;
   pop.innerHTML=items.map(i=>`<a class="${i.cls}" onclick="${i.fn};closeRowMenu()">${i.icon} ${i.label}</a>`).join('');
   const rect=btn.getBoundingClientRect();
@@ -1480,6 +1501,7 @@ function _render(){
       :`<p>Nenhum dado importado.</p><button class="btn primary" onclick="openModal()">📥 Importar CSV do Protheus</button>`;
     body.innerHTML=`<tr><td colspan="16"><div class="empty"><div class="ico">${tot>0?'🔎':'📂'}</div>${msg}</div></td></tr>`;return}
   const tsMap={Faturado:'ts_fat','Em Separação':'ts_sep',Separado:'ts_sepd',Conferido:'ts_conf',Expedido:'ts_exp',Pendente:'ts_pend'};
+  const _isAdmin=getCurrentUser()?.role==='admin';
   body.innerHTML=list.map(r=>{
     const sd=stMap[r.nota]||{status:'Faturado',obs:''};const st=sd.status||'Faturado';const sc=SC_CLASS[st]||'fat';
     const ts=sd[tsMap[st]]||'';const isPrio=!!sd.priority;
@@ -1491,7 +1513,7 @@ function _render(){
     if(sd.pend_log)logEntries.push({label:'⚠ Pendente',data:sd.pend_log});
     if(logEntries.length)tipHtml=`<div class="tip">${logEntries.map(e=>`<div class="tip-row"><span class="tip-key">${e.label}:</span><span class="tip-val">${esc(e.data.user)} · ${esc(e.data.ts)}</span></div>`).join('')}</div>`;
     // Ação – botão único ⋮ → popover
-    const hasAct=['Faturado','Em Separação','Separado','Pendente'].includes(st);
+    const hasAct=_isAdmin||['Faturado','Em Separação','Separado','Pendente'].includes(st);
     const acaoBtn=`<button class="act-trigger ${hasAct?'has-actions':''}" onclick="toggleRowMenu('${esc(r.nota)}',this)" title="Ações do pedido">⋮</button>`;
     // Classes de linha: prioridade > status tint
     const stTint={'Em Separação':'st-sep',Separado:'st-sepd',Conferido:'st-conf',Expedido:'st-exp',Pendente:'st-pend'};
