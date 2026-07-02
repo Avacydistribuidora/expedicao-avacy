@@ -395,7 +395,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.4 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.6 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -403,7 +403,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.4</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.6</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1204,8 +1204,22 @@ function importCSV(){
           const preKey=SCAN_ST.includes(stMap[nota]?.status)?nota:(fatVal&&SCAN_ST.includes(stMap[fatVal]?.status))?fatVal:(lojaVal&&SCAN_ST.includes(stMap[lojaVal]?.status))?lojaVal:null;
           if(preKey&&preKey!==nota){
             const ps=stMap[preKey];
-            stMap[nota]={...stMap[nota],...ps,pre_scan:false,ts_fat:auth||n};
+            // Merge mantendo o timestamp mais antigo em cada campo
+            const merged={...stMap[nota],...ps,pre_scan:false,ts_fat:auth||n};
+            ['ts_fat','ts_sep','ts_sepd','ts_conf','ts_exp','ts_pend'].forEach(k=>{
+              const a=stMap[nota]?.[k],b=ps?.[k];
+              if(a&&b)merged[k]=a<b?a:b;else merged[k]=b||a||merged[k];
+            });
+            stMap[nota]=merged;
             delete stMap[preKey];
+            // Remove o stub do existMap para não gerar linha duplicada
+            existMap.delete(preKey);
+            // Apaga stub do Supabase
+            if(SB_URL&&SB_KEY){
+              const _b=SB_URL.replace(/\/+$/,''),_h={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+              fetch(`${_b}/rest/v1/avacy_records?nota=eq.${encodeURIComponent(preKey)}`,{method:'DELETE',headers:_h}).catch(()=>{});
+              fetch(`${_b}/rest/v1/avacy_status?nota=eq.${encodeURIComponent(preKey)}`,{method:'DELETE',headers:_h}).catch(()=>{});
+            }
           }else if(preKey===nota){
             stMap[nota].pre_scan=false;
             stMap[nota].ts_fat=auth||n;
