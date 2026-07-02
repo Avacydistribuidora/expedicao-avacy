@@ -395,7 +395,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.7 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.8 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -403,7 +403,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.7</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.8</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1132,13 +1132,29 @@ function importVDK(arrayBuffer){
   });
 }
 
-function importCSV(){
+async function importCSV(){
   if(!csvContent){alert('Selecione um arquivo.');return}
   // Detecta formato VDK (XLS/XLSX)
   if(typeof csvContent==='object'&&csvContent.type==='vdk'){importVDK(csvContent.data);return}
   _lastSyncTs=Date.now(); // bloqueia o timer de sync enquanto importa
   const pw=document.getElementById('progWrap'),pf=document.getElementById('progFill'),pt=document.getElementById('progTxt');
-  pw.classList.add('show');pf.style.width='10%';pt.textContent='Lendo…';
+  pw.classList.add('show');pf.style.width='10%';pt.textContent='Sincronizando status…';
+  // PRÉ-SYNC: busca status do Supabase para capturar pré-bipes antes de processar
+  const PROG={Faturado:1,'Em Separação':2,Separado:3,Conferido:4,Expedido:5,Pendente:0.5};
+  if(SB_URL&&SB_KEY){
+    try{
+      const _sb=await fetch(`${SB_URL.replace(/\/+$/,'')}/rest/v1/avacy_status?select=*`,
+        {headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+      if(_sb.ok){(await _sb.json()).forEach(s=>{
+        if(!s.nota)return;
+        const cur=stMap[s.nota]?.status||'Faturado';
+        if((PROG[s.status]||0)>(PROG[cur]||0)){
+          stMap[s.nota]={obs:'',...stMap[s.nota],...s};
+        }
+      });}
+    }catch(e){console.warn('pre-import sync err:',e);}
+  }
+  pf.style.width='10%';pt.textContent='Lendo…';
   setTimeout(()=>{
     let rows;try{({rows}=parseCSV(csvContent))}catch(e){alert('Erro: '+e.message);pw.classList.remove('show');return}
     pf.style.width='30%';pt.textContent=`${rows.length-1} linhas…`;
@@ -1152,6 +1168,9 @@ function importCSV(){
     const iChave=cIdx(hdr,'CHAVE_NFE','CHAVE_NF','CHAVE');
     const iVolCSV=cIdx(hdr,'VOLUME1','VOLUME','VOL','QTD_VOL');
     const iEtiq=cIdx(hdr,'ETIQUETA');
+    const iDtSep=cIdx(hdr,'DT/HR EM SEPARAÇÃO','DT/HR EM SEPARACAO','DT_HR_EM_SEPARACAO','DTHRSEP');
+    const iUserSep=cIdx(hdr,'USUÁRIO SEPARADO','USUARIO SEPARADO','USUARIO_SEPARADO','USER_SEP');
+    const iDtSepd=cIdx(hdr,'DT/HR SEPARADO','DT_HR_SEPARADO','DTHRSEPD');
     if(iNota<0){alert('Coluna NOTA não encontrada.');pw.classList.remove('show');return}
     pf.style.width='50%';pt.textContent='Processando…';
     // Modo Substituir: começa com mapa vazio (descarta registros que não estão no CSV)
@@ -1169,6 +1188,11 @@ function importCSV(){
       const _em=etiq.match(/^(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2})\s+(.+)$/);
       const etiqTs=_em?_em[1].trim():(etiq?nowStr():'');
       const etiqUser=_em?_em[2].trim():'';
+      // Campos de separação do CSV
+      const dtSep=clean(iDtSep>=0?c[iDtSep]||'':'');
+      const userSep=clean(iUserSep>=0?c[iUserSep]||'':'');
+      const dtSepd=clean(iDtSepd>=0?c[iDtSepd]||'':'');
+      const csvSt=dtSepd?'Separado':dtSep?'Em Separação':null;
       const fd={nome_cliente:clean(iNome>=0?c[iNome]||'':''),transportadora:clean(iTrasp>=0?c[iTrasp]||'':''),
         data_emissao:fmtDate(clean(iEmis>=0?c[iEmis]||':':'')),romaneio:rom,
         mensagem:clean(iMens>=0?c[iMens]||'':''),origem:origemFromRaj(clean(iRaj>=0?c[iRaj]||'':'')),
@@ -1191,6 +1215,18 @@ function importCSV(){
             if(!stMap[nota].ts_conf)stMap[nota].ts_conf=n;
           }
         }
+        // Status do CSV (datas reais de separação) — nunca regride status
+        if(csvSt&&(PROG[csvSt]||0)>(PROG[stMap[nota].status||'Faturado']||0)){
+          stMap[nota].status=csvSt;
+          if(dtSep){const a=stMap[nota].ts_sep;stMap[nota].ts_sep=a&&a<dtSep?a:dtSep;}
+          if(dtSepd){const a=stMap[nota].ts_sepd;stMap[nota].ts_sepd=a&&a<dtSepd?a:dtSepd;}
+          if(userSep)stMap[nota].separador=userSep;
+        } else {
+          // Mesmo sem avançar status, preserva timestamps se CSV tiver datas
+          if(dtSep&&!stMap[nota].ts_sep)stMap[nota].ts_sep=dtSep;
+          if(dtSepd&&!stMap[nota].ts_sepd)stMap[nota].ts_sepd=dtSepd;
+          if(userSep&&!stMap[nota].separador)stMap[nota].separador=userSep;
+        }
         // Etiqueta → Conferido com data/hora/usuário do campo
         if(etiq&&!['Conferido','Expedido'].includes(stMap[nota].status)){
           stMap[nota].status='Conferido';
@@ -1206,6 +1242,13 @@ function importCSV(){
           stMap[nota].status='Expedido';
           stMap[nota].ts_fat=auth||n;
           stMap[nota].ts_exp=stMap[nota].ts_exp||n;
+        } else if(csvSt&&!['Conferido','Expedido'].includes(stMap[nota].status||'')){
+          // Datas de separação do CSV em registro novo
+          stMap[nota].status=csvSt;
+          stMap[nota].ts_fat=auth||n;
+          if(dtSep){const a=stMap[nota].ts_sep;stMap[nota].ts_sep=a&&a<dtSep?a:dtSep;}
+          if(dtSepd){const a=stMap[nota].ts_sepd;stMap[nota].ts_sepd=a&&a<dtSepd?a:dtSepd;}
+          if(userSep)stMap[nota].separador=userSep;
         } else if(etiq&&!['Expedido'].includes(stMap[nota].status||'')){
           // Etiqueta presente em registro novo
           stMap[nota].status='Conferido';
