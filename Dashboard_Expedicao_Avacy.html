@@ -395,7 +395,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.6 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.7 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -403,7 +403,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.6</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.7</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1151,6 +1151,7 @@ function importCSV(){
     const iVend=cIdx(hdr,'VENDEDOR','A3_NOME','C5_VEND','NOME_VENDEDOR');
     const iChave=cIdx(hdr,'CHAVE_NFE','CHAVE_NF','CHAVE');
     const iVolCSV=cIdx(hdr,'VOLUME1','VOLUME','VOL','QTD_VOL');
+    const iEtiq=cIdx(hdr,'ETIQUETA');
     if(iNota<0){alert('Coluna NOTA não encontrada.');pw.classList.remove('show');return}
     pf.style.width='50%';pt.textContent='Processando…';
     // Modo Substituir: começa com mapa vazio (descarta registros que não estão no CSV)
@@ -1163,6 +1164,11 @@ function importCSV(){
       const nota=clean(c[iNota]||'');if(!nota)continue;
       const xconf=clean(iXCon>=0?c[iXCon]||'':''),rom=clean(iRom>=0?c[iRom]||'':'');
       const auth=clean(iAuth>=0?c[iAuth]||'':'');
+      const etiq=clean(iEtiq>=0?c[iEtiq]||'':'');
+      // Etiqueta: 'DD/MM/YYYY HH:MM USUARIO'
+      const _em=etiq.match(/^(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2})\s+(.+)$/);
+      const etiqTs=_em?_em[1].trim():(etiq?nowStr():'');
+      const etiqUser=_em?_em[2].trim():'';
       const fd={nome_cliente:clean(iNome>=0?c[iNome]||'':''),transportadora:clean(iTrasp>=0?c[iTrasp]||'':''),
         data_emissao:fmtDate(clean(iEmis>=0?c[iEmis]||':':'')),romaneio:rom,
         mensagem:clean(iMens>=0?c[iMens]||'':''),origem:origemFromRaj(clean(iRaj>=0?c[iRaj]||'':'')),
@@ -1185,6 +1191,13 @@ function importCSV(){
             if(!stMap[nota].ts_conf)stMap[nota].ts_conf=n;
           }
         }
+        // Etiqueta → Conferido com data/hora/usuário do campo
+        if(etiq&&!['Conferido','Expedido'].includes(stMap[nota].status)){
+          stMap[nota].status='Conferido';
+          if(etiqTs)stMap[nota].ts_conf=etiqTs;
+          else if(!stMap[nota].ts_conf)stMap[nota].ts_conf=n;
+          if(etiqUser)stMap[nota].conferente=etiqUser;
+        }
         // Demais status: mantém o que o operador definiu manualmente
       }else{
         existMap.set(nota,{nota,...fd});add++;
@@ -1193,6 +1206,12 @@ function importCSV(){
           stMap[nota].status='Expedido';
           stMap[nota].ts_fat=auth||n;
           stMap[nota].ts_exp=stMap[nota].ts_exp||n;
+        } else if(etiq&&!['Expedido'].includes(stMap[nota].status||'')){
+          // Etiqueta presente em registro novo
+          stMap[nota].status='Conferido';
+          stMap[nota].ts_fat=auth||n;
+          stMap[nota].ts_conf=etiqTs||stMap[nota].ts_conf||n;
+          if(etiqUser)stMap[nota].conferente=etiqUser;
         } else if(xconf==='S'){
           stMap[nota].status='Conferido';
           stMap[nota].ts_fat=auth||n;
