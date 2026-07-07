@@ -284,6 +284,18 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 .btn-danger{background:rgba(229,57,53,.12);border:1px solid rgba(229,57,53,.4);color:#ef5350;border-radius:8px;padding:10px 16px;width:100%;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px;text-align:left}
 .btn-danger:active{background:rgba(229,57,53,.25)}
 
+
+/* ── AÇÕES DROPDOWN ── */
+.acoes-wrap{position:relative;display:none}
+.btn-acoes{background:var(--acc);border:none;border-radius:8px;padding:6px 11px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.btn-acoes:active{opacity:.85}
+.acoes-menu{display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;min-width:190px;z-index:500;box-shadow:0 8px 24px rgba(0,0,0,.4);overflow:hidden}
+.acoes-menu.open{display:block}
+.acoes-item{padding:12px 16px;font-size:14px;color:var(--txt);cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--bdr)}
+.acoes-item:last-child{border-bottom:none}
+.acoes-item:active{background:var(--bg3)}
+.acoes-item .ai-ico{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -299,7 +311,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V1.6</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V1.8</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -321,8 +333,14 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
     <span class="tb-t" id="tb-t">INVENTÁRIO</span>
     <span class="rb" id="tb-rb">OP</span>
     <button class="tb-btn tb-sync" id="btn-sync" onclick="doSync(this)" title="Sincronizar dados" style="display:none">🔄</button>
-    <button class="tb-btn" id="btn-qr" onclick="openQR()" title="QR Code do coletor">📱</button>
-    <button class="tb-btn" id="btn-users" onclick="goUsers()" style="display:none">👥</button>
+    <div class="acoes-wrap" id="acoes-wrap">
+      <button class="btn-acoes" onclick="toggleAcoes(event)">⚙ Ações ▾</button>
+      <div class="acoes-menu" id="acoes-menu">
+        <div class="acoes-item" onclick="goTab('imp');closeAcoes()"><span class="ai-ico">📥</span>Importar</div>
+        <div class="acoes-item" onclick="openQR();closeAcoes()"><span class="ai-ico">📱</span>QR Code</div>
+        <div class="acoes-item" onclick="goUsers();closeAcoes()"><span class="ai-ico">👥</span>Gerenciar Usuários</div>
+      </div>
+    </div>
     <button class="tb-btn" onclick="doLogout()">⏻ Sair</button>
   </div>
   <div class="tabs" id="main-tabs">
@@ -330,7 +348,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
     <button class="tab"    id="t-mon" onclick="goTab('mon')" style="display:none">📊 Monitoramento</button>
     <button class="tab"    id="t-est" onclick="goTab('est')" style="display:none">📦 Estoque</button>
     <button class="tab"    id="t-end" onclick="goTab('end')" style="display:none">🗂 Endereços</button>
-    <button class="tab"    id="t-imp" onclick="goTab('imp')" style="display:none">📥 Importar</button>
+    <button class="tab" id="t-imp" onclick="goTab('imp')" style="display:none;pointer-events:none;position:absolute;visibility:hidden">📥 Importar</button>
   </div>
 
   <!-- ── CONTAGEM ── -->
@@ -588,6 +606,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
         <span class="toggle-lbl">Usuário ativo</span>
         <label class="toggle-sw"><input type="checkbox" id="uf-active" checked><span class="sw-tr"></span></label>
       </div>
+      <button id="btn-del-user" class="btn" style="background:rgba(229,57,53,.12);border:1px solid rgba(229,57,53,.4);color:#ef5350;width:100%;margin-bottom:8px;display:none" onclick="deleteUser()">🗑 Excluir Usuário</button>
       <div class="form-actions">
         <button class="btn btn-ghost" style="flex:1" onclick="closeUForm()">Cancelar</button>
         <button class="btn btn-grn" style="flex:2" onclick="saveUser()">Salvar</button>
@@ -644,6 +663,7 @@ let DONE=[]; // carregado do Supabase
 let USERS=[]; // carregado do Supabase
 let POS=[]; // posições importadas do SB8+Z01+Z05
 let POS_MAP={}; // gtin→{descr,pares,qtSis}
+let POS_MODE=false; // true = usar inv_posicao (não cair no DB embutido)
 let SC_OPEN=false;
 let editUId=null; // for user form
 let uRoleSel='op';
@@ -736,11 +756,13 @@ async function loadPosicao(sb){
       if(!POS_MAP[r.gtin]) POS_MAP[r.gtin]={descr:r.descricao||'',pares:r.pares||1,qtSis:0};
       POS_MAP[r.gtin].qtSis+=r.qtd_sistema||0;
     }
-    if(POS.length>0) rebuildIdxFromPos();
+    if(POS.length>0){ POS_MODE=true; rebuildIdxFromPos(); }
+  else if(data&&data.length===0){ POS_MODE=true; ADDR_IDX={}; ADDR_LIST=[]; }
   }catch(e){ console.warn('loadPosicao err:',e); }
 }
 
 function rebuildIdxFromPos(){
+  POS_MODE=true;
   ADDR_IDX={};
   for(const r of POS){
     if(!r.endereco) continue;
@@ -792,15 +814,14 @@ function enterMain(){
   const shortName=CU.name.split(' ')[0];
   rb.textContent=shortName+' · '+(adm?'ADMIN':'OP');
   rb.className='rb '+(adm?'rb-adm':'rb-op');
-  document.getElementById('btn-users').style.display=adm?'':'none';
+  document.getElementById('acoes-wrap').style.display=adm?'':'none';
   document.getElementById('btn-sync').style.display=adm?'':'none';
   document.getElementById('t-mon').style.display=adm?'':'none';
   document.getElementById('t-est').style.display=adm?'':'none';
   document.getElementById('t-end').style.display=adm?'':'none';
-  document.getElementById('t-imp').style.display=adm?'':'none';
   // force to cnt tab
-  document.getElementById('t-cnt').classList.add('on'); document.getElementById('t-mon').classList.remove('on'); document.getElementById('t-est').classList.remove('on'); document.getElementById('t-end').classList.remove('on'); document.getElementById('t-imp').classList.remove('on');
-  document.getElementById('p-cnt').classList.remove('hide'); document.getElementById('p-mon').classList.add('hide'); document.getElementById('p-est').classList.add('hide'); document.getElementById('p-end').classList.add('hide'); document.getElementById('p-imp').classList.add('hide');
+  document.getElementById('t-cnt').classList.add('on'); document.getElementById('t-mon').classList.remove('on'); document.getElementById('t-est').classList.remove('on'); document.getElementById('t-end').classList.remove('on'); 
+  document.getElementById('p-cnt').classList.remove('hide'); document.getElementById('p-mon').classList.add('hide'); document.getElementById('p-est').classList.add('hide'); document.getElementById('p-end').classList.add('hide'); if(document.getElementById('p-imp'))document.getElementById('p-imp').classList.add('hide');
   go('main');
   buildIdx();
   // Always clear in-progress session on login — start fresh at address input
@@ -1065,7 +1086,7 @@ function renderEst(){
   const v=(document.getElementById('est-inp').value||'').trim().toUpperCase();
   const list=document.getElementById('est-list');
   const matches=[];
-  if(POS.length>0){
+  if(POS_MODE){
     // Usa dados importados (POS_MAP agrupado por gtin)
     const seen=new Set();
     for(const r of POS){
@@ -1169,6 +1190,7 @@ function openNewUser(){
   document.getElementById('uf-pwd').value='';
   document.getElementById('uf-active').checked=true;
   selURole('op');
+  document.getElementById('btn-del-user').style.display='none';
   document.getElementById('uform').classList.add('show');
   setTimeout(()=>document.getElementById('uf-name').focus(),80);
 }
@@ -1183,6 +1205,8 @@ function editUser(id){
   document.getElementById('uf-pwd').value='';
   document.getElementById('uf-active').checked=u.active;
   selURole(u.role);
+  // Esconde excluir para o admin
+  document.getElementById('btn-del-user').style.display=(u.user==='admin')?'none':'';
   document.getElementById('uform').classList.add('show');
   setTimeout(()=>document.getElementById('uf-name').focus(),80);
 }
@@ -1194,6 +1218,19 @@ function selURole(r){
   _curURole=r;
   document.getElementById('rs-op').className='rs-btn'+(r==='op'?' sel-op':'');
   document.getElementById('rs-adm').className='rs-btn'+(r==='adm'?' sel-adm':'');
+}
+
+async function deleteUser(){
+  const u=USERS.find(x=>x.id===_editUId);
+  if(!u||u.user==='admin'){toast('Usuário não pode ser excluído',1);return;}
+  if(!confirm(`Excluir o usuário "${u.name}" (@${u.user})? Esta ação não pode ser desfeita.`))return;
+  const sb=getSB();
+  if(sb){
+    const{error}=await sb.from('inv_usuarios').delete().eq('id',_editUId);
+    if(error){toast('Erro ao excluir: '+error.message,1);return;}
+  }
+  USERS=USERS.filter(x=>x.id!==_editUId);
+  closeUForm(); renderUList(); toast('Usuário excluído ✓');
 }
 
 async function saveUser(){
@@ -1548,11 +1585,25 @@ async function zerarPosicao(){
   const sb=getSB(); if(!sb){toast('Sem conexão',1);return;}
   const{error}=await sb.from('inv_posicao').delete().eq('inventario','Julho-2026');
   if(error){toast('Erro: '+error.message,1);return;}
-  POS=[]; POS_MAP={}; ADDR_IDX=null; buildIdx();
-  if(document.getElementById('p-est')&&!document.getElementById('p-est').classList.contains('hide')) renderEst();
-  if(document.getElementById('p-end')&&!document.getElementById('p-end').classList.contains('hide')) renderEndTab();
-  toast('✓ Posição zerada — usando catálogo embutido');
+  POS=[]; POS_MAP={}; POS_MODE=true; ADDR_IDX={}; ADDR_LIST=[];
+  renderEst&&renderEst();
+  renderEndTab&&renderEndTab();
+  toast('✓ Posição zerada');
 }
+
+
+/* ── AÇÕES DROPDOWN ── */
+function toggleAcoes(e){
+  e.stopPropagation();
+  document.getElementById('acoes-menu').classList.toggle('open');
+}
+function closeAcoes(){
+  document.getElementById('acoes-menu').classList.remove('open');
+}
+document.addEventListener('click',function(e){
+  const wrap=document.getElementById('acoes-wrap');
+  if(wrap&&!wrap.contains(e.target)) closeAcoes();
+});
 
 </script>
 
