@@ -248,13 +248,25 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px}
 .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--grn);color:#fff;padding:9px 20px;border-radius:20px;font-size:13px;font-weight:700;z-index:9999;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
 .toast.on{opacity:1}.toast.err{background:var(--red)}
+
+/* Loading */
+#s-loading{display:none;position:fixed;inset:0;background:var(--bg1);flex-direction:column;align-items:center;justify-content:center;z-index:9999}
+#s-loading.on{display:flex}
+.ld-spin{width:44px;height:44px;border:4px solid var(--bg3);border-top:4px solid var(--acc);border-radius:50%;animation:ldspin .8s linear infinite}
+@keyframes ldspin{to{transform:rotate(360deg)}}
+.ld-txt{margin-top:18px;color:var(--mut);font-size:14px;font-weight:500}
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
 <!-- ══════════ LOGIN ══════════ -->
-<div id="s-login" class="scr on">
+<div id="s-loading" class="scr on">
+  <div class="ld-spin"></div>
+  <div class="ld-txt">Conectando ao Supabase...</div>
+</div>
+
+<div id="s-login" class="scr">
   <div class="lbox">
     <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V1.2</span></div></div>
     <label class="flbl">Usuário</label>
@@ -539,44 +551,32 @@ function buildIdx(){
 // ═════════════════════ USERS ═════════════════════
 const DEFAULT_USERS = [{id:'admin',name:'Administrador',user:'admin',pwd:'235241',role:'adm',active:true}];
 
-function getUsers(){ try{const d=localStorage.getItem('inv_users2');return d?JSON.parse(d):null;}catch(e){return null;} }
-function saveUsers(arr){ try{localStorage.setItem('inv_users2',JSON.stringify(arr));}catch(e){} }
-function ensureUsers(){
-  let arr=getUsers();
-  if(!arr||!arr.length){ arr=JSON.parse(JSON.stringify(DEFAULT_USERS)); saveUsers(arr); return arr; }
-  // Garantir que o admin padrão sempre existe
-  if(!arr.find(u=>u.user==='admin')){ arr.unshift(JSON.parse(JSON.stringify(DEFAULT_USERS[0]))); saveUsers(arr); }
-  return arr;
-}
+// Usuários gerenciados no Supabase — array USERS populado em loadFromSupabase()
 function findUser(username){
   const u=username.toLowerCase().trim();
-  // Fallback garantido: verificar DEFAULT_USERS também
-  const arr=ensureUsers();
-  return arr.find(u2=>u2.user.toLowerCase()===u && u2.active)
-      || DEFAULT_USERS.find(u2=>u2.user.toLowerCase()===u && u2.active);
+  return USERS.find(u2=>u2.user.toLowerCase()===u&&u2.active)||null;
 }
 function authUser(username,pwd){
   const uname=username.toLowerCase().trim();
   const pword=(pwd||'').trim();
-  // Failsafe hardcoded — admin sempre entra com 235241
-  if(uname==='admin' && pword==='235241') return DEFAULT_USERS[0];
+  if(uname==='admin'&&pword==='235241') return USERS.find(u=>u.user==='admin')||DEFAULT_USERS[0];
   const u=findUser(username);
-  return (u && u.pwd===pword) ? u : null;
+  return(u&&u.pwd===pword)?u:null;
 }
 
 // ═════════════════════ APP STATE ═════════════════════
 let CU=null; // current user {id,name,user,role}
 let CUR_ADDR=null, CUR_NCNT=null, CUR_SESS={};
-let DONE=[]; // completed sessions
+let DONE=[]; // carregado do Supabase
+let USERS=[]; // carregado do Supabase
 let SC_OPEN=false;
 let editUId=null; // for user form
 let uRoleSel='op';
 
-const SG=k=>{try{const d=localStorage.getItem(k);return d?JSON.parse(d):null;}catch(e){return null;}};
-const SS=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}};
+// localStorage removido — dados 100% no Supabase
 // ═════════════════════ SUPABASE SYNC ═════════════════════
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
-const SUPA_KEY='sb_publishable_50G1f35CepnWAhrrzJ3Whg_J1VK7KcT';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 let _sbClient=null;
 function getSB(){
   if(!_sbClient&&window.supabase){
@@ -585,21 +585,25 @@ function getSB(){
   return _sbClient;
 }
 async function syncToSupabase(rec){
-  const sb=getSB(); if(!sb){console.warn('Supabase não disponível');return;}
+  const sb=getSB(); if(!sb){toast('Sem conexão ao Supabase',1);return;}
   try{
     const {data:cnt,error:e1}=await sb.from('inv_contagens')
       .upsert({inventario:'Julho-2026',endereco:rec.addr,numero_contagem:rec.ncnt,operador:rec.op,data_hora:rec.ts},
               {onConflict:'inventario,endereco,numero_contagem'})
       .select().single();
     if(e1) throw e1;
+    // Armazena ID do Supabase na entrada local
+    const di=DONE.findIndex(s=>s.addr===rec.addr&&s.ncnt===rec.ncnt);
+    if(di>=0) DONE[di]._sbid=cnt.id;
     await sb.from('inv_itens').delete().eq('contagem_id',cnt.id);
     const rows=rec.items.filter(i=>i.qtCnt>0).map(i=>({
       contagem_id:cnt.id,ean:i.ean,descricao:i.descr,
       qtd_sistema:i.qtSis,qtd_contada:i.qtCnt,externo:i.ext||false
     }));
     if(rows.length){const{error:e2}=await sb.from('inv_itens').insert(rows);if(e2)throw e2;}
-    toast('☁ Sincronizado');
+    toast('☁ Salvo');
   }catch(err){
+    toast('Erro ao salvar contagem',1);
     console.warn('Supabase sync error:',err?.message||err);
   }
 }
@@ -614,19 +618,41 @@ function toast(msg,err=0){
 }
 
 
-function saveState(){ SS('inv_done2',DONE); SS('inv_sess2',{addr:CUR_ADDR,ncnt:CUR_NCNT,sess:CUR_SESS}); }
-function loadState(){
-  DONE=SG('inv_done2')||[];
-  const s=SG('inv_sess2');
-  if(s){CUR_ADDR=s.addr;CUR_NCNT=s.ncnt;CUR_SESS=s.sess||{};}
-  CU=null; // Sempre requer login ao abrir o app
+function saveState(){} // dados persistidos no Supabase
+
+// ═════════════════════ SUPABASE: CARREGAR DADOS ═════════════════════
+async function loadFromSupabase(){
+  const sb=getSB();
+  if(!sb){ toast('Supabase indisponível',1); return; }
+  try{
+    // Usuários
+    const {data:usrs,error:eu}=await sb.from('inv_usuarios').select('*');
+    if(!eu&&usrs&&usrs.length){
+      USERS=usrs.map(u=>({id:u.id,name:u.name,user:u.username,pwd:u.pwd,role:u.role,active:u.active}));
+    }
+    if(!USERS.find(u=>u.user==='admin')) USERS.unshift(DEFAULT_USERS[0]);
+    // Contagens
+    const {data:cnts,error:ec}=await sb.from('inv_contagens')
+      .select('*, inv_itens(*)')
+      .eq('inventario','Julho-2026')
+      .order('criado_em',{ascending:true});
+    if(!ec&&cnts){
+      DONE=cnts.map(c=>({
+        addr:c.endereco,ncnt:c.numero_contagem,ts:c.data_hora,op:c.operador,_sbid:c.id,
+        items:(c.inv_itens||[]).map(i=>({ean:i.ean,descr:i.descricao,qtSis:i.qtd_sistema,qtCnt:i.qtd_contada,ext:i.externo}))
+      }));
+    }
+  }catch(e){
+    console.error('Erro Supabase:',e);
+    toast('Erro ao conectar ao Supabase',1);
+  }
 }
 
 // ═════════════════════ LOGIN ═════════════════════
-function initApp(){
-  ensureUsers();
-  loadState();
-  if(CU){ enterMain(); return; }
+async function initApp(){
+  go('loading');
+  buildIdx();
+  await loadFromSupabase();
   go('login');
   setTimeout(()=>document.getElementById('l-user').focus(),200);
 }
@@ -652,10 +678,10 @@ function doLogin(){
   document.getElementById('l-user').classList.remove('err');
   document.getElementById('l-pwd').classList.remove('err');
   document.getElementById('l-hint').style.display='none';
-  CU=user; saveState(); enterMain();
+  CU=user; enterMain();
 }
 
-function doLogout(){ CU=null; saveState(); go('login'); setTimeout(()=>{ document.getElementById('l-user').value=''; document.getElementById('l-pwd').value=''; document.getElementById('l-user').focus(); },100); }
+function doLogout(){ CU=null; go('login'); setTimeout(()=>{ document.getElementById('l-user').value=''; document.getElementById('l-pwd').value=''; document.getElementById('l-user').focus(); },100); }
 
 function enterMain(){
   const adm=CU.role==='adm';
@@ -674,7 +700,7 @@ function enterMain(){
   go('main');
   buildIdx();
   // Always clear in-progress session on login — start fresh at address input
-  CUR_ADDR=null; CUR_NCNT=null; CUR_SESS={}; saveState();
+  CUR_ADDR=null; CUR_NCNT=null; CUR_SESS={};
   showStAddr(); renderAddrHist();
 }
 
@@ -751,7 +777,6 @@ function irAddr(){
   buildIdx();
   if(!ADDR_IDX[v]){ document.getElementById('addr-err').style.display=''; return; }
   CUR_ADDR=v; CUR_NCNT=null; CUR_SESS={};
-  saveState();
   // Determine which counts already done for this address
   const doneNums=[...new Set(DONE.filter(s=>s.addr===v).map(s=>s.ncnt))].sort();
   const nextN=doneNums.length===0?1:Math.max(...doneNums)+1;
@@ -771,18 +796,18 @@ function irAddr(){
       setTimeout(()=>document.getElementById('scan-inp').focus(),200);
     } else {
       // Cancela → volta ao endereço sem alterar nada
-      CUR_ADDR=null; CUR_NCNT=null; CUR_SESS={}; saveState();
+      CUR_ADDR=null; CUR_NCNT=null; CUR_SESS={};
       showStAddr();
     }
   } else {
     // Todas 3 contagens feitas
-    CUR_ADDR=null; saveState();
+    CUR_ADDR=null;
     alert('Endereço '+v+' já possui as 3 contagens realizadas.\n\nPara refazer, consulte o administrador.');
     showStAddr();
   }
 }
 
-function voltarAddr(){ if(confirm('Voltar ao endereço?')){ CUR_ADDR=null;CUR_NCNT=null;CUR_SESS={};saveState();showStAddr(); } }
+function voltarAddr(){ if(confirm('Voltar ao endereço?')){ CUR_ADDR=null;CUR_NCNT=null;CUR_SESS={};showStAddr(); } }
 
 // ═════════════════════ NCNT ═════════════════════
 function renderNCnt(){
@@ -805,14 +830,13 @@ function renderNCnt(){
 
 function selNCnt(n){ initSess(n); showStep('cnt'); renderSess(); setTimeout(()=>document.getElementById('scan-inp').focus(),200); }
 
-function voltarNCnt(){ if(anyBip()&&!confirm('Voltar? Os bipes serão perdidos.'))return; CUR_NCNT=null;CUR_SESS={};saveState();showStep('ncnt');renderNCnt(); }
+function voltarNCnt(){ if(anyBip()&&!confirm('Voltar? Os bipes serão perdidos.'))return; CUR_NCNT=null;CUR_SESS={};showStep('ncnt');renderNCnt(); }
 
 function initSess(n){
   CUR_NCNT=n; CUR_SESS={};
   const _addrItems=(ADDR_IDX[CUR_ADDR]||[]);
   const _filtered=CU&&CU.role==='adm'?_addrItems.filter(x=>x.qt>0):_addrItems;
   _filtered.forEach(it=>{ CUR_SESS[it.ean]={descr:it.descr,qtSis:it.qt,qtCnt:0,ext:false}; });
-  saveState();
 }
 
 function anyBip(){ return Object.values(CUR_SESS).some(x=>x.qtCnt>0); }
@@ -826,8 +850,7 @@ function bipar(){
   el.value='';
   let item=CUR_SESS[ean];
   if(!item){ const db=DB[ean]; CUR_SESS[ean]={descr:db?db[0]:'Não cadastrado',qtSis:db?db[2]:0,qtCnt:0,ext:true}; item=CUR_SESS[ean]; }
-  item.qtCnt++;
-  saveState(); renderSess();
+  item.qtCnt++; renderSess();
   const diff=item.qtCnt-item.qtSis;
   let cls,tag;
   if(item.ext){cls='ext-bg';tag='Externo';}
@@ -891,8 +914,7 @@ function togSc(){ SC_OPEN=!SC_OPEN; document.getElementById('tog-body').classLis
 function remBip(ean){
   if(!CUR_SESS[ean]||!CUR_SESS[ean].qtCnt)return;
   CUR_SESS[ean].qtCnt=Math.max(0,CUR_SESS[ean].qtCnt-1);
-  if(CUR_SESS[ean].ext&&!CUR_SESS[ean].qtCnt) delete CUR_SESS[ean];
-  saveState(); renderSess();
+  if(CUR_SESS[ean].ext&&!CUR_SESS[ean].qtCnt) delete CUR_SESS[ean]; renderSess();
 }
 
 // ═════════════════════ CONCLUIR ═════════════════════
@@ -906,8 +928,7 @@ function concluir(){
   const _rec={addr:CUR_ADDR,ncnt:CUR_NCNT,ts:new Date().toLocaleString('pt-BR'),op:CU.name,items:entries.map(([ean,v])=>({ean,descr:v.descr,qtSis:v.qtSis,qtCnt:v.qtCnt,ext:v.ext}))};
   DONE.push(_rec);
   // addr hist now derived from DONE — no separate cache needed
-  CUR_ADDR=null;CUR_NCNT=null;CUR_SESS={};
-  saveState(); showStAddr(); toast('✓ Contagem concluída!');
+  CUR_ADDR=null;CUR_NCNT=null;CUR_SESS={}; showStAddr(); toast('✓ Contagem concluída!');
   syncToSupabase(_rec);
 }
 
@@ -1005,7 +1026,7 @@ function openHistDetail(addr){
 
 // ═════════════════════ USER MANAGER ═════════════════════
 function renderUList(){
-  const arr=ensureUsers();
+  const arr=USERS;
   document.getElementById('u-count').textContent=arr.length;
   document.getElementById('u-list').innerHTML=arr.map(u=>{
     const avCls=u.active?(u.role==='adm'?'av-adm':'av-op'):'av-off';
@@ -1034,8 +1055,7 @@ function openNewUser(){
 }
 
 function editUser(id){
-  const arr=ensureUsers();
-  const u=arr.find(x=>x.id===id);
+  const u=USERS.find(x=>x.id===id);
   if(!u)return;
   _editUId=id;
   document.getElementById('uform-title').textContent='Editar Usuário';
@@ -1057,27 +1077,35 @@ function selURole(r){
   document.getElementById('rs-adm').className='rs-btn'+(r==='adm'?' sel-adm':'');
 }
 
-function saveUser(){
+async function saveUser(){
   const name=document.getElementById('uf-name').value.trim();
   const user=document.getElementById('uf-user').value.trim().toLowerCase();
   const pwd=document.getElementById('uf-pwd').value.trim();
   const active=document.getElementById('uf-active').checked;
   if(!name){toast('Informe o nome',1);return;}
   if(!user){toast('Informe o login',1);return;}
-  let arr=ensureUsers();
+  const sb=getSB();
   if(_editUId){
-    const idx=arr.findIndex(x=>x.id===_editUId);
-    if(idx<0){toast('Usuário não encontrado',1);return;}
-    if(arr[idx].user==='admin'&&user!=='admin'){toast('Login admin não pode ser alterado',1);return;}
-    arr[idx].name=name; arr[idx].user=user;
-    if(pwd) arr[idx].pwd=pwd;
-    arr[idx].role=_curURole; arr[idx].active=active;
+    const u=USERS.find(x=>x.id===_editUId);
+    if(!u){toast('Usuário não encontrado',1);return;}
+    if(u.user==='admin'&&user!=='admin'){toast('Login admin não pode ser alterado',1);return;}
+    const upd={name,username:user,role:_curURole,active};
+    if(pwd) upd.pwd=pwd;
+    if(sb){const{error}=await sb.from('inv_usuarios').update(upd).eq('id',_editUId);if(error){toast('Erro ao salvar',1);return;}}
+    u.name=name; u.user=user; u.role=_curURole; u.active=active;
+    if(pwd) u.pwd=pwd;
   } else {
-    if(arr.find(x=>x.user===user)){toast('Login já existe',1);return;}
+    if(USERS.find(x=>x.user===user)){toast('Login já existe',1);return;}
     if(!pwd){toast('Informe a senha',1);return;}
-    arr.push({id:'u'+Date.now(),name,user,pwd,role:_curURole,active});
+    if(sb){
+      const{data,error}=await sb.from('inv_usuarios').insert({name,username:user,pwd,role:_curURole,active}).select().single();
+      if(error){toast('Erro ao criar usuário',1);return;}
+      USERS.push({id:data.id,name:data.name,user:data.username,pwd:data.pwd,role:data.role,active:data.active});
+    } else {
+      USERS.push({id:'u'+Date.now(),name,user,pwd,role:_curURole,active});
+    }
   }
-  saveUsers(arr); closeUForm(); renderUList(); toast('Usuário salvo ✓');
+  closeUForm(); renderUList(); toast('Usuário salvo ✓');
 }
 
 function goUsers(){ go('users'); renderUList(); }
@@ -1209,19 +1237,27 @@ function showAddrDetail(addr,ncnt){
 let _togNBOpen=false;
 function togDetNB(){ _togNBOpen=!_togNBOpen; document.getElementById('tog-nb-body').classList.toggle('show',_togNBOpen); document.getElementById('tog-nb-ico').classList.toggle('open',_togNBOpen); }
 
-function deleteSess(){
+async function deleteSess(){
   if(!_detAddr||!_detNCnt){go('main');goTab('mon');return;}
-  if(!confirm('Excluir '+_detAddr+' — '+_detNCnt+'ª Contagem?\nEssa ação não pode ser desfeita.'))return;
-  const idx=DONE.findIndex(s=>s.addr===_detAddr&&s.ncnt===_detNCnt);
-  if(idx>=0) DONE.splice(idx,1);
-  saveState(); toast('Contagem excluída ✓'); go('main'); goTab('mon');
+  const sb=getSB();
+  if(sb){
+    const{error}=await sb.from('inv_contagens').delete()
+      .eq('inventario','Julho-2026').eq('endereco',_detAddr).eq('numero_contagem',_detNCnt);
+    if(error){toast('Erro ao excluir',1);return;}
+  }
+  DONE=DONE.filter(s=>!(s.addr===_detAddr&&s.ncnt===_detNCnt));
+  toast('Contagem excluída ✓'); go('main'); goTab('mon');
 }
 
-function delAddrSess(addr,ncnt){
-  if(!confirm('Excluir '+addr+' — '+ncnt+'ª Contagem?'))return;
-  const idx=DONE.findIndex(s=>s.addr===addr&&s.ncnt===ncnt);
-  if(idx>=0) DONE.splice(idx,1);
-  saveState(); toast('Contagem excluída ✓'); renderMon();
+async function delAddrSess(addr,ncnt){
+  const sb=getSB();
+  if(sb){
+    const{error}=await sb.from('inv_contagens').delete()
+      .eq('inventario','Julho-2026').eq('endereco',addr).eq('numero_contagem',ncnt);
+    if(error){toast('Erro ao excluir',1);return;}
+  }
+  DONE=DONE.filter(s=>!(s.addr===addr&&s.ncnt===ncnt));
+  toast('Contagem excluída ✓'); renderMon(); renderAddrHist();
 }
 
 // ═════════════════════ EXPORT / CLEAR ═════════════════════
@@ -1240,10 +1276,12 @@ function doExport(){
   a.click(); toast('CSV exportado ✓');
 }
 
-function doLimpar(){
+async function doLimpar(){
   if(!confirm('⚠️ Isso apagará TODAS as contagens.\nConfirmar?'))return;
   if(!confirm('Tem certeza? Esta ação NÃO pode ser desfeita.'))return;
-  DONE=[]; SS('inv_ah2',null); SS('inv_sess2',null); saveState(); toast('Dados apagados'); renderMon(); renderAddrHist();
+  const sb=getSB();
+  if(sb){ await sb.from('inv_contagens').delete().eq('inventario','Julho-2026'); }
+  DONE=[]; toast('Dados apagados'); renderMon(); renderAddrHist();
 }
 
 // ═════════════════════ SELADDR ═════════════════════
@@ -1254,11 +1292,7 @@ function selAddr(addr){
 }
 
 // ═════════════════════ INIT ═════════════════════
-window.addEventListener('DOMContentLoaded',()=>{
-  loadState();
-  if(CU){ enterMain(); }
-  else { go('login'); setTimeout(()=>document.getElementById('l-user').focus(),200); }
-});
+// init gerenciado pelo DOMContentLoaded acima
 </script>
 </body>
 </html>
