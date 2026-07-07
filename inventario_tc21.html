@@ -255,8 +255,23 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 .ld-spin{width:44px;height:44px;border:4px solid var(--bg3);border-top:4px solid var(--acc);border-radius:50%;animation:ldspin .8s linear infinite}
 @keyframes ldspin{to{transform:rotate(360deg)}}
 .ld-txt{margin-top:18px;color:var(--mut);font-size:14px;font-weight:500}
+
+/* ── QR MODAL ── */
+.qr-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;align-items:center;justify-content:center}
+.qr-overlay.on{display:flex}
+.qr-box{background:var(--bg2);border:1px solid var(--bdr);border-radius:16px;padding:24px 20px;text-align:center;max-width:280px;width:90%}
+.qr-box h3{margin:0 0 4px;font-size:15px;color:var(--txt)}
+.qr-box p{margin:0 0 16px;font-size:11px;color:var(--mut);word-break:break-all}
+#qr-canvas{margin:0 auto 16px;background:#fff;padding:8px;border-radius:8px;display:inline-block}
+.qr-close{background:var(--bg3);border:1px solid var(--bdr);border-radius:8px;padding:8px 24px;color:var(--txt);font-size:13px;cursor:pointer;width:100%}
+/* ── SYNC BTN ── */
+.tb-sync{font-size:16px;line-height:1;padding:5px 8px}
+@keyframes spin-tb{to{transform:rotate(360deg)}}
+.spinning{display:inline-block;animation:spin-tb .7s linear infinite}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -289,6 +304,8 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
     <span style="font-size:17px">📦</span>
     <span class="tb-t" id="tb-t">INVENTÁRIO</span>
     <span class="rb" id="tb-rb">OP</span>
+    <button class="tb-btn tb-sync" id="btn-sync" onclick="doSync(this)" title="Sincronizar dados">🔄</button>
+    <button class="tb-btn" id="btn-qr" onclick="openQR()" title="QR Code do coletor">📱</button>
     <button class="tb-btn" id="btn-users" onclick="goUsers()" style="display:none">👥</button>
     <button class="tb-btn" onclick="doLogout()">⏻ Sair</button>
   </div>
@@ -1293,6 +1310,51 @@ function selAddr(addr){
 
 // ═════════════════════ INIT ═════════════════════
 // init gerenciado pelo DOMContentLoaded acima
+
+/* ── QR CODE ── */
+let _qrObj=null;
+function openQR(){
+  const url=window.location.href.split('?')[0];
+  document.getElementById('qr-url').textContent=url;
+  const box=document.getElementById('qr-canvas');
+  box.innerHTML='';
+  _qrObj=new QRCode(box,{text:url,width:200,height:200,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+  document.getElementById('qr-overlay').classList.add('on');
+}
+function closeQR(){
+  document.getElementById('qr-overlay').classList.remove('on');
+}
+
+/* ── SYNC ── */
+async function doSync(btn){
+  if(btn.classList.contains('spinning'))return;
+  const icon=btn.textContent;
+  btn.innerHTML='<span class="spinning">🔄</span>';
+  btn.disabled=true;
+  try{
+    await loadFromSupabase();
+    renderMon&&renderMon();
+    renderAddrHist&&renderAddrHist();
+    toast('✓ Dados atualizados');
+  }catch(e){
+    toast('Erro ao sincronizar',1);
+  }finally{
+    btn.innerHTML=icon;
+    btn.disabled=false;
+  }
+}
+
 </script>
+
+<!-- ══ QR CODE MODAL ══ -->
+<div class="qr-overlay" id="qr-overlay" onclick="if(event.target===this)closeQR()">
+  <div class="qr-box">
+    <h3>📱 Abrir Inventário</h3>
+    <p id="qr-url"></p>
+    <div id="qr-canvas"></div>
+    <button class="qr-close" onclick="closeQR()">Fechar</button>
+  </div>
+</div>
+
 </body>
 </html>
