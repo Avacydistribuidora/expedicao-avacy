@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="0; url=inventario_tc21.html">
+<script>
+  // Tenta sem acento primeiro, depois com acento
+  var urls = [
+    'inventario_tc21.html',
+    'invent%C3%A1rio_tc21.html',
+    'inventário_tc21.html'
+  ];
+  var tried = 0;
+  function tryNext() {
+    if (tried < urls.length) {
+      window.location.href = urls[tried++];
+    }
+  }
+  window.location.href = urls[0];
+</script>
+</head>
+<body>
+  <p>Redirecionando para o Inventário...</p>
+  <p><a href="inventario_tc21.html">Clique aqui se não redirecionar</a></p>
+</body>
+</html>
