@@ -269,9 +269,25 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 @keyframes spin-tb{to{transform:rotate(360deg)}}
 .spinning{display:inline-block;animation:spin-tb .7s linear infinite}
 
+
+/* ── IMPORTADOR ── */
+.imp-sec{margin-bottom:14px}
+.imp-sec label{display:block;font-size:11px;font-weight:700;color:var(--mut);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+.imp-file{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px dashed var(--bdr);border-radius:8px;padding:10px 12px;cursor:pointer;transition:border-color .2s}
+.imp-file:hover{border-color:var(--acc)}
+.imp-file input[type=file]{display:none}
+.imp-fname{font-size:12px;color:var(--mut);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.imp-fname.ok{color:var(--grn)}
+.imp-prog{font-size:12px;color:var(--mut);margin-top:8px;min-height:18px;padding:6px 10px;background:var(--bg3);border-radius:6px;display:none}
+.imp-prog.on{display:block}
+.imp-divider{border:none;border-top:1px solid var(--bdr);margin:16px 0}
+.btn-danger{background:rgba(229,57,53,.12);border:1px solid rgba(229,57,53,.4);color:#ef5350;border-radius:8px;padding:10px 16px;width:100%;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px;text-align:left}
+.btn-danger:active{background:rgba(229,57,53,.25)}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -283,7 +299,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V1.3</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V1.4</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -314,6 +330,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
     <button class="tab"    id="t-mon" onclick="goTab('mon')" style="display:none">📊 Monitoramento</button>
     <button class="tab"    id="t-est" onclick="goTab('est')" style="display:none">📦 Estoque</button>
     <button class="tab"    id="t-end" onclick="goTab('end')" style="display:none">🗂 Endereços</button>
+    <button class="tab"    id="t-imp" onclick="goTab('imp')" style="display:none">📥 Importar</button>
   </div>
 
   <!-- ── CONTAGEM ── -->
@@ -462,6 +479,45 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
     </div>
     <div id="end-list" style="display:flex;flex-direction:column;gap:8px;margin-top:8px"></div>
   </div>
+
+  <!-- ── IMPORTAR ── -->
+  <div class="pg hide" id="p-imp" style="padding:12px;overflow-y:auto">
+    <div class="card">
+      <div class="ct">📥 Importar Posição de Estoque</div>
+      <div class="imp-sec">
+        <label>1. Z01 — Catálogo de grades (GTIN + Pares)</label>
+        <div class="imp-file" onclick="document.getElementById('imp-z01').click()">
+          <span style="font-size:18px">📋</span>
+          <span class="imp-fname" id="nm-z01">Nenhum arquivo selecionado</span>
+          <input type="file" id="imp-z01" accept=".xlsx" onchange="setImpFile('z01',this)">
+        </div>
+      </div>
+      <div class="imp-sec">
+        <label>2. Z05 — Endereços e estoque por grade</label>
+        <div class="imp-file" onclick="document.getElementById('imp-z05').click()">
+          <span style="font-size:18px">🗂</span>
+          <span class="imp-fname" id="nm-z05">Nenhum arquivo selecionado</span>
+          <input type="file" id="imp-z05" accept=".xlsx" onchange="setImpFile('z05',this)">
+        </div>
+      </div>
+      <div class="imp-sec">
+        <label>3. SB8 — Saldo por lote (posição do dia)</label>
+        <div class="imp-file" onclick="document.getElementById('imp-sb8').click()">
+          <span style="font-size:18px">📦</span>
+          <span class="imp-fname" id="nm-sb8">Nenhum arquivo selecionado</span>
+          <input type="file" id="imp-sb8" accept=".xlsx" onchange="setImpFile('sb8',this)">
+        </div>
+      </div>
+      <div id="imp-prog" class="imp-prog"></div>
+      <button class="btn-acc" id="btn-importar" onclick="importarPosicao()" style="width:100%;margin-top:12px;padding:12px;font-size:14px;font-weight:700">⬆ Importar para Supabase</button>
+    </div>
+    <div class="card" style="margin-top:8px">
+      <div class="ct" style="color:#ef5350">⚠ Operações de Reset</div>
+      <button class="btn-danger" onclick="zerarContagens()">🗑 Zerar Contagens — apaga todos os registros de contagem</button>
+      <button class="btn-danger" onclick="zerarPosicao()">🗑 Zerar Posição — apaga os dados importados do SB8/Z05</button>
+    </div>
+  </div>
+
 </div><!-- /s-main -->
 
 <!-- ══════════ ADDR DETAIL PANEL ══════════ -->
@@ -586,6 +642,8 @@ let CU=null; // current user {id,name,user,role}
 let CUR_ADDR=null, CUR_NCNT=null, CUR_SESS={};
 let DONE=[]; // carregado do Supabase
 let USERS=[]; // carregado do Supabase
+let POS=[]; // posições importadas do SB8+Z01+Z05
+let POS_MAP={}; // gtin→{descr,pares,qtSis}
 let SC_OPEN=false;
 let editUId=null; // for user form
 let uRoleSel='op';
@@ -659,10 +717,37 @@ async function loadFromSupabase(){
         items:(c.inv_itens||[]).map(i=>({ean:i.ean,descr:i.descricao,qtSis:i.qtd_sistema,qtCnt:i.qtd_contada,ext:i.externo}))
       }));
     }
+    // Posição de estoque
+    await loadPosicao(sb);
   }catch(e){
     console.error('Erro Supabase:',e);
     toast('Erro ao conectar ao Supabase',1);
   }
+}
+
+async function loadPosicao(sb){
+  if(!sb) sb=getSB(); if(!sb) return;
+  try{
+    const {data,error}=await sb.from('inv_posicao').select('gtin,descricao,endereco,pares,qtd_sistema').eq('inventario','Julho-2026');
+    if(error||!data) return;
+    POS=data;
+    POS_MAP={};
+    for(const r of data){
+      if(!POS_MAP[r.gtin]) POS_MAP[r.gtin]={descr:r.descricao||'',pares:r.pares||1,qtSis:0};
+      POS_MAP[r.gtin].qtSis+=r.qtd_sistema||0;
+    }
+    if(POS.length>0) rebuildIdxFromPos();
+  }catch(e){ console.warn('loadPosicao err:',e); }
+}
+
+function rebuildIdxFromPos(){
+  ADDR_IDX={};
+  for(const r of POS){
+    if(!r.endereco) continue;
+    if(!ADDR_IDX[r.endereco]) ADDR_IDX[r.endereco]=[];
+    ADDR_IDX[r.endereco].push({ean:r.gtin,descr:r.descricao||'',qt:r.qtd_sistema||0});
+  }
+  ADDR_LIST=Object.keys(ADDR_IDX).sort();
 }
 
 // ═════════════════════ LOGIN ═════════════════════
@@ -711,9 +796,10 @@ function enterMain(){
   document.getElementById('t-mon').style.display=adm?'':'none';
   document.getElementById('t-est').style.display=adm?'':'none';
   document.getElementById('t-end').style.display=adm?'':'none';
+  document.getElementById('t-imp').style.display=adm?'':'none';
   // force to cnt tab
-  document.getElementById('t-cnt').classList.add('on'); document.getElementById('t-mon').classList.remove('on'); document.getElementById('t-est').classList.remove('on'); document.getElementById('t-end').classList.remove('on');
-  document.getElementById('p-cnt').classList.remove('hide'); document.getElementById('p-mon').classList.add('hide'); document.getElementById('p-est').classList.add('hide'); document.getElementById('p-end').classList.add('hide');
+  document.getElementById('t-cnt').classList.add('on'); document.getElementById('t-mon').classList.remove('on'); document.getElementById('t-est').classList.remove('on'); document.getElementById('t-end').classList.remove('on'); document.getElementById('t-imp').classList.remove('on');
+  document.getElementById('p-cnt').classList.remove('hide'); document.getElementById('p-mon').classList.add('hide'); document.getElementById('p-est').classList.add('hide'); document.getElementById('p-end').classList.add('hide'); document.getElementById('p-imp').classList.add('hide');
   go('main');
   buildIdx();
   // Always clear in-progress session on login — start fresh at address input
@@ -866,7 +952,7 @@ function bipar(){
   const ean=el.value.trim(); if(!ean)return;
   el.value='';
   let item=CUR_SESS[ean];
-  if(!item){ const db=DB[ean]; CUR_SESS[ean]={descr:db?db[0]:'Não cadastrado',qtSis:db?db[2]:0,qtCnt:0,ext:true}; item=CUR_SESS[ean]; }
+  if(!item){ const pos=POS_MAP[ean]; const db=DB[ean]; const descr=pos?pos.descr:(db?db[0]:'Não cadastrado'); const qtSis=pos?pos.qtSis:(db?db[2]:0); const isExt=!(ADDR_IDX[CUR_ADDR]||[]).find(i=>i.ean===ean); CUR_SESS[ean]={descr,qtSis,qtCnt:0,ext:isExt}; item=CUR_SESS[ean]; }
   item.qtCnt++; renderSess();
   const diff=item.qtCnt-item.qtSis;
   let cls,tag;
@@ -1129,14 +1215,10 @@ function goUsers(){ go('users'); renderUList(); }
 
 // ═════════════════════ TABS ═════════════════════
 function goTab(t){
-  document.getElementById('t-cnt').classList.toggle('on',t==='cnt');
-  document.getElementById('t-mon').classList.toggle('on',t==='mon');
-  document.getElementById('t-est').classList.toggle('on',t==='est');
-  document.getElementById('t-end').classList.toggle('on',t==='end');
-  document.getElementById('p-cnt').classList.toggle('hide',t!=='cnt');
-  document.getElementById('p-mon').classList.toggle('hide',t!=='mon');
-  document.getElementById('p-est').classList.toggle('hide',t!=='est');
-  document.getElementById('p-end').classList.toggle('hide',t!=='end');
+  ['cnt','mon','est','end','imp'].forEach(x=>{
+    document.getElementById('t-'+x).classList.toggle('on',t===x);
+    document.getElementById('p-'+x).classList.toggle('hide',t!==x);
+  });
   if(t==='mon') renderMon();
   if(t==='cnt') renderAddrHist();
   if(t==='est'){ renderEst(); setTimeout(()=>document.getElementById('est-inp').focus(),100); }
@@ -1342,6 +1424,114 @@ async function doSync(btn){
     btn.innerHTML=icon;
     btn.disabled=false;
   }
+}
+
+
+/* ══════════ IMPORTADOR ══════════ */
+function setImpFile(id,inp){
+  const nm=document.getElementById('nm-'+id);
+  if(inp.files[0]){ nm.textContent=inp.files[0].name; nm.className='imp-fname ok'; }
+  else { nm.textContent='Nenhum arquivo selecionado'; nm.className='imp-fname'; }
+}
+function setImpStatus(msg,err=0){
+  const el=document.getElementById('imp-prog');
+  el.textContent=msg; el.className='imp-prog on'+(err?' err':'');
+}
+function readXlsx(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=e=>{try{res(XLSX.read(e.target.result,{type:'array'}));}catch(x){rej(x);}};
+    r.onerror=rej; r.readAsArrayBuffer(file);
+  });
+}
+async function importarPosicao(){
+  const fZ01=document.getElementById('imp-z01').files[0];
+  const fZ05=document.getElementById('imp-z05').files[0];
+  const fSb8=document.getElementById('imp-sb8').files[0];
+  if(!fZ01||!fZ05||!fSb8){ toast('Selecione os 3 arquivos',1); return; }
+  const btn=document.getElementById('btn-importar');
+  btn.disabled=true;
+  try{
+    setImpStatus('Lendo arquivos...');
+    const [wbZ01,wbZ05,wbSb8]=await Promise.all([readXlsx(fZ01),readXlsx(fZ05),readXlsx(fSb8)]);
+
+    // Z01: gtin → {descr, pares, marca}
+    setImpStatus('Processando Z01...');
+    const z01={}; 
+    XLSX.utils.sheet_to_json(wbZ01.Sheets[wbZ01.SheetNames[0]],{header:1}).slice(3).forEach(r=>{
+      if(!r[0])return; const g=String(r[0]).trim();
+      z01[g]={descr:String(r[1]||'').trim(),pares:parseInt(r[2])||1,marca:String(r[3]||'').trim()};
+    });
+
+    // Z05: gtin → [endereco, ...]
+    setImpStatus('Processando Z05...');
+    const z05={};
+    XLSX.utils.sheet_to_json(wbZ05.Sheets[wbZ05.SheetNames[0]],{header:1}).slice(3).forEach(r=>{
+      if(!r[0]||!r[2])return; const g=String(r[0]).trim(),e=String(r[2]).trim();
+      if(!z05[g])z05[g]=[]; z05[g].push(e);
+    });
+
+    // SB8: lote → sum(saldo)
+    setImpStatus('Processando SB8...');
+    const saldo={};
+    XLSX.utils.sheet_to_json(wbSb8.Sheets[wbSb8.SheetNames[0]],{header:1}).slice(3).forEach(r=>{
+      if(!r[9])return; const l=String(r[9]).trim(), s=Number(r[6])||0;
+      saldo[l]=(saldo[l]||0)+s;
+    });
+
+    // Build rows
+    setImpStatus('Calculando posições...');
+    const rows=[];
+    for(const [gtin,tot] of Object.entries(saldo)){
+      const enderecos=z05[gtin]||[]; if(!enderecos.length) continue;
+      const meta=z01[gtin]||{pares:1,descr:'',marca:''};
+      const pares=meta.pares||1;
+      const qtSis=Math.round(tot/pares*1000)/1000;
+      enderecos.forEach(end=>{
+        rows.push({inventario:'Julho-2026',gtin,descricao:meta.descr,marca:meta.marca,endereco:end,pares,qtd_sistema:qtSis});
+      });
+    }
+    setImpStatus(`Salvando ${rows.length} registros...`);
+
+    // Upload to Supabase in batches
+    const sb=getSB(); if(!sb){ toast('Sem conexão Supabase',1); return; }
+    await sb.from('inv_posicao').delete().eq('inventario','Julho-2026');
+    const BATCH=500;
+    for(let i=0;i<rows.length;i+=BATCH){
+      const {error}=await sb.from('inv_posicao').insert(rows.slice(i,i+BATCH));
+      if(error){setImpStatus('Erro: '+error.message,1);return;}
+      setImpStatus(`Salvando... ${Math.min(i+BATCH,rows.length)}/${rows.length}`);
+    }
+
+    // Reload POS
+    await loadPosicao();
+    setImpStatus(`✓ ${rows.length} posições importadas — ${Object.keys(ADDR_IDX||{}).length} endereços`);
+    toast('Importação concluída ✓');
+  }catch(e){
+    setImpStatus('Erro: '+e.message,1);
+    toast('Erro na importação',1);
+    console.error(e);
+  }finally{
+    btn.disabled=false;
+  }
+}
+
+async function zerarContagens(){
+  if(!confirm('Apagar TODAS as contagens? Esta ação não pode ser desfeita.'))return;
+  const sb=getSB(); if(!sb){toast('Sem conexão',1);return;}
+  const{error}=await sb.from('inv_contagens').delete().eq('inventario','Julho-2026');
+  if(error){toast('Erro: '+error.message,1);return;}
+  DONE=[]; renderMon&&renderMon(); renderAddrHist&&renderAddrHist();
+  toast('✓ Contagens zeradas');
+}
+
+async function zerarPosicao(){
+  if(!confirm('Apagar posição de estoque importada? O app voltará a usar o catálogo embutido.'))return;
+  const sb=getSB(); if(!sb){toast('Sem conexão',1);return;}
+  const{error}=await sb.from('inv_posicao').delete().eq('inventario','Julho-2026');
+  if(error){toast('Erro: '+error.message,1);return;}
+  POS=[]; POS_MAP={}; ADDR_IDX=null; buildIdx();
+  toast('✓ Posição zerada — usando catálogo embutido');
 }
 
 </script>
