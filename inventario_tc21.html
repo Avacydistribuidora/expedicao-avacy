@@ -193,25 +193,25 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 /* ── MONITORING ── */
 .kpi-g{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .kpi{background:var(--bg3);border-radius:var(--r);padding:12px;text-align:center}
-.kn{font-size:24px;font-weight:700}
-.kl{font-size:10px;color:var(--mut);margin-top:2px}
+.kn{font-size:34px;font-weight:700}
+.kl{font-size:13px;color:var(--mut);margin-top:2px}
 .c-grn{color:var(--grn)}.c-red{color:var(--red)}.c-ylw{color:var(--ylw)}.c-acc{color:var(--acc)}.c-pur{color:var(--pur)}
-.prog-pct{font-size:22px;font-weight:800;text-align:center;color:var(--grn);margin-bottom:4px}
+.prog-pct{font-size:32px;font-weight:800;text-align:center;color:var(--grn);margin-bottom:4px}
 .prog-tr{background:var(--bg3);border-radius:20px;height:13px;overflow:hidden;margin-bottom:5px}
 .prog-br{height:100%;background:linear-gradient(90deg,var(--acc),var(--grn));border-radius:20px;transition:width .5s;min-width:0}
-.prog-s{font-size:11px;color:var(--mut);text-align:center}
+.prog-s{font-size:14px;color:var(--mut);text-align:center}
 .dw{display:flex;align-items:center;gap:12px}
-.leg-i{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:12px}
+.leg-i{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:14px}
 .leg-d{width:9px;height:9px;border-radius:50%;flex-shrink:0}
 .urow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bdr)}
 .urow:last-child{border:none}
 .acur-big{font-size:40px;font-weight:800;text-align:center;color:var(--grn);margin:4px 0 2px}
-.acur-s{font-size:11px;color:var(--mut);text-align:center}
+.acur-s{font-size:13px;color:var(--mut);text-align:center}
 .btn-exp{width:100%;background:var(--bg3);border:1.5px solid var(--acc);border-radius:var(--r);color:var(--acc);font-size:13px;font-weight:700;padding:12px;cursor:pointer}
 .btn-exp:active{background:var(--acc);color:#fff}
 .btn-dng{border-color:var(--red);color:var(--red);margin-top:8px}
 .btn-dng:active{background:var(--red);color:#fff}
-.empty{text-align:center;color:var(--mut);font-size:12px;padding:18px 0}
+.empty{text-align:center;color:var(--mut);font-size:14px;padding:18px 0}
 
 /* ── ADDR SESSION LIST ── */
 .asl-item{border-bottom:1px solid var(--bdr);padding:10px 0}
@@ -311,7 +311,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V2.1</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V2.2</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -463,7 +463,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
           <circle cx="50" cy="50" r="36" fill="none" stroke="var(--bdr)" stroke-width="16"/>
           <circle id="d-ok" cx="50" cy="50" r="36" fill="none" stroke="var(--grn)" stroke-width="16" stroke-dasharray="0 226.2" transform="rotate(-90 50 50)" style="transition:stroke-dasharray .5s"/>
           <circle id="d-dv" cx="50" cy="50" r="36" fill="none" stroke="var(--red)" stroke-width="16" stroke-dasharray="0 226.2" transform="rotate(-90 50 50)" style="transition:stroke-dasharray .5s"/>
-          <text x="50" y="54" text-anchor="middle" fill="var(--txt)" font-size="13" font-weight="bold" id="d-pct">—</text>
+          <text x="50" y="54" text-anchor="middle" fill="var(--txt)" font-size="16" font-weight="bold" id="d-pct">—</text>
         </svg>
         <div style="flex:1">
           <div class="leg-i"><div class="leg-d" style="background:var(--grn)"></div><span id="l-ok">OK: 0</span></div>
@@ -476,7 +476,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
     <div class="card" id="addr-sessions-card">
       <div class="ct">📍 Endereços Contados <span id="addr-sess-count" style="color:var(--acc)"></span></div>
       <div id="addr-sess-filter" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
-        <input id="addr-search" style="flex:1;min-width:100px;background:var(--bg3);border:1.5px solid var(--bdr);border-radius:8px;color:var(--txt);font-size:13px;padding:7px 10px;outline:none" placeholder="Filtrar endereço..." oninput="renderAddrSessions()" autocomplete="off" autocorrect="off" spellcheck="false">
+        <input id="addr-search" style="flex:1;min-width:100px;background:var(--bg3);border:1.5px solid var(--bdr);border-radius:8px;color:var(--txt);font-size:15px;padding:7px 10px;outline:none" placeholder="Filtrar endereço..." oninput="renderAddrSessions()" autocomplete="off" autocorrect="off" spellcheck="false">
       </div>
       <div id="addr-sess-list"><div class="empty">Nenhum endereço contado ainda</div></div>
     </div>
@@ -1142,10 +1142,13 @@ function renderUList(){
     const stCls=u.active?(u.role==='adm'?'us-adm':'us-op'):'us-off';
     const lbl=u.active?(u.role==='adm'?'Admin':'Operador'):'Inativo';
     const letter=(u.name||u.user||'?').charAt(0).toUpperCase();
+    const delBtn=u.user==='admin'?'':`<button style="background:none;border:none;color:var(--mut);font-size:18px;padding:4px 6px;cursor:pointer" onclick="event.stopPropagation();quickDeleteUser(${JSON.stringify(u.id)})">🗑</button>`;
     return `<div class="ulist-item" onclick="editUser(${JSON.stringify(u.id)})">
       <div class="uavt ${avCls}">${letter}</div>
       <div style="flex:1;min-width:0"><div class="un">${u.name}</div><div class="ui">@${u.user}</div></div>
       <span class="ustat ${stCls}">${lbl}</span>
+      <button style="background:none;border:none;color:var(--acc);font-size:14px;padding:4px 6px;cursor:pointer" onclick="event.stopPropagation();editUser(${JSON.stringify(u.id)})">✏️</button>
+      ${delBtn}
     </div>`;
   }).join('');
 }
@@ -1187,6 +1190,16 @@ function selURole(r){
   _curURole=r;
   document.getElementById('rs-op').className='rs-btn'+(r==='op'?' sel-op':'');
   document.getElementById('rs-adm').className='rs-btn'+(r==='adm'?' sel-adm':'');
+}
+
+async function quickDeleteUser(id){
+  const u=USERS.find(x=>x.id===id);
+  if(!u||u.user==='admin'){toast('Não pode excluir admin',1);return;}
+  if(!confirm(`Excluir "${u.name}" (@${u.user})?`))return;
+  const sb=getSB();
+  if(sb){const{error}=await sb.from('inv_usuarios').delete().eq('id',id);if(error){toast('Erro: '+error.message,1);return;}}
+  USERS=USERS.filter(x=>x.id!==id);
+  renderUList(); toast('Usuário excluído ✓');
 }
 
 async function deleteUser(){
