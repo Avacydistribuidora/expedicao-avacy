@@ -311,7 +311,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V1.8</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V1.9</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -331,7 +331,13 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
   <div class="topbar">
     <span style="font-size:17px">📦</span>
     <span class="tb-t" id="tb-t">INVENTÁRIO</span>
-    <span class="rb" id="tb-rb">OP</span>
+    <div style="position:relative">
+      <span class="rb" id="tb-rb" style="cursor:default" onclick="toggleUserMenu(event)">OP</span>
+      <div class="acoes-menu" id="user-menu">
+        <div class="acoes-item" onclick="goUsers();closeUserMenu()"><span class="ai-ico">👥</span>Gerenciar Usuários</div>
+        <div class="acoes-item" onclick="doLimpar();closeUserMenu()"><span class="ai-ico">🗑</span>Limpar Dados</div>
+      </div>
+    </div>
     <button class="tb-btn tb-sync" id="btn-sync" onclick="doSync(this)" title="Sincronizar dados" style="display:none">🔄</button>
     <div class="acoes-wrap" id="acoes-wrap">
       <button class="btn-acoes" onclick="toggleAcoes(event)">⚙ Ações ▾</button>
@@ -812,9 +818,10 @@ function enterMain(){
   document.getElementById('tb-t').textContent='Inventário Matriz - Julho 2026';
   const rb=document.getElementById('tb-rb');
   const shortName=CU.name.split(' ')[0];
-  rb.textContent=shortName+' · '+(adm?'ADMIN':'OP');
+  rb.textContent=shortName+' · '+(adm?'ADMIN ▾':'OP');
+  rb.style.cursor=adm?'pointer':'default';
   rb.className='rb '+(adm?'rb-adm':'rb-op');
-  document.getElementById('acoes-wrap').style.display=adm?'':'none';
+  document.getElementById('acoes-wrap').style.display=adm?'flex':'none';
   document.getElementById('btn-sync').style.display=adm?'':'none';
   document.getElementById('t-mon').style.display=adm?'':'none';
   document.getElementById('t-est').style.display=adm?'':'none';
@@ -1603,6 +1610,20 @@ function closeAcoes(){
 document.addEventListener('click',function(e){
   const wrap=document.getElementById('acoes-wrap');
   if(wrap&&!wrap.contains(e.target)) closeAcoes();
+});
+
+
+function toggleUserMenu(e){
+  if(CU&&CU.role!=='adm') return;
+  e.stopPropagation();
+  document.getElementById('user-menu').classList.toggle('open');
+}
+function closeUserMenu(){
+  const m=document.getElementById('user-menu');
+  if(m) m.classList.remove('open');
+}
+document.addEventListener('click',function(){
+  closeUserMenu();
 });
 
 </script>
