@@ -311,7 +311,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V2.0</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V2.1</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -342,7 +342,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
     <div class="acoes-wrap" id="acoes-wrap">
       <button class="btn-acoes" onclick="toggleAcoes(event)">⚙ Ações ▾</button>
       <div class="acoes-menu" id="acoes-menu">
-        <div class="acoes-item" onclick="goTab('imp');closeAcoes()"><span class="ai-ico">📥</span>Importar</div>
+        <div class="acoes-item" onclick="openImp();closeAcoes()"><span class="ai-ico">📥</span>Importar</div>
         <div class="acoes-item" onclick="openQR();closeAcoes()"><span class="ai-ico">📱</span>QR Code</div>
         <div class="acoes-item" onclick="goUsers();closeAcoes()"><span class="ai-ico">👥</span>Gerenciar Usuários</div>
       </div>
@@ -502,44 +502,6 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
       <input id="end-inp" class="addr-inp" type="text" placeholder="Filtrar endereço..." autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" oninput="renderEndTab()" style="width:100%;margin-bottom:0">
     </div>
     <div id="end-list" style="display:flex;flex-direction:column;gap:8px;margin-top:8px"></div>
-  </div>
-
-  <!-- ── IMPORTAR ── -->
-  <div class="pg hide" id="p-imp" style="padding:12px;overflow-y:auto">
-    <div class="card">
-      <div class="ct">📥 Importar Posição de Estoque</div>
-      <div class="imp-sec">
-        <label>1. Z01 — Catálogo de grades (GTIN + Pares)</label>
-        <div class="imp-file" onclick="document.getElementById('imp-z01').click()">
-          <span style="font-size:18px">📋</span>
-          <span class="imp-fname" id="nm-z01">Nenhum arquivo selecionado</span>
-          <input type="file" id="imp-z01" accept=".xlsx" onchange="setImpFile('z01',this)">
-        </div>
-      </div>
-      <div class="imp-sec">
-        <label>2. Z05 — Endereços e estoque por grade</label>
-        <div class="imp-file" onclick="document.getElementById('imp-z05').click()">
-          <span style="font-size:18px">🗂</span>
-          <span class="imp-fname" id="nm-z05">Nenhum arquivo selecionado</span>
-          <input type="file" id="imp-z05" accept=".xlsx" onchange="setImpFile('z05',this)">
-        </div>
-      </div>
-      <div class="imp-sec">
-        <label>3. SB8 — Saldo por lote (posição do dia)</label>
-        <div class="imp-file" onclick="document.getElementById('imp-sb8').click()">
-          <span style="font-size:18px">📦</span>
-          <span class="imp-fname" id="nm-sb8">Nenhum arquivo selecionado</span>
-          <input type="file" id="imp-sb8" accept=".xlsx" onchange="setImpFile('sb8',this)">
-        </div>
-      </div>
-      <div id="imp-prog" class="imp-prog"></div>
-      <button class="btn-acc" id="btn-importar" onclick="importarPosicao()" style="width:100%;margin-top:12px;padding:12px;font-size:14px;font-weight:700">⬆ Importar para Supabase</button>
-    </div>
-    <div class="card" style="margin-top:8px">
-      <div class="ct" style="color:#ef5350">⚠ Operações de Reset</div>
-      <button class="btn-danger" onclick="zerarContagens()">🗑 Zerar Contagens — apaga todos os registros de contagem</button>
-      <button class="btn-danger" onclick="zerarPosicao()">🗑 Zerar Posição — apaga os dados importados do SB8/Z05</button>
-    </div>
   </div>
 
 </div><!-- /s-main -->
@@ -828,7 +790,7 @@ function enterMain(){
   document.getElementById('t-end').style.display=adm?'':'none';
   // force to cnt tab
   document.getElementById('t-cnt').classList.add('on'); document.getElementById('t-mon').classList.remove('on'); document.getElementById('t-est').classList.remove('on'); document.getElementById('t-end').classList.remove('on'); 
-  document.getElementById('p-cnt').classList.remove('hide'); document.getElementById('p-mon').classList.add('hide'); document.getElementById('p-est').classList.add('hide'); document.getElementById('p-end').classList.add('hide'); if(document.getElementById('p-imp'))document.getElementById('p-imp').classList.add('hide');
+  document.getElementById('p-cnt').classList.remove('hide'); document.getElementById('p-mon').classList.add('hide'); document.getElementById('p-est').classList.add('hide'); document.getElementById('p-end').classList.add('hide'); 
   go('main');
   buildIdx();
   // Always clear in-progress session on login — start fresh at address input
@@ -1275,9 +1237,11 @@ function goUsers(){ go('users'); renderUList(); }
 
 // ═════════════════════ TABS ═════════════════════
 function goTab(t){
-  ['cnt','mon','est','end','imp'].forEach(x=>{
-    document.getElementById('t-'+x).classList.toggle('on',t===x);
-    document.getElementById('p-'+x).classList.toggle('hide',t!==x);
+  ['cnt','mon','est','end'].forEach(x=>{
+    const tb=document.getElementById('t-'+x);
+    const pb=document.getElementById('p-'+x);
+    if(tb) tb.classList.toggle('on',t===x);
+    if(pb) pb.classList.toggle('hide',t!==x);
   });
   if(t==='mon') renderMon();
   if(t==='cnt') renderAddrHist();
@@ -1515,29 +1479,48 @@ async function importarPosicao(){
     setImpStatus('Lendo arquivos...');
     const [wbZ01,wbZ05,wbSb8]=await Promise.all([readXlsx(fZ01),readXlsx(fZ05),readXlsx(fSb8)]);
 
-    // Z01: gtin → {descr, pares, marca}
+    // Parsing robusto: localiza linha de dados pelo padrão do conteúdo
+    function xlsxRows(wb){ return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:''}); }
+    function findDataStart(rows, colIdx, pattern){
+      for(let i=0;i<rows.length;i++){
+        if(String(rows[i][colIdx]||'').trim().match(pattern)) return i;
+      }
+      return 3; // fallback
+    }
+
+    // Z01: GTIN → {descr, pares, marca}
     setImpStatus('Processando Z01...');
-    const z01={}; 
-    XLSX.utils.sheet_to_json(wbZ01.Sheets[wbZ01.SheetNames[0]],{header:1}).slice(3).forEach(r=>{
-      if(!r[0])return; const g=String(r[0]).trim();
+    const z01={};
+    const z01rows=xlsxRows(wbZ01);
+    const z01s=findDataStart(z01rows,0,/^\d{8,}/);
+    z01rows.slice(z01s).forEach(r=>{
+      const g=String(r[0]||'').trim(); if(!g.match(/^\d{8,}/))return;
       z01[g]={descr:String(r[1]||'').trim(),pares:parseInt(r[2])||1,marca:String(r[3]||'').trim()};
     });
 
-    // Z05: gtin → [endereco, ...]
+    // Z05: GTIN → [enderecos]
     setImpStatus('Processando Z05...');
     const z05={};
-    XLSX.utils.sheet_to_json(wbZ05.Sheets[wbZ05.SheetNames[0]],{header:1}).slice(3).forEach(r=>{
-      if(!r[0]||!r[2])return; const g=String(r[0]).trim(),e=String(r[2]).trim();
-      if(!z05[g])z05[g]=[]; z05[g].push(e);
+    const z05rows=xlsxRows(wbZ05);
+    const z05s=findDataStart(z05rows,0,/^\d{8,}/);
+    z05rows.slice(z05s).forEach(r=>{
+      const g=String(r[0]||'').trim(),e=String(r[2]||'').trim();
+      if(!g.match(/^\d{8,}/)||!e)return;
+      if(!z05[g])z05[g]=[]; if(!z05[g].includes(e))z05[g].push(e);
     });
 
-    // SB8: lote → sum(saldo)
+    // SB8: Planilha dinâmica com 2 colunas (Rótulos de Linha=GTIN, Soma de Saldo=total)
     setImpStatus('Processando SB8...');
     const saldo={};
-    XLSX.utils.sheet_to_json(wbSb8.Sheets[wbSb8.SheetNames[0]],{header:1}).slice(3).forEach(r=>{
-      if(!r[9])return; const l=String(r[9]).trim(), s=Number(r[6])||0;
-      saldo[l]=(saldo[l]||0)+s;
+    const sb8rows=xlsxRows(wbSb8);
+    // Pula linha de cabeçalho (row 0) e ignora linha "Total Geral" (última)
+    sb8rows.slice(1).forEach(r=>{
+      const l=String(r[0]||'').trim();
+      if(!l||l.toLowerCase().includes('total'))return; // pula total geral
+      const s=parseFloat(String(r[1]||'0').replace(',','.'))||0;
+      if(s>0) saldo[l]=s;
     });
+    setImpStatus('Z01:'+Object.keys(z01).length+' Z05:'+Object.keys(z05).length+' SB8:'+Object.keys(saldo).length+' lotes...');
 
     // Build rows
     setImpStatus('Calculando posições...');
@@ -1626,7 +1609,76 @@ document.addEventListener('click',function(){
   closeUserMenu();
 });
 
+
+function openImp(){ document.getElementById('imp-overlay').classList.add('on'); }
+function closeImp(){ document.getElementById('imp-overlay').classList.remove('on'); }
+
 </script>
+
+
+<!-- ══ IMPORT MODAL ══ -->
+<div class="qr-overlay" id="imp-overlay" onclick="if(event.target===this)closeImp()">
+  <div style="background:var(--bg2);border:1px solid var(--bdr);border-radius:16px;padding:0;max-width:360px;width:94%;max-height:92vh;overflow:hidden;display:flex;flex-direction:column">
+    <!-- Header -->
+    <div style="padding:16px 18px 12px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:var(--txt)">📥 Importar Posição de Estoque</div>
+        <div style="font-size:11px;color:var(--mut);margin-top:2px">Z01 · Z05 · SB8 → Supabase inv_posicao</div>
+      </div>
+      <button onclick="closeImp()" style="background:none;border:none;color:var(--mut);font-size:20px;cursor:pointer;padding:0 4px">✕</button>
+    </div>
+    <!-- Files -->
+    <div style="padding:14px 18px;overflow-y:auto;flex:1">
+      <div class="imp-sec">
+        <label>1. Z01 — Catálogo de grades (GTIN + Pares)</label>
+        <div class="imp-file" onclick="document.getElementById('imp-z01').click()">
+          <span style="font-size:20px">📋</span>
+          <div style="flex:1;min-width:0">
+            <div class="imp-fname" id="nm-z01">Clique para selecionar</div>
+            <div style="font-size:10px;color:var(--mut);margin-top:1px">GTIN · Descrição · Pares · Marca</div>
+          </div>
+          <span style="font-size:11px;color:var(--mut)">.xlsx</span>
+          <input type="file" id="imp-z01" accept=".xlsx" onchange="setImpFile('z01',this)">
+        </div>
+      </div>
+      <div class="imp-sec">
+        <label>2. Z05 — Endereços e estoque por grade</label>
+        <div class="imp-file" onclick="document.getElementById('imp-z05').click()">
+          <span style="font-size:20px">🗂</span>
+          <div style="flex:1;min-width:0">
+            <div class="imp-fname" id="nm-z05">Clique para selecionar</div>
+            <div style="font-size:10px;color:var(--mut);margin-top:1px">Cod.Grade · Endereço · Estoque MT</div>
+          </div>
+          <span style="font-size:11px;color:var(--mut)">.xlsx</span>
+          <input type="file" id="imp-z05" accept=".xlsx" onchange="setImpFile('z05',this)">
+        </div>
+      </div>
+      <div class="imp-sec">
+        <label>3. SB8 — Saldo por lote (posição do dia)</label>
+        <div class="imp-file" onclick="document.getElementById('imp-sb8').click()">
+          <span style="font-size:20px">📦</span>
+          <div style="flex:1;min-width:0">
+            <div class="imp-fname" id="nm-sb8">Clique para selecionar</div>
+            <div style="font-size:10px;color:var(--mut);margin-top:1px">Planilha dinâmica: Lote · Saldo Total</div>
+          </div>
+          <span style="font-size:11px;color:var(--mut)">.xlsx</span>
+          <input type="file" id="imp-sb8" accept=".xlsx" onchange="setImpFile('sb8',this)">
+        </div>
+      </div>
+      <div id="imp-prog" class="imp-prog"></div>
+    </div>
+    <!-- Footer buttons -->
+    <div style="padding:12px 18px;border-top:1px solid var(--bdr);display:flex;gap:10px">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeImp()">Cancelar</button>
+      <button class="btn btn-acc" id="btn-importar" style="flex:2;font-weight:700" onclick="importarPosicao()">⬆ Importar</button>
+    </div>
+    <!-- Reset section -->
+    <div style="padding:0 18px 14px;display:flex;gap:8px">
+      <button class="btn-danger" style="flex:1;text-align:center;font-size:11px" onclick="zerarContagens()">🗑 Zerar Contagens</button>
+      <button class="btn-danger" style="flex:1;text-align:center;font-size:11px" onclick="zerarPosicao()">🗑 Zerar Posição</button>
+    </div>
+  </div>
+</div>
 
 <!-- ══ QR CODE MODAL ══ -->
 <div class="qr-overlay" id="qr-overlay" onclick="if(event.target===this)closeQR()">
