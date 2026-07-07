@@ -311,7 +311,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V2.5</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V2.6</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -932,7 +932,28 @@ function renderNCnt(){
   }
 }
 
-function selNCnt(n){ initSess(n); showStep('cnt'); renderSess(); setTimeout(()=>document.getElementById('scan-inp').focus(),200); }
+function selNCnt(n){
+  const prev=DONE.find(s=>s.addr===CUR_ADDR&&s.ncnt===n);
+  if(prev){
+    // Restaura sessão anterior
+    CUR_NCNT=n; CUR_SESS={};
+    (ADDR_IDX[CUR_ADDR]||[]).forEach(it=>{ CUR_SESS[it.ean]={descr:it.descr,qtSis:it.qt,qtCnt:0,ext:false}; });
+    (prev.items||[]).forEach(it=>{
+      if(!CUR_SESS[it.ean]) CUR_SESS[it.ean]={descr:it.descr,qtSis:it.qtSis,qtCnt:0,ext:it.ext||false};
+      CUR_SESS[it.ean].qtCnt=it.qtCnt;
+    });
+  } else {
+    initSess(n);
+  }
+  showStep('cnt'); renderSess();
+  setTimeout(()=>document.getElementById('scan-inp').focus(),200);
+}
+
+function goAddrFromHist(addr){
+  CUR_ADDR=addr; CUR_NCNT=null; CUR_SESS={};
+  document.getElementById('addr-inp').value=addr;
+  showStep('ncnt'); renderNCnt();
+}
 
 function voltarNCnt(){ if(anyBip()&&!confirm('Voltar? Os bipes serão perdidos.'))return; CUR_NCNT=null;CUR_SESS={};showStep('ncnt');renderNCnt(); }
 
@@ -1055,7 +1076,7 @@ function renderAddrHist(){
     const chips=cnts.map(n=>`<span class="cc cc${n}">C${n}</span>`).join('');
     const bip=(last.items||[]).filter(it=>it.qtCnt>0).length;
     const opLine=isAdm&&last.op?`<div style="font-size:10px;color:var(--mut);margin-top:2px">👤 ${last.op}</div>`:'';
-    const clickFn=isAdm?`openHistDetail(${JSON.stringify(addr)})`:`selAddr(${JSON.stringify(addr)})`;
+    const clickFn=isAdm?`openHistDetail(${JSON.stringify(addr)})`:`goAddrFromHist(${JSON.stringify(addr)})`;
     return `<div class="ahi" onclick="${clickFn}">
       <div style="flex:1;min-width:0"><div class="ahi-a">${addr}</div><div class="ahi-i">${last.ts} · ${bip} itens</div>${opLine}
       <div class="cnt-chips">${chips}</div></div>
