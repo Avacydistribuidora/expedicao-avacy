@@ -323,7 +323,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V4.0</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V4.1</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -1983,37 +1983,23 @@ async function importarPosicao(){
     }
 
     // ── Z05: col0=GTIN, col1=Descr, col2=Endereço, col4=Marca, col5=EstoqueMT ──
-    // EstoqueMT = qtd em caixas (backup quando SB8 não cobre o GTIN)
     setImpStatus('Processando Z05 + cruzando SB8...');
     const z05rows=xlsxRows(wbZ05);
     const z05s=findDataStart(z05rows,0,/^\d{8,}/);
 
-    // Primeiro passo: montar estoque por GTIN (EstMT e SB8 se disponível)
-    const z05estMT={};
+    // Montar conjunto de GTINs com endereço (e seus endereços)
+    const z05addrs={}; // gtin → [addrs]
     z05rows.slice(z05s).forEach(r=>{
-      const g=String(r[0]||'').trim();
-      if(!g.match(/^\d{8,}/)) return;
-      if(!(g in z05estMT)) z05estMT[g]=parseFloat(String(r[5]||'0'))||0;
+      const g=String(r[0]||'').trim(), a=String(r[2]||'').trim();
+      if(!g.match(/^\d{8,}/)||!a) return;
+      if(!z05addrs[g]) z05addrs[g]=[];
+      if(!z05addrs[g].includes(a)) z05addrs[g].push(a);
     });
 
-    // Segundo passo: para cada GTIN no Z05, calcular qtSis
-    const qtSisMap={};
-    for(const [gtin,estMT] of Object.entries(z05estMT)){
-      const meta=z01[gtin]||{pares:1};
-      const pares=meta.pares||1;
-      if(sb8Saldo[gtin]!=null){
-        // SB8 cobre este GTIN: saldo em pares ÷ pares = caixas
-        qtSisMap[gtin]=Math.round(sb8Saldo[gtin]/pares*1000)/1000;
-      } else {
-        // Fallback: Z05.EstMT já está em caixas
-        qtSisMap[gtin]=estMT;
-      }
-    }
-    const sb8Covered=Object.keys(qtSisMap).filter(g=>sb8Saldo[g]!=null).length;
-
-    // Terceiro passo: montar linhas finais
     const rows=[];
     const seenAddr=new Set();
+
+    // ── PASSO 1: GTINs com endereço no Z05 ──────────────────────────────
     z05rows.slice(z05s).forEach(r=>{
       const gtin=String(r[0]||'').trim();
       const addr=String(r[2]||'').trim();
@@ -2022,17 +2008,35 @@ async function importarPosicao(){
       if(seenAddr.has(key)) return;
       seenAddr.add(key);
       const meta=z01[gtin]||{descr:String(r[1]||'').trim(),pares:1,marca:String(r[4]||'').trim()};
-      rows.push({
-        inventario:'Julho-2026',
-        gtin,
-        descricao:meta.descr||String(r[1]||'').trim(),
-        marca:meta.marca||String(r[4]||'').trim(),
-        endereco:addr,
-        pares:meta.pares||1,
-        qtd_sistema:qtSisMap[gtin]||0
-      });
+      const pares=meta.pares||1;
+      // qtSis: SB8.Lote/pares se disponível, senão Z05.EstMT
+      let qtSis=0;
+      if(sb8Saldo[gtin]!=null){
+        qtSis=Math.round(sb8Saldo[gtin]/pares*1000)/1000;
+      } else {
+        qtSis=parseFloat(String(r[5]||'0'))||0;
+      }
+      rows.push({inventario:'Julho-2026',gtin,descricao:meta.descr||String(r[1]||'').trim(),
+        marca:meta.marca||String(r[4]||'').trim(),endereco:addr,pares,qtd_sistema:qtSis});
     });
-    setImpStatus(`Z01:${Object.keys(z01).length} | Z05:${rows.length} posições | SB8 cobre ${sb8Covered} GTINs (restante via Z05)...`);
+
+    // ── PASSO 2: GTINs no SB8 (via Z01) que NÃO têm endereço no Z05 ────
+    // Incluídos como "SEM ENDEREÇO" para que o Total Estoque Sistema seja correto
+    let semEndCount=0;
+    for(const [lote,saldo] of Object.entries(sb8Saldo)){
+      if(!lote.match(/^\d{8,}/)) continue;
+      if(z05addrs[lote]) continue; // já tem endereço, coberto no passo 1
+      const meta=z01[lote]; if(!meta) continue; // sem Z01 = sem pares
+      const pares=meta.pares||1;
+      const qtSis=Math.round(saldo/pares*1000)/1000;
+      if(qtSis<=0) continue;
+      rows.push({inventario:'Julho-2026',gtin:lote,descricao:meta.descr,
+        marca:meta.marca,endereco:'SEM ENDEREÇO',pares,qtd_sistema:qtSis});
+      semEndCount++;
+    }
+
+    const sb8Covered=Object.keys(sb8Saldo).filter(g=>g.match(/^\d{8,}/)&&z01[g]).length;
+    setImpStatus(`Z05:${rows.length-semEndCount} posições | +${semEndCount} sem endereço | SB8: ${sb8Covered} lotes cobrindo ${Math.round(rows.reduce((s,r)=>s+r.qtd_sistema,0)).toLocaleString('pt-BR')} vol...`);
     setImpStatus(`Salvando ${rows.length} registros...`);
 
     // Upload to Supabase in batches
