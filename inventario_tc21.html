@@ -323,7 +323,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V3.7</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V3.8</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -472,45 +472,53 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
   <!-- ── MONITORAMENTO ── -->
   <div class="pg hide" id="p-mon">
-    <div class="card">
-      <div class="ct">📈 Progresso — Endereços</div>
-      <div class="prog-pct" id="m-pct">0%</div>
-      <div class="prog-tr"><div class="prog-br" id="m-bar" style="width:0%"></div></div>
-      <div class="prog-s" id="m-sub">—</div>
-    </div>
-    <div class="kpi-g">
-      <div class="kpi">
+    <!-- ── KPI Row: 3 colunas ── -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div class="kpi" style="background:var(--bg2);border-radius:var(--r);padding:14px 12px;margin:0">
         <div class="kn c-acc" id="k-sys-vol">—</div>
         <div class="kl">Total Estoque Sistema</div>
         <div style="font-size:11px;color:var(--mut);margin-top:2px">volumes</div>
       </div>
-      <div class="kpi">
+      <div class="kpi" style="background:var(--bg2);border-radius:var(--r);padding:14px 12px;margin:0">
         <div class="kn c-grn" id="k-cnt-vol">—</div>
         <div class="kl">Total Contagem</div>
         <div style="font-size:11px;color:var(--mut);margin-top:2px">volumes</div>
       </div>
-    </div>
-    <div class="card" style="padding:12px 16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <span style="font-size:13px;color:var(--mut)">📦 Volumes contados vs sistema</span>
-        <span id="k-vol-pct" style="font-size:20px;font-weight:700;color:var(--acc)">0%</span>
+      <div class="kpi" style="background:var(--bg2);border-radius:var(--r);padding:14px 12px;margin:0;display:flex;flex-direction:column;justify-content:center">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:12px;color:var(--mut)">📦 Volumes contados vs sistema</span>
+          <span id="k-vol-pct" style="font-size:22px;font-weight:800;color:var(--acc)">0%</span>
+        </div>
+        <div class="prog-tr" style="margin-top:8px"><div class="prog-br" id="bar-vol" style="width:0%"></div></div>
       </div>
-      <div class="prog-tr"><div class="prog-br" id="bar-vol" style="width:0%"></div></div>
     </div>
-    <div class="card"><div class="ct">🎯 Acuracidade</div><div class="acur-big" id="m-acur">—</div><div class="acur-s">% volumes contados vs sistema</div></div>
-    <div class="card">
-      <div class="ct">🔵 Distribuição</div>
-      <div class="dw">
-        <svg width="100" height="100" viewBox="0 0 100 100" style="flex-shrink:0">
-          <circle cx="50" cy="50" r="36" fill="none" stroke="var(--bdr)" stroke-width="16"/>
-          <circle id="d-ok" cx="50" cy="50" r="36" fill="none" stroke="var(--grn)" stroke-width="16" stroke-dasharray="0 226.2" transform="rotate(-90 50 50)" style="transition:stroke-dasharray .5s"/>
-          <circle id="d-dv" cx="50" cy="50" r="36" fill="none" stroke="var(--red)" stroke-width="16" stroke-dasharray="0 226.2" transform="rotate(-90 50 50)" style="transition:stroke-dasharray .5s"/>
-          <text x="50" y="54" text-anchor="middle" fill="var(--txt)" font-size="16" font-weight="bold" id="d-pct">—</text>
-        </svg>
-        <div style="flex:1">
-          <div class="leg-i"><div class="leg-d" style="background:var(--grn)"></div><span id="l-ok">OK: 0</span></div>
-          <div class="leg-i"><div class="leg-d" style="background:var(--red)"></div><span id="l-dv">Divergência: 0</span></div>
-          <div class="leg-i"><div class="leg-d" style="background:var(--mut)"></div><span id="l-nd">Não bipado: 0</span></div>
+    <!-- ── 3-col row: ENDEREÇOS / Acuracidade / Distribuição ── -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div class="card" style="margin:0">
+        <div class="ct">📍 ENDEREÇOS</div>
+        <div class="prog-pct" id="m-pct">0%</div>
+        <div class="prog-tr"><div class="prog-br" id="m-bar" style="width:0%"></div></div>
+        <div class="prog-s" id="m-sub">—</div>
+      </div>
+      <div class="card" style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <div class="ct" style="align-self:flex-start">🎯 Acuracidade</div>
+        <div class="acur-big" id="m-acur">—</div>
+        <div class="acur-s">% volumes contados vs sistema</div>
+      </div>
+      <div class="card" style="margin:0">
+        <div class="ct">🔵 Distribuição</div>
+        <div class="dw">
+          <svg width="90" height="90" viewBox="0 0 100 100" style="flex-shrink:0">
+            <circle cx="50" cy="50" r="36" fill="none" stroke="var(--bdr)" stroke-width="16"/>
+            <circle id="d-ok" cx="50" cy="50" r="36" fill="none" stroke="var(--grn)" stroke-width="16" stroke-dasharray="0 226.2" transform="rotate(-90 50 50)" style="transition:stroke-dasharray .5s"/>
+            <circle id="d-dv" cx="50" cy="50" r="36" fill="none" stroke="var(--red)" stroke-width="16" stroke-dasharray="0 226.2" transform="rotate(-90 50 50)" style="transition:stroke-dasharray .5s"/>
+            <text x="50" y="54" text-anchor="middle" fill="var(--txt)" font-size="16" font-weight="bold" id="d-pct">—</text>
+          </svg>
+          <div style="flex:1;font-size:12px">
+            <div class="leg-i"><div class="leg-d" style="background:var(--grn)"></div><span id="l-ok">OK: 0</span></div>
+            <div class="leg-i"><div class="leg-d" style="background:var(--red)"></div><span id="l-dv">Divergência: 0</span></div>
+            <div class="leg-i"><div class="leg-d" style="background:var(--mut)"></div><span id="l-nd">Não bipado: 0</span></div>
+          </div>
         </div>
       </div>
     </div>
@@ -523,7 +531,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
       <!-- Top 10 Marcas -->
       <div class="card" style="margin:0">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:10px">
-          <div class="ct" style="margin-bottom:0">🏷️ Top 10 Marcas</div>
+          <div class="ct" style="margin-bottom:0">🏷️ MARCAS</div>
           <button class="btn btn-acc" style="padding:5px 12px;font-size:12px;width:auto" onclick="exportMarcas()">⬇ XLSX</button>
         </div>
         <div id="m-marcas"><div class="empty">—</div></div>
@@ -783,7 +791,7 @@ async function loadPosicao(sb){
     // Paginate to fetch all rows (Supabase default limit = 1000)
     let allData=[], from=0, PAGE=1000;
     while(true){
-      const {data,error}=await sb.from('inv_posicao').select('gtin,descricao,endereco,pares,qtd_sistema').eq('inventario','Julho-2026').range(from,from+PAGE-1);
+      const {data,error}=await sb.from('inv_posicao').select('gtin,descricao,marca,endereco,pares,qtd_sistema').eq('inventario','Julho-2026').range(from,from+PAGE-1);
       if(error||!data) break;
       allData=allData.concat(data);
       if(data.length<PAGE) break;
@@ -793,7 +801,7 @@ async function loadPosicao(sb){
     POS_MAP={};
     for(const r of allData){
       // qtd_sistema = total do GTIN (mesmo valor repetido em todos endereços) — não acumular
-      if(!POS_MAP[r.gtin]) POS_MAP[r.gtin]={descr:r.descricao||'',pares:r.pares||1,qtSis:r.qtd_sistema||0};
+      if(!POS_MAP[r.gtin]) POS_MAP[r.gtin]={descr:r.descricao||'',marca:r.marca||'',pares:r.pares||1,qtSis:r.qtd_sistema||0};
     }
     if(POS.length>0){ POS_MODE=true; rebuildIdxFromPos(); }
     else{ POS_MODE=true; ADDR_IDX={}; ADDR_LIST=[]; }
@@ -1513,7 +1521,7 @@ function getBrandData(){
   DONE.forEach(s=>{if(!bestByAddrB[s.addr]||s.ncnt>bestByAddrB[s.addr].ncnt)bestByAddrB[s.addr]=s;});
   Object.values(bestByAddrB).forEach(sess=>{
     (sess.items||[]).forEach(it=>{
-      const brand=(it.descr||'?').split(' ')[0].toUpperCase()||'?';
+      const brand=(POS_MAP[it.ean]?.marca||'').trim().toUpperCase()||(it.descr||'?').split(' ')[0].toUpperCase()||'?';
       if(!byBrand[brand]) byBrand[brand]={vol:0,sys:0,items:0};
       byBrand[brand].vol+=(it.qtCnt||0);
       byBrand[brand].sys+=(POS_MAP[it.ean]?.qtSis||0);
