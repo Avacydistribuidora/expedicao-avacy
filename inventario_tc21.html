@@ -323,7 +323,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V3.6</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V3.7</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -514,13 +514,28 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
         </div>
       </div>
     </div>
-    <div class="card"><div class="ct">👤 Por Operador</div><div id="m-users"><div class="empty">—</div></div></div>
-    <div class="card">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
-        <div class="ct" style="margin-bottom:0">🏷️ Top 10 Marcas</div>
-        <button class="btn btn-acc" style="padding:5px 12px;font-size:12px;width:auto" onclick="exportMarcas()">⬇ Exportar XLSX</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <!-- Por Operador -->
+      <div class="card" style="margin:0">
+        <div class="ct">👤 Por Operador</div>
+        <div id="m-users"><div class="empty">—</div></div>
       </div>
-      <div id="m-marcas" style="margin-top:10px"><div class="empty">—</div></div>
+      <!-- Top 10 Marcas -->
+      <div class="card" style="margin:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+          <div class="ct" style="margin-bottom:0">🏷️ Top 10 Marcas</div>
+          <button class="btn btn-acc" style="padding:5px 12px;font-size:12px;width:auto" onclick="exportMarcas()">⬇ XLSX</button>
+        </div>
+        <div id="m-marcas"><div class="empty">—</div></div>
+        <!-- Painel de produtos por marca -->
+        <div id="m-brand-detail" class="hide" style="margin-top:10px;border-top:1px solid var(--bdr);padding-top:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span id="m-brand-title" style="font-size:13px;font-weight:700;color:var(--acc)">—</span>
+            <button onclick="closeBrandDetail()" style="background:none;border:none;color:var(--mut);font-size:18px;cursor:pointer;padding:0 4px">✕</button>
+          </div>
+          <div id="m-brand-prods" style="max-height:260px;overflow-y:auto;font-size:12px"></div>
+        </div>
+      </div>
     </div>
     <div class="card" id="addr-sessions-card">
       <div class="ct">📍 Endereços Contados <span id="addr-sess-count" style="color:var(--acc)"></span></div>
@@ -1457,20 +1472,35 @@ function renderMon(){
   document.getElementById('l-ok').textContent='OK: '+volOk.toLocaleString('pt-BR')+' vol';
   document.getElementById('l-dv').textContent='Divergência: '+volDv.toLocaleString('pt-BR')+' vol';
   document.getElementById('l-nd').textContent='Não contado: '+Math.round(volNd).toLocaleString('pt-BR')+' vol';
-  // Operator table by volume
+  // Operator ranking: volumes + endereços + % do total
   const byOp={};
+  const totalAddrDone=Object.keys(bestByAddrV).length||1;
+  const totalVolAll=Object.values(bestByAddrV).reduce((s,sess)=>s+(sess.items||[]).reduce((a,it)=>a+(it.qtCnt||0),0),0)||1;
   Object.values(bestByAddrV).forEach(sess=>{
     const op=sess.op||'—';
-    if(!byOp[op]) byOp[op]={vol:0,ok:0};
-    (sess.items||[]).forEach(it=>{
-      const s=POS_MAP[it.ean]?.qtSis||0;
-      const c=it.qtCnt||0;
-      byOp[op].vol+=c;
-      byOp[op].ok+=Math.min(c,s);
-    });
+    if(!byOp[op]) byOp[op]={vol:0,addr:new Set()};
+    byOp[op].addr.add(sess.addr);
+    (sess.items||[]).forEach(it=>{ byOp[op].vol+=(it.qtCnt||0); });
   });
-  document.getElementById('m-users').innerHTML=Object.keys(byOp).length?
-    Object.entries(byOp).map(([op,v])=>`<div class="urow"><span style="flex:1;font-size:13px">${op}</span><span style="font-size:12px;color:var(--mut)">${v.vol.toLocaleString('pt-BR')} vol</span><span style="font-size:12px;color:var(--grn);margin-left:8px">${v.vol>0?Math.round(v.ok/v.vol*100):0}% OK</span></div>`).join(''):
+  const opEntries=Object.entries(byOp).map(([op,v])=>({op,vol:v.vol,addr:v.addr.size})).sort((a,b)=>b.vol-a.vol);
+  document.getElementById('m-users').innerHTML=opEntries.length?
+    opEntries.map((v,i)=>{
+      const pctVol=Math.round(v.vol/totalVolAll*100);
+      const pctAddr=Math.round(v.addr/totalAddrDone*100);
+      return `<div class="urow" style="flex-direction:column;align-items:stretch;gap:3px;padding-bottom:8px;border-bottom:1px solid var(--bdr)">
+        <div style="display:flex;justify-content:space-between">
+          <span style="font-weight:700;font-size:13px">${i+1}. ${v.op}</span>
+          <span style="font-size:12px;color:var(--acc);font-weight:600">${v.vol.toLocaleString('pt-BR')} vol</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--mut)">
+          <span>📍 ${v.addr} endereços (${pctAddr}% do total)</span>
+          <span>${pctVol}% dos volumes</span>
+        </div>
+        <div style="background:var(--bg3);border-radius:3px;height:5px;margin-top:2px">
+          <div style="background:var(--acc);height:5px;border-radius:3px;width:${pctVol}%"></div>
+        </div>
+      </div>`;
+    }).join(''):
     '<div class="empty">Nenhum dado</div>';
   // Brand ranking
   renderBrandRanking();
@@ -1502,16 +1532,56 @@ function renderBrandRanking(){
   el.innerHTML=top10.map(([brand,v],i)=>{
     const pct=Math.round(v.vol/maxVol*100);
     const acPct=v.sys>0?Math.min(Math.round(v.vol/v.sys*100),100):0;
-    return `<div style="margin-bottom:10px">
+    return `<div style="margin-bottom:8px;cursor:pointer" onclick="showBrandDetail(${JSON.stringify(brand)})">
       <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
         <span style="font-weight:600;color:var(--txt)">${i+1}. ${brand}</span>
-        <span style="color:var(--mut)">${v.vol.toLocaleString('pt-BR')} vol · ${acPct}% sys</span>
+        <span style="color:var(--mut)">${v.vol.toLocaleString('pt-BR')} vol · ${acPct}% sys <span style="color:var(--acc)">▸</span></span>
       </div>
-      <div style="background:var(--bg3);border-radius:4px;height:8px">
-        <div style="background:var(--acc);height:8px;border-radius:4px;width:${pct}%"></div>
+      <div style="background:var(--bg3);border-radius:4px;height:7px">
+        <div style="background:var(--acc);height:7px;border-radius:4px;width:${pct}%"></div>
       </div>
     </div>`;
   }).join('');
+}
+
+function showBrandDetail(brand){
+  const detail=document.getElementById('m-brand-detail');
+  const title=document.getElementById('m-brand-title');
+  const prods=document.getElementById('m-brand-prods');
+  if(!detail) return;
+  // Build product list for this brand from bestByAddr
+  const bestByAddrB={};
+  DONE.forEach(s=>{if(!bestByAddrB[s.addr]||s.ncnt>bestByAddrB[s.addr].ncnt)bestByAddrB[s.addr]=s;});
+  const prodMap={};
+  Object.values(bestByAddrB).forEach(sess=>{
+    (sess.items||[]).forEach(it=>{
+      const b=(it.descr||'?').split(' ')[0].toUpperCase();
+      if(b!==brand) return;
+      if(!prodMap[it.ean]) prodMap[it.ean]={descr:it.descr,vol:0,sys:POS_MAP[it.ean]?.qtSis||0};
+      prodMap[it.ean].vol+=(it.qtCnt||0);
+    });
+  });
+  const rows=Object.entries(prodMap).sort((a,b)=>b[1].vol-a[1].vol);
+  title.textContent='🏷️ '+brand+' — '+rows.length+' produtos';
+  prods.innerHTML=rows.length?`
+    <div style="display:grid;grid-template-columns:1fr auto auto;gap:4px 10px;align-items:center">
+      <span style="color:var(--mut);font-size:11px">Produto</span>
+      <span style="color:var(--mut);font-size:11px;text-align:right">Contado</span>
+      <span style="color:var(--mut);font-size:11px;text-align:right">Sistema</span>
+      ${rows.map(([ean,v])=>{
+        const diff=v.vol-v.sys;
+        const cl=diff===0?'var(--grn)':diff>0?'var(--ylw)':'var(--red)';
+        return `<span style="color:var(--txt)">${v.descr}</span>
+        <span style="text-align:right;color:${cl};font-weight:600">${v.vol}</span>
+        <span style="text-align:right;color:var(--mut)">${v.sys}</span>`;
+      }).join('')}
+    </div>`:'<div class="empty">Sem itens</div>';
+  detail.classList.remove('hide');
+}
+
+function closeBrandDetail(){
+  const d=document.getElementById('m-brand-detail');
+  if(d) d.classList.add('hide');
 }
 
 function exportMarcas(){
