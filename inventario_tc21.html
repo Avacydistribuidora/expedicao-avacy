@@ -311,7 +311,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V2.7</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V2.8</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -345,6 +345,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
         <div class="acoes-item" onclick="openImp();closeAcoes()"><span class="ai-ico">📥</span>Importar</div>
         <div class="acoes-item" onclick="exportProtheus();closeAcoes()"><span class="ai-ico">📊</span>Exportar Inventário</div>
         <div class="acoes-item" onclick="exportEnderecos();closeAcoes()"><span class="ai-ico">📍</span>Exportar Endereços</div>
+        <div class="acoes-item" onclick="exportApuracao();closeAcoes()"><span class="ai-ico">📋</span>Exportar Apuração</div>
         <div class="acoes-item" onclick="openQR();closeAcoes()"><span class="ai-ico">📱</span>QR Code</div>
         <div class="acoes-item" onclick="goUsers();closeAcoes()"><span class="ai-ico">👥</span>Gerenciar Usuários</div>
       </div>
@@ -1485,6 +1486,78 @@ function exportEnderecos(){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download='enderecos_protheus_'+new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')+'.csv';
   a.click();toast(seen.size+' registros exportados ✓');
+}
+
+function exportApuracao(){
+  if(!DONE.length){toast('Nenhuma contagem para exportar',1);return;}
+  if(typeof XLSX==='undefined'){toast('SheetJS não carregado',1);return;}
+
+  // Best contagem por endereço
+  const bestByAddr={};
+  DONE.forEach(s=>{if(!bestByAddr[s.addr]||s.ncnt>bestByAddr[s.addr].ncnt)bestByAddr[s.addr]=s;});
+
+  // Soma contada por GTIN
+  const counted={};
+  Object.values(bestByAddr).forEach(s=>{
+    (s.items||[]).forEach(it=>{
+      if(!counted[it.ean])counted[it.ean]={descr:it.descr||'',qtCnt:0};
+      counted[it.ean].qtCnt+=it.qtCnt;
+    });
+  });
+
+  // Mapa sistema: POS_MAP ou DB
+  function getSys(ean){
+    if(POS_MAP[ean])return POS_MAP[ean].qtSis||0;
+    if(DB[ean])return DB[ean][2]||0;
+    return 0;
+  }
+  function getDescr(ean){
+    if(counted[ean])return counted[ean].descr;
+    if(POS_MAP[ean])return POS_MAP[ean].descr||'';
+    if(DB[ean])return DB[ean][0]||'';
+    return '';
+  }
+
+  // Todos GTINs (contados + sistema)
+  const allGtins=new Set([...Object.keys(counted),...Object.keys(POS_MAP)]);
+
+  // ── Aba 1: Consolidado ──────────────────────────────
+  const wsConsolidado=[['Codigo','Nome do Produto','Total']];
+  Object.entries(counted).filter(([,v])=>v.qtCnt>0)
+    .sort(([a],[b])=>a.localeCompare(b))
+    .forEach(([ean,v])=>wsConsolidado.push([ean,v.descr,v.qtCnt]));
+
+  // ── Aba 2: Inventário ────────────────────────────────
+  const wsInv=[['Codigo','Nome do Produto','Protheus','Inventário','Diferença','Obs']];
+  [...allGtins].map(ean=>{
+    const inv=counted[ean]?counted[ean].qtCnt:0;
+    const sys=getSys(ean);
+    return{ean,descr:getDescr(ean),sys,inv,diff:inv-sys};
+  })
+  .sort((a,b)=>Math.abs(b.diff)-Math.abs(a.diff))
+  .forEach(r=>wsInv.push([r.ean,r.descr,r.sys,r.inv,r.diff,'']));
+
+  // ── Aba 3: Protheus ──────────────────────────────────
+  const today=new Date().toLocaleDateString('pt-BR');
+  const wsProt=[['Lote','Protheus '+today]];
+  [...allGtins].sort().forEach(ean=>wsProt.push([ean,getSys(ean)]));
+
+  // Cria workbook
+  const wb=XLSX.utils.book_new();
+
+  function makeSheet(data,colWidths){
+    const ws=XLSX.utils.aoa_to_sheet(data);
+    ws['!cols']=colWidths.map(w=>({wch:w}));
+    return ws;
+  }
+
+  XLSX.utils.book_append_sheet(wb,makeSheet(wsConsolidado,[20,80,10]),'Consolidado');
+  XLSX.utils.book_append_sheet(wb,makeSheet(wsInv,[20,80,12,12,12,30]),'Inventário');
+  XLSX.utils.book_append_sheet(wb,makeSheet(wsProt,[20,16]),'Protheus');
+
+  const dt=new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
+  XLSX.writeFile(wb,'Apuracao_Inventario_'+dt+'.xlsx');
+  toast('Apuração exportada — '+wsInv.length+' itens ✓');
 }
 
 async function doLimpar(){
