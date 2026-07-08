@@ -323,7 +323,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V3.2</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V3.3</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -1580,7 +1580,6 @@ function exportApuracao(){
     });
   });
 
-  // Mapa sistema: POS_MAP ou DB
   function getSys(ean){
     if(POS_MAP[ean])return POS_MAP[ean].qtSis||0;
     if(DB[ean])return DB[ean][2]||0;
@@ -1593,46 +1592,58 @@ function exportApuracao(){
     return '';
   }
 
-  // Todos GTINs (contados + sistema)
   const allGtins=new Set([...Object.keys(counted),...Object.keys(POS_MAP)]);
 
-  // ── Aba 1: Consolidado ──────────────────────────────
-  const wsConsolidado=[['Codigo','Nome do Produto','Total']];
-  Object.entries(counted).filter(([,v])=>v.qtCnt>0)
-    .sort(([a],[b])=>a.localeCompare(b))
-    .forEach(([ean,v])=>wsConsolidado.push([ean,v.descr,v.qtCnt]));
+  // Helper: cria sheet com GTIN sempre como texto (evita notação científica)
+  function makeSheet(rows,colWidths){
+    const ws={};
+    rows.forEach((row,r)=>{
+      row.forEach((val,c)=>{
+        const ref=XLSX.utils.encode_cell({r,c});
+        // Coluna A (c===0) após cabeçalho (r>0) = texto forçado
+        if(c===0&&r>0) ws[ref]={v:String(val),t:'s'};
+        else ws[ref]={v:val,t:typeof val==='number'?'n':'s'};
+      });
+    });
+    ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rows.length-1,c:rows[0].length-1}});
+    ws['!cols']=colWidths.map(w=>({wch:w}));
+    return ws;
+  }
 
-  // ── Aba 2: Inventário ────────────────────────────────
-  const wsInv=[['Codigo','Nome do Produto','Protheus','Inventário','Diferença','Obs']];
+  // ── Aba 1: Consolidado — com estoque, contagem e diferença ──
+  const rowsC=[['Codigo','Nome do Produto','Estoque','Inventário','Diferença']];
+  [...allGtins].map(ean=>{
+    const inv=counted[ean]?counted[ean].qtCnt:0;
+    const sys=getSys(ean);
+    return{ean,descr:getDescr(ean),sys,inv,diff:inv-sys};
+  })
+  .filter(r=>r.inv>0||r.sys>0)
+  .sort((a,b)=>Math.abs(b.diff)-Math.abs(a.diff))
+  .forEach(r=>rowsC.push([r.ean,r.descr,r.sys,r.inv,r.diff]));
+
+  // ── Aba 2: Inventário completo — com Obs ────────────────────
+  const rowsI=[['Codigo','Nome do Produto','Protheus','Inventário','Diferença','Obs']];
   [...allGtins].map(ean=>{
     const inv=counted[ean]?counted[ean].qtCnt:0;
     const sys=getSys(ean);
     return{ean,descr:getDescr(ean),sys,inv,diff:inv-sys};
   })
   .sort((a,b)=>Math.abs(b.diff)-Math.abs(a.diff))
-  .forEach(r=>wsInv.push([r.ean,r.descr,r.sys,r.inv,r.diff,'']));
+  .forEach(r=>rowsI.push([r.ean,r.descr,r.sys,r.inv,r.diff,'']));
 
-  // ── Aba 3: Protheus ──────────────────────────────────
+  // ── Aba 3: Protheus ─────────────────────────────────────────
   const today=new Date().toLocaleDateString('pt-BR');
-  const wsProt=[['Lote','Protheus '+today]];
-  [...allGtins].sort().forEach(ean=>wsProt.push([ean,getSys(ean)]));
+  const rowsP=[['Lote','Protheus '+today]];
+  [...allGtins].sort().forEach(ean=>rowsP.push([ean,getSys(ean)]));
 
-  // Cria workbook
   const wb=XLSX.utils.book_new();
-
-  function makeSheet(data,colWidths){
-    const ws=XLSX.utils.aoa_to_sheet(data);
-    ws['!cols']=colWidths.map(w=>({wch:w}));
-    return ws;
-  }
-
-  XLSX.utils.book_append_sheet(wb,makeSheet(wsConsolidado,[20,80,10]),'Consolidado');
-  XLSX.utils.book_append_sheet(wb,makeSheet(wsInv,[20,80,12,12,12,30]),'Inventário');
-  XLSX.utils.book_append_sheet(wb,makeSheet(wsProt,[20,16]),'Protheus');
+  XLSX.utils.book_append_sheet(wb,makeSheet(rowsC,[20,80,12,12,12]),'Consolidado');
+  XLSX.utils.book_append_sheet(wb,makeSheet(rowsI,[20,80,12,12,12,30]),'Inventário');
+  XLSX.utils.book_append_sheet(wb,makeSheet(rowsP,[20,16]),'Protheus');
 
   const dt=new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
   XLSX.writeFile(wb,'Apuracao_Inventario_'+dt+'.xlsx');
-  toast('Apuração exportada — '+wsInv.length+' itens ✓');
+  toast('Apuração exportada — '+(rowsC.length-1)+' itens ✓');
 }
 
 async function doLimpar(){
