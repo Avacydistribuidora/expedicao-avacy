@@ -311,7 +311,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V2.6</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V2.7</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -1465,13 +1465,26 @@ function exportProtheus(){
 }
 
 function exportEnderecos(){
-  if(!POS||!POS.length){toast('Sem dados de posição. Importe Z01+Z05+SB8 primeiro.',1);return;}
+  if(!DONE.length){toast('Nenhuma contagem realizada para exportar',1);return;}
+  // Usa melhor contagem por endereço (mais alta ncnt)
+  const bestByAddr={};
+  DONE.forEach(s=>{if(!bestByAddr[s.addr]||s.ncnt>bestByAddr[s.addr].ncnt)bestByAddr[s.addr]=s;});
+  // Gera GRADE,ENDERECO para cada item bipado (qtCnt>0)
+  const seen=new Set();
   let csv='GRADE,ENDERECO\r\n';
-  POS.forEach(r=>csv+=r.gtin+','+r.endereco+'\r\n');
+  Object.values(bestByAddr).forEach(s=>{
+    (s.items||[]).forEach(it=>{
+      if(it.qtCnt>0){
+        const key=it.ean+'|'+s.addr;
+        if(!seen.has(key)){seen.add(key);csv+=it.ean+','+s.addr+'\r\n';}
+      }
+    });
+  });
+  if(seen.size===0){toast('Nenhum item bipado para exportar',1);return;}
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download='enderecos_protheus_'+new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')+'.csv';
-  a.click();toast('Endereços exportados ✓');
+  a.click();toast(seen.size+' registros exportados ✓');
 }
 
 async function doLimpar(){
