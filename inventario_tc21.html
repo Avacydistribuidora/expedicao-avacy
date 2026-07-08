@@ -178,7 +178,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 .sq-sob{background:rgba(244,67,54,.2);color:var(--red)}
 .sq-flt{background:rgba(255,152,0,.2);color:var(--ylw)}
 .sq-ext{background:rgba(33,150,243,.2);color:var(--acc)}
-.snm{flex:1;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.snm{flex:1;font-size:12px;min-width:0;overflow:hidden}
 .sqty{font-size:14px;font-weight:700;min-width:28px;text-align:right}
 .btn-sdel{background:none;border:none;color:var(--mut);font-size:14px;cursor:pointer;padding:2px 5px}
 .btn-sdel:active{color:var(--red)}
@@ -323,7 +323,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V3.0</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V3.2</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -1057,8 +1057,8 @@ function renderSess(){
   sl.innerHTML=sc.length?sc.sort((a,b)=>b[1].qtCnt-a[1].qtCnt).map(([ean,v])=>{
     const diff=v.qtCnt-v.qtSis; let sc2,st;
     if(v.ext){sc2='sq-ext';st='EXT';}else if(diff===0){sc2='sq-ok';st='OK';}else if(diff>0){sc2='sq-sob';st='+'+diff;}else{sc2='sq-flt';st=diff;}
-    if(!isAdm) return`<div class="srow"><div class="sqdot sq-ok" style="background:var(--bg3);color:var(--mut)">${v.qtCnt}</div><div class="snm" title="${v.descr}">${v.descr}</div><div class="sqty-tap" onclick="openQtyOvl('${ean}')" title="Toque para editar">${v.qtCnt}</div><button class="btn-sdel" onclick="remBip('${ean}')">−</button><button class="btn-sdel-del" onclick="delBip('${ean}')" title="Excluir">✕</button></div>`;
-    return`<div class="srow"><div class="sqdot ${sc2}">${st}</div><div class="snm" title="${v.descr}">${v.descr}</div><div class="sqty-tap" onclick="openQtyOvl('${ean}')" title="Toque para editar">${v.qtCnt}</div><button class="btn-sdel" onclick="remBip('${ean}')">−</button><button class="btn-sdel-del" onclick="delBip('${ean}')" title="Excluir">✕</button></div>`;
+    if(!isAdm) return`<div class="srow"><div class="sqdot sq-ok" style="background:var(--bg3);color:var(--mut)">${v.qtCnt}</div><div class="snm"><span class="lsean">${ean}</span>${v.descr}</div><div class="sqty-tap" onclick="openQtyOvl('${ean}')" title="Toque para editar">${v.qtCnt}</div><button class="btn-sdel" onclick="remBip('${ean}')">−</button><button class="btn-sdel-del" onclick="delBip('${ean}')" title="Excluir">✕</button></div>`;
+    return`<div class="srow"><div class="sqdot ${sc2}">${st}</div><div class="snm"><span class="lsean">${ean}</span>${v.descr}</div><div class="sqty-tap" onclick="openQtyOvl('${ean}')" title="Toque para editar">${v.qtCnt}</div><button class="btn-sdel" onclick="remBip('${ean}')">−</button><button class="btn-sdel-del" onclick="delBip('${ean}')" title="Excluir">✕</button></div>`;
   }).join(''):'<div class="empty">Nenhum item bipado ainda</div>';
 }
 
@@ -1507,44 +1507,60 @@ function doExport(){
 
 function exportProtheus(){
   if(!DONE.length){toast('Nenhum dado para exportar',1);return;}
-  // Para cada endereço, usa apenas a contagem mais alta (último resultado)
+  if(typeof XLSX==='undefined'){toast('SheetJS não carregado',1);return;}
   const bestByAddr={};
   DONE.forEach(s=>{if(!bestByAddr[s.addr]||s.ncnt>bestByAddr[s.addr].ncnt)bestByAddr[s.addr]=s;});
-  // Soma qtd_contada por GTIN (lotes não se repetem na mesma grade)
   const totals={};
   Object.values(bestByAddr).forEach(s=>{
     (s.items||[]).forEach(it=>{totals[it.ean]=(totals[it.ean]||0)+it.qtCnt;});
   });
   if(!Object.keys(totals).length){toast('Sem itens contados',1);return;}
-  let csv='GRADE,QTD\r\n';
-  Object.entries(totals).sort(([a],[b])=>a.localeCompare(b)).forEach(([g,q])=>csv+=g+','+q+'\r\n');
-  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download='inventario_protheus_'+new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')+'.csv';
-  a.click();toast('Inventário exportado ✓');
+  const wb=XLSX.utils.book_new();
+  const ws={};
+  ws['A1']={v:'GRADE',t:'s'}; ws['B1']={v:'QTD',t:'s'};
+  let r=2;
+  Object.entries(totals).sort(([a],[b])=>a.localeCompare(b)).forEach(([g,q])=>{
+    ws['A'+r]={v:g,t:'s'}; // força texto — evita notação científica
+    ws['B'+r]={v:q,t:'n'};
+    r++;
+  });
+  ws['!ref']='A1:B'+(r-1);
+  ws['!cols']=[{wch:20},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,ws,'Inventário');
+  const dt=new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
+  XLSX.writeFile(wb,'inventario_protheus_'+dt+'.xlsx');
+  toast('Inventário exportado ✓');
 }
 
 function exportEnderecos(){
   if(!DONE.length){toast('Nenhuma contagem realizada para exportar',1);return;}
-  // Usa melhor contagem por endereço (mais alta ncnt)
+  if(typeof XLSX==='undefined'){toast('SheetJS não carregado',1);return;}
   const bestByAddr={};
   DONE.forEach(s=>{if(!bestByAddr[s.addr]||s.ncnt>bestByAddr[s.addr].ncnt)bestByAddr[s.addr]=s;});
-  // Gera GRADE,ENDERECO para cada item bipado (qtCnt>0)
   const seen=new Set();
-  let csv='GRADE,ENDERECO\r\n';
+  const rows=[];
   Object.values(bestByAddr).forEach(s=>{
     (s.items||[]).forEach(it=>{
       if(it.qtCnt>0){
         const key=it.ean+'|'+s.addr;
-        if(!seen.has(key)){seen.add(key);csv+=it.ean+','+s.addr+'\r\n';}
+        if(!seen.has(key)){seen.add(key);rows.push([it.ean,s.addr]);}
       }
     });
   });
-  if(seen.size===0){toast('Nenhum item bipado para exportar',1);return;}
-  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download='enderecos_protheus_'+new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')+'.csv';
-  a.click();toast(seen.size+' registros exportados ✓');
+  if(!rows.length){toast('Nenhum item bipado para exportar',1);return;}
+  const wb=XLSX.utils.book_new();
+  const ws={};
+  ws['A1']={v:'GRADE',t:'s'}; ws['B1']={v:'ENDERECO',t:'s'};
+  rows.forEach(([g,e],i)=>{
+    ws['A'+(i+2)]={v:g,t:'s'};
+    ws['B'+(i+2)]={v:e,t:'s'};
+  });
+  ws['!ref']='A1:B'+(rows.length+1);
+  ws['!cols']=[{wch:20},{wch:16}];
+  XLSX.utils.book_append_sheet(wb,ws,'Endereços');
+  const dt=new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
+  XLSX.writeFile(wb,'enderecos_protheus_'+dt+'.xlsx');
+  toast(rows.length+' registros exportados ✓');
 }
 
 function exportApuracao(){
