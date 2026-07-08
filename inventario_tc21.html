@@ -323,7 +323,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V3.5</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V3.6</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -480,12 +480,12 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
     </div>
     <div class="kpi-g">
       <div class="kpi">
-        <div class="kn c-grn" id="k-sys-vol">—</div>
+        <div class="kn c-acc" id="k-sys-vol">—</div>
         <div class="kl">Total Estoque Sistema</div>
         <div style="font-size:11px;color:var(--mut);margin-top:2px">volumes</div>
       </div>
       <div class="kpi">
-        <div class="kn c-acc" id="k-cnt-vol">—</div>
+        <div class="kn c-grn" id="k-cnt-vol">—</div>
         <div class="kl">Total Contagem</div>
         <div style="font-size:11px;color:var(--mut);margin-top:2px">volumes</div>
       </div>
@@ -515,6 +515,13 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
       </div>
     </div>
     <div class="card"><div class="ct">👤 Por Operador</div><div id="m-users"><div class="empty">—</div></div></div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
+        <div class="ct" style="margin-bottom:0">🏷️ Top 10 Marcas</div>
+        <button class="btn btn-acc" style="padding:5px 12px;font-size:12px;width:auto" onclick="exportMarcas()">⬇ Exportar XLSX</button>
+      </div>
+      <div id="m-marcas" style="margin-top:10px"><div class="empty">—</div></div>
+    </div>
     <div class="card" id="addr-sessions-card">
       <div class="ct">📍 Endereços Contados <span id="addr-sess-count" style="color:var(--acc)"></span></div>
       <div id="addr-sess-filter" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
@@ -918,7 +925,7 @@ function irAddr(){
   const v=document.getElementById('addr-inp').value.trim().toUpperCase();
   if(!v){toast('Informe um endereço',1);return;}
   buildIdx();
-  if(!ADDR_IDX[v]){ document.getElementById('addr-err').style.display=''; return; }
+  // Endereço não precisa estar na lista – permite qualquer endereço
   CUR_ADDR=v; CUR_NCNT=null; CUR_SESS={};
   // Determine which counts already done for this address
   const doneNums=[...new Set(DONE.filter(s=>s.addr===v).map(s=>s.ncnt))].sort();
@@ -1008,12 +1015,43 @@ function anyBip(){ return Object.values(CUR_SESS).some(x=>x.qtCnt>0); }
 // ═════════════════════ BIPAR ═════════════════════
 function clrScan(){ document.getElementById('scan-inp').value=''; document.getElementById('scan-inp').focus(); }
 
-function bipar(){
+// Lookup de produto: POS_MAP → DB → Supabase async
+async function lookupProd(ean){
+  // Tenta variantes do EAN (14 dígitos, sem 0 inicial, com 0 adicionado)
+  const variants=[ean];
+  if(ean.length===14&&ean[0]==='0') variants.push(ean.substring(1));
+  if(ean.length===13) variants.push('0'+ean);
+  for(const v of variants){
+    if(POS_MAP[v]) return {descr:POS_MAP[v].descr,qtSis:POS_MAP[v].qtSis,key:v};
+    if(DB[v]) return {descr:DB[v][0],qtSis:DB[v][2]||0,key:v};
+  }
+  // Fallback: busca no Supabase
+  try{
+    const sb=getSB(); if(!sb) return {descr:'Não cadastrado',qtSis:0,key:ean};
+    const {data}=await sb.from('inv_posicao').select('descricao,qtd_sistema').eq('gtin',ean).limit(1);
+    if(data&&data[0]) return {descr:data[0].descricao||'',qtSis:data[0].qtd_sistema||0,key:ean};
+    // Tenta variantes no Supabase
+    for(const v of variants.slice(1)){
+      const {data:d2}=await sb.from('inv_posicao').select('descricao,qtd_sistema').eq('gtin',v).limit(1);
+      if(d2&&d2[0]) return {descr:d2[0].descricao||'',qtSis:d2[0].qtd_sistema||0,key:v};
+    }
+  }catch(e){}
+  return {descr:'Não cadastrado',qtSis:0,key:ean};
+}
+
+async function bipar(){
   const el=document.getElementById('scan-inp');
-  const ean=el.value.trim(); if(!ean)return;
-  el.value='';
+  let ean=el.value.trim(); if(!ean)return;
+  if(ean.length===13) ean='0'+ean;
+  el.value=''; el.focus();
   let item=CUR_SESS[ean];
-  if(!item){ const pos=POS_MAP[ean]; const db=DB[ean]; const descr=pos?pos.descr:(db?db[0]:'Não cadastrado'); const qtSis=pos?pos.qtSis:(db?db[2]:0); const isExt=!(ADDR_IDX[CUR_ADDR]||[]).find(i=>i.ean===ean); CUR_SESS[ean]={descr,qtSis,qtCnt:0,ext:isExt}; item=CUR_SESS[ean]; }
+  if(!item){
+    const found=await lookupProd(ean);
+    const realEan=found.key; // pode ter mudado pela variante
+    const isExt=!(ADDR_IDX[CUR_ADDR]||[]).find(i=>i.ean===realEan);
+    CUR_SESS[realEan]={descr:found.descr,qtSis:found.qtSis,qtCnt:0,ext:isExt};
+    item=CUR_SESS[realEan]; ean=realEan;
+  }
   item.qtCnt++; renderSess();
   const diff=item.qtCnt-item.qtSis;
   let cls,tag;
@@ -1023,7 +1061,6 @@ function bipar(){
   else{cls='flt-bg';tag='▼ '+diff;}
   const _isAdm=CU&&CU.role==='adm';
   document.getElementById('lsbar').innerHTML=_isAdm?`<span class="lsean">${ean}</span><span class="lsnm">${item.descr.substring(0,36)}${item.descr.length>36?'…':''}</span><span class="lsbg ${cls}">${tag} · ${item.qtCnt} un.</span>`:`<span class="lsean">${ean}</span><span class="lsnm">${item.descr.substring(0,36)}${item.descr.length>36?'…':''}</span>`;
-  el.focus();
 }
 
 // ═════════════════════ RENDER SESS ═════════════════════
@@ -1419,7 +1456,7 @@ function renderMon(){
   document.getElementById('d-pct').textContent=acur+'%';
   document.getElementById('l-ok').textContent='OK: '+volOk.toLocaleString('pt-BR')+' vol';
   document.getElementById('l-dv').textContent='Divergência: '+volDv.toLocaleString('pt-BR')+' vol';
-  document.getElementById('l-nd').textContent='Não contado: '+volNd.toLocaleString('pt-BR')+' vol';
+  document.getElementById('l-nd').textContent='Não contado: '+Math.round(volNd).toLocaleString('pt-BR')+' vol';
   // Operator table by volume
   const byOp={};
   Object.values(bestByAddrV).forEach(sess=>{
@@ -1435,7 +1472,69 @@ function renderMon(){
   document.getElementById('m-users').innerHTML=Object.keys(byOp).length?
     Object.entries(byOp).map(([op,v])=>`<div class="urow"><span style="flex:1;font-size:13px">${op}</span><span style="font-size:12px;color:var(--mut)">${v.vol.toLocaleString('pt-BR')} vol</span><span style="font-size:12px;color:var(--grn);margin-left:8px">${v.vol>0?Math.round(v.ok/v.vol*100):0}% OK</span></div>`).join(''):
     '<div class="empty">Nenhum dado</div>';
+  // Brand ranking
+  renderBrandRanking();
   renderAddrSessions();
+}
+
+function getBrandData(){
+  const byBrand={};
+  const bestByAddrB={};
+  DONE.forEach(s=>{if(!bestByAddrB[s.addr]||s.ncnt>bestByAddrB[s.addr].ncnt)bestByAddrB[s.addr]=s;});
+  Object.values(bestByAddrB).forEach(sess=>{
+    (sess.items||[]).forEach(it=>{
+      const brand=(it.descr||'?').split(' ')[0].toUpperCase()||'?';
+      if(!byBrand[brand]) byBrand[brand]={vol:0,sys:0,items:0};
+      byBrand[brand].vol+=(it.qtCnt||0);
+      byBrand[brand].sys+=(POS_MAP[it.ean]?.qtSis||0);
+      byBrand[brand].items++;
+    });
+  });
+  return Object.entries(byBrand).sort((a,b)=>b[1].vol-a[1].vol);
+}
+
+function renderBrandRanking(){
+  const el=document.getElementById('m-marcas'); if(!el) return;
+  const brands=getBrandData();
+  if(!brands.length){el.innerHTML='<div class="empty">Nenhum dado</div>';return;}
+  const top10=brands.slice(0,10);
+  const maxVol=top10[0]?.[1]?.vol||1;
+  el.innerHTML=top10.map(([brand,v],i)=>{
+    const pct=Math.round(v.vol/maxVol*100);
+    const acPct=v.sys>0?Math.min(Math.round(v.vol/v.sys*100),100):0;
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+        <span style="font-weight:600;color:var(--txt)">${i+1}. ${brand}</span>
+        <span style="color:var(--mut)">${v.vol.toLocaleString('pt-BR')} vol · ${acPct}% sys</span>
+      </div>
+      <div style="background:var(--bg3);border-radius:4px;height:8px">
+        <div style="background:var(--acc);height:8px;border-radius:4px;width:${pct}%"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function exportMarcas(){
+  if(typeof XLSX==='undefined'){toast('XLSX não carregado',1);return;}
+  const brands=getBrandData();
+  if(!brands.length){toast('Sem dados para exportar',1);return;}
+  const rows=[['Marca','Volumes Contados','Estoque Sistema','% Sistema','SKUs Contados']];
+  brands.forEach(([brand,v])=>{
+    const acPct=v.sys>0?Math.min(Math.round(v.vol/v.sys*100),100):0;
+    rows.push([brand,v.vol,v.sys,acPct+'%',v.items]);
+  });
+  const ws={};
+  rows.forEach((row,r)=>row.forEach((val,c)=>{
+    const ref=XLSX.utils.encode_cell({r,c});
+    ws[ref]={v:val,t:typeof val==='number'?'n':'s'};
+  }));
+  ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rows.length-1,c:4}});
+  ws['!cols']=[{wch:20},{wch:18},{wch:18},{wch:12},{wch:15}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Ranking Marcas');
+  const today=new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb,'ranking_marcas_'+today+'.xlsx');
+  toast('Exportado!',0);
 }
 
 function renderAddrSessions(){
