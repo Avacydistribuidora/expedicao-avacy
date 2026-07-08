@@ -323,7 +323,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V3.3</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V3.4</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -479,10 +479,23 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
       <div class="prog-s" id="m-sub">—</div>
     </div>
     <div class="kpi-g">
-      <div class="kpi"><div class="kn c-acc" id="k-end">0</div><div class="kl">Endereços</div></div>
-      <div class="kpi"><div class="kn c-acc" id="k-tot">0</div><div class="kl">Total Itens</div></div>
-      <div class="kpi"><div class="kn c-grn" id="k-ok">0</div><div class="kl">✓ OK</div></div>
-      <div class="kpi"><div class="kn c-red" id="k-dv">0</div><div class="kl">Com Diverg.</div></div>
+      <div class="kpi">
+        <div class="kn c-grn" id="k-sys-vol">—</div>
+        <div class="kl">Total Estoque Sistema</div>
+        <div style="font-size:11px;color:var(--mut);margin-top:2px">volumes</div>
+      </div>
+      <div class="kpi">
+        <div class="kn c-acc" id="k-cnt-vol">—</div>
+        <div class="kl">Total Contagem</div>
+        <div style="font-size:11px;color:var(--mut);margin-top:2px">volumes</div>
+      </div>
+    </div>
+    <div class="card" style="padding:12px 16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:13px;color:var(--mut)">📦 Volumes contados vs sistema</span>
+        <span id="k-vol-pct" style="font-size:20px;font-weight:700;color:var(--acc)">0%</span>
+      </div>
+      <div class="prog-tr"><div class="prog-br" id="bar-vol" style="width:0%"></div></div>
     </div>
     <div class="card"><div class="ct">🎯 Acuracidade</div><div class="acur-big" id="m-acur">—</div><div class="acur-s">% itens sem divergência</div></div>
     <div class="card">
@@ -1367,14 +1380,20 @@ function renderMon(){
   document.getElementById('m-pct').textContent=pct+'%';
   document.getElementById('m-bar').style.width=pct+'%';
   document.getElementById('m-sub').textContent=counted+' de '+totalAddr+' endereços';
-  document.getElementById('k-end').textContent=counted;
+  // Volume totals
+  const sysVol=Object.values(POS_MAP).reduce((s,v)=>s+(v.qtSis||0),0);
+  const bestByAddrV={};
+  VD.forEach(s=>{if(!bestByAddrV[s.addr]||s.ncnt>bestByAddrV[s.addr].ncnt)bestByAddrV[s.addr]=s;});
+  const cntVol=Object.values(bestByAddrV).reduce((s,sess)=>s+(sess.items||[]).reduce((a,it)=>a+(it.qtCnt||0),0),0);
+  const volPct=sysVol>0?Math.min(Math.round(cntVol/sysVol*100),100):0;
+  document.getElementById('k-sys-vol').textContent=sysVol.toLocaleString('pt-BR');
+  document.getElementById('k-cnt-vol').textContent=cntVol.toLocaleString('pt-BR');
+  document.getElementById('k-vol-pct').textContent=volPct+'%';
+  document.getElementById('bar-vol').style.width=volPct+'%';
   const allItems=VD.flatMap(s=>s.items||[]);
   const bippedItems=allItems.filter(it=>it.qtCnt>0);
-  document.getElementById('k-tot').textContent=bippedItems.length;
   const okItems=bippedItems.filter(it=>it.qtCnt===it.qtSis).length;
   const dvItems=bippedItems.filter(it=>it.qtCnt!==it.qtSis).length;
-  document.getElementById('k-ok').textContent=okItems;
-  document.getElementById('k-dv').textContent=dvItems;
   const acur=bippedItems.length>0?Math.round(okItems/bippedItems.length*100):0;
   document.getElementById('m-acur').textContent=acur+'%';
   const C=226.2;
