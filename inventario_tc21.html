@@ -323,7 +323,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V3.4</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V3.5</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -497,7 +497,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
       </div>
       <div class="prog-tr"><div class="prog-br" id="bar-vol" style="width:0%"></div></div>
     </div>
-    <div class="card"><div class="ct">🎯 Acuracidade</div><div class="acur-big" id="m-acur">—</div><div class="acur-s">% itens sem divergência</div></div>
+    <div class="card"><div class="ct">🎯 Acuracidade</div><div class="acur-big" id="m-acur">—</div><div class="acur-s">% volumes contados vs sistema</div></div>
     <div class="card">
       <div class="ct">🔵 Distribuição</div>
       <div class="dw">
@@ -1386,31 +1386,54 @@ function renderMon(){
   VD.forEach(s=>{if(!bestByAddrV[s.addr]||s.ncnt>bestByAddrV[s.addr].ncnt)bestByAddrV[s.addr]=s;});
   const cntVol=Object.values(bestByAddrV).reduce((s,sess)=>s+(sess.items||[]).reduce((a,it)=>a+(it.qtCnt||0),0),0);
   const volPct=sysVol>0?Math.min(Math.round(cntVol/sysVol*100),100):0;
-  document.getElementById('k-sys-vol').textContent=sysVol.toLocaleString('pt-BR');
-  document.getElementById('k-cnt-vol').textContent=cntVol.toLocaleString('pt-BR');
+  document.getElementById('k-sys-vol').textContent=Math.round(sysVol).toLocaleString('pt-BR');
+  document.getElementById('k-cnt-vol').textContent=Math.round(cntVol).toLocaleString('pt-BR');
   document.getElementById('k-vol-pct').textContent=volPct+'%';
   document.getElementById('bar-vol').style.width=volPct+'%';
-  const allItems=VD.flatMap(s=>s.items||[]);
-  const bippedItems=allItems.filter(it=>it.qtCnt>0);
-  const okItems=bippedItems.filter(it=>it.qtCnt===it.qtSis).length;
-  const dvItems=bippedItems.filter(it=>it.qtCnt!==it.qtSis).length;
-  const acur=bippedItems.length>0?Math.round(okItems/bippedItems.length*100):0;
+  // Acuracidade por volume: per-GTIN comparison
+  // Aggregate counted volumes per GTIN (best ncnt per address)
+  const cntByGtin={};
+  Object.values(bestByAddrV).forEach(sess=>{
+    (sess.items||[]).forEach(it=>{
+      if(!cntByGtin[it.ean]) cntByGtin[it.ean]=0;
+      cntByGtin[it.ean]+=(it.qtCnt||0);
+    });
+  });
+  let volOk=0, volDv=0, volNd=0;
+  Object.entries(POS_MAP).forEach(([gtin,pm])=>{
+    const sys=pm.qtSis||0;
+    const cnt=cntByGtin[gtin]||0;
+    if(cnt===0){ volNd+=sys; }
+    else if(cnt===sys){ volOk+=sys; }
+    else{ const match=Math.min(cnt,sys); volOk+=match; volDv+=Math.abs(cnt-sys); }
+  });
+  const volTotal=volOk+volDv+volNd||1;
+  const acur=sysVol>0?Math.min(Math.round(volOk/sysVol*100),100):0;
   document.getElementById('m-acur').textContent=acur+'%';
   const C=226.2;
-  const tot=bippedItems.length||1;
-  const okA=okItems/tot*C, dvA=dvItems/tot*C;
+  const okA=volOk/volTotal*C, dvA=volDv/volTotal*C;
   document.getElementById('d-ok').setAttribute('stroke-dasharray',okA+' '+(C-okA));
   const dvEl=document.getElementById('d-dv');
   dvEl.setAttribute('stroke-dasharray',dvA+' '+(C-dvA));
   dvEl.setAttribute('transform','rotate('+(-90+okA/C*360)+' 50 50)');
   document.getElementById('d-pct').textContent=acur+'%';
-  document.getElementById('l-ok').textContent='OK: '+okItems;
-  document.getElementById('l-dv').textContent='Divergência: '+dvItems;
-  document.getElementById('l-nd').textContent='Não bipado: '+allItems.filter(it=>!it.qtCnt).length;
+  document.getElementById('l-ok').textContent='OK: '+volOk.toLocaleString('pt-BR')+' vol';
+  document.getElementById('l-dv').textContent='Divergência: '+volDv.toLocaleString('pt-BR')+' vol';
+  document.getElementById('l-nd').textContent='Não contado: '+volNd.toLocaleString('pt-BR')+' vol';
+  // Operator table by volume
   const byOp={};
-  VD.forEach(s=>{(s.items||[]).forEach(it=>{if(!byOp[s.op])byOp[s.op]={n:0,ok:0};byOp[s.op].n++;if(it.qtCnt===it.qtSis&&it.qtCnt>0)byOp[s.op].ok++;});});
+  Object.values(bestByAddrV).forEach(sess=>{
+    const op=sess.op||'—';
+    if(!byOp[op]) byOp[op]={vol:0,ok:0};
+    (sess.items||[]).forEach(it=>{
+      const s=POS_MAP[it.ean]?.qtSis||0;
+      const c=it.qtCnt||0;
+      byOp[op].vol+=c;
+      byOp[op].ok+=Math.min(c,s);
+    });
+  });
   document.getElementById('m-users').innerHTML=Object.keys(byOp).length?
-    Object.entries(byOp).map(([op,v])=>`<div class="urow"><span style="flex:1;font-size:13px">${op}</span><span style="font-size:12px;color:var(--mut)">${v.n} itens</span><span style="font-size:12px;color:var(--grn);margin-left:8px">${v.n>0?Math.round(v.ok/v.n*100):0}% OK</span></div>`).join(''):
+    Object.entries(byOp).map(([op,v])=>`<div class="urow"><span style="flex:1;font-size:13px">${op}</span><span style="font-size:12px;color:var(--mut)">${v.vol.toLocaleString('pt-BR')} vol</span><span style="font-size:12px;color:var(--grn);margin-left:8px">${v.vol>0?Math.round(v.ok/v.vol*100):0}% OK</span></div>`).join(''):
     '<div class="empty">Nenhum dado</div>';
   renderAddrSessions();
 }
