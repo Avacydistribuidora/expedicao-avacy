@@ -181,6 +181,17 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 .sqty{font-size:14px;font-weight:700;min-width:28px;text-align:right}
 .btn-sdel{background:none;border:none;color:var(--mut);font-size:14px;cursor:pointer;padding:2px 5px}
 .btn-sdel:active{color:var(--red)}
+.btn-sdel-del{background:none;border:none;color:var(--mut);font-size:14px;cursor:pointer;padding:2px 5px}
+.btn-sdel-del:active{color:var(--red)}
+.sqty-tap{font-size:14px;font-weight:700;min-width:28px;text-align:right;cursor:pointer;padding:2px 4px;border-radius:4px}
+.sqty-tap:active{background:var(--bg3)}
+.qty-ovl{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;display:flex;flex-direction:column;justify-content:flex-end}
+.qty-ovl.hide{display:none}
+.qty-box{background:var(--bg2);border-radius:16px 16px 0 0;padding:20px 16px 32px;display:flex;flex-direction:column;gap:12px}
+.qty-title{font-size:13px;color:var(--mut);text-align:center}
+.qty-prod{font-size:15px;font-weight:600;text-align:center;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qty-inp{font-size:28px;font-weight:700;text-align:center;background:var(--bg3);border:2px solid var(--acc);border-radius:10px;color:var(--txt);padding:10px;width:100%;outline:none}
+.qty-btns{display:flex;gap:10px}
 
 /* ── CONCLUIR ── */
 .conc-st{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
@@ -311,7 +322,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V2.8</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V2.9</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -444,6 +455,19 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
       </div>
     </div>
   </div><!-- /p-cnt -->
+
+<!-- QTY EDITOR OVERLAY -->
+<div class="qty-ovl hide" id="qty-ovl" onclick="closeQtyOvl(event)">
+  <div class="qty-box" onclick="event.stopPropagation()">
+    <div class="qty-title">Editar quantidade</div>
+    <div class="qty-prod" id="qty-prod-name"></div>
+    <input class="qty-inp" id="qty-inp" type="number" min="0" inputmode="numeric" pattern="[0-9]*">
+    <div class="qty-btns">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeQtyOvl()">Cancelar</button>
+      <button class="btn btn-acc" style="flex:2;font-weight:700" onclick="confirmQtyEdit()">✓ Confirmar</button>
+    </div>
+  </div>
+</div>
 
   <!-- ── MONITORAMENTO ── -->
   <div class="pg hide" id="p-mon">
@@ -1032,8 +1056,8 @@ function renderSess(){
   sl.innerHTML=sc.length?sc.sort((a,b)=>b[1].qtCnt-a[1].qtCnt).map(([ean,v])=>{
     const diff=v.qtCnt-v.qtSis; let sc2,st;
     if(v.ext){sc2='sq-ext';st='EXT';}else if(diff===0){sc2='sq-ok';st='OK';}else if(diff>0){sc2='sq-sob';st='+'+diff;}else{sc2='sq-flt';st=diff;}
-    if(!isAdm) return`<div class="srow"><div class="sqdot sq-ok" style="background:var(--bg3);color:var(--mut)">${v.qtCnt}</div><div class="snm" title="${v.descr}">${v.descr}</div><div class="sqty">${v.qtCnt}</div><button class="btn-sdel" onclick="remBip(${JSON.stringify(ean)})">−</button></div>`;
-    return`<div class="srow"><div class="sqdot ${sc2}">${st}</div><div class="snm" title="${v.descr}">${v.descr}</div><div class="sqty">${v.qtCnt}</div><button class="btn-sdel" onclick="remBip(${JSON.stringify(ean)})">−</button></div>`;
+    if(!isAdm) return`<div class="srow"><div class="sqdot sq-ok" style="background:var(--bg3);color:var(--mut)">${v.qtCnt}</div><div class="snm" title="${v.descr}">${v.descr}</div><div class="sqty-tap" onclick="openQtyOvl('${ean}')" title="Toque para editar">${v.qtCnt}</div><button class="btn-sdel" onclick="remBip('${ean}')">−</button><button class="btn-sdel-del" onclick="delBip('${ean}')" title="Excluir">✕</button></div>`;
+    return`<div class="srow"><div class="sqdot ${sc2}">${st}</div><div class="snm" title="${v.descr}">${v.descr}</div><div class="sqty-tap" onclick="openQtyOvl('${ean}')" title="Toque para editar">${v.qtCnt}</div><button class="btn-sdel" onclick="remBip('${ean}')">−</button><button class="btn-sdel-del" onclick="delBip('${ean}')" title="Excluir">✕</button></div>`;
   }).join(''):'<div class="empty">Nenhum item bipado ainda</div>';
 }
 
@@ -1043,6 +1067,40 @@ function remBip(ean){
   if(!CUR_SESS[ean]||!CUR_SESS[ean].qtCnt)return;
   CUR_SESS[ean].qtCnt=Math.max(0,CUR_SESS[ean].qtCnt-1);
   if(CUR_SESS[ean].ext&&!CUR_SESS[ean].qtCnt) delete CUR_SESS[ean]; renderSess();
+}
+
+let _qtyEditEan=null;
+function openQtyOvl(ean){
+  if(!CUR_SESS[ean])return;
+  _qtyEditEan=ean;
+  document.getElementById('qty-prod-name').textContent=CUR_SESS[ean].descr||ean;
+  const inp=document.getElementById('qty-inp');
+  inp.value=CUR_SESS[ean].qtCnt||0;
+  document.getElementById('qty-ovl').classList.remove('hide');
+  setTimeout(()=>inp.select(),80);
+}
+function closeQtyOvl(e){
+  if(e&&e.target!==document.getElementById('qty-ovl'))return;
+  document.getElementById('qty-ovl').classList.add('hide');
+  _qtyEditEan=null;
+}
+function confirmQtyEdit(){
+  if(!_qtyEditEan)return;
+  const v=parseInt(document.getElementById('qty-inp').value)||0;
+  if(v<0){toast('Quantidade inválida',1);return;}
+  if(v===0){delBip(_qtyEditEan);}
+  else{
+    if(!CUR_SESS[_qtyEditEan]) CUR_SESS[_qtyEditEan]={descr:'',qtSis:0,qtCnt:0,ext:false};
+    CUR_SESS[_qtyEditEan].qtCnt=v;
+    renderSess();
+  }
+  document.getElementById('qty-ovl').classList.add('hide');
+  _qtyEditEan=null;
+}
+function delBip(ean){
+  if(!CUR_SESS[ean])return;
+  delete CUR_SESS[ean];
+  renderSess();
 }
 
 // ═════════════════════ CONCLUIR ═════════════════════
