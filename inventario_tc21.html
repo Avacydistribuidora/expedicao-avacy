@@ -323,7 +323,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V3.8</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V4.0</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -1938,68 +1938,101 @@ async function importarPosicao(){
   const fZ01=document.getElementById('imp-z01').files[0];
   const fZ05=document.getElementById('imp-z05').files[0];
   const fSb8=document.getElementById('imp-sb8').files[0];
-  if(!fZ01||!fZ05||!fSb8){ toast('Selecione os 3 arquivos',1); return; }
+  if(!fZ01||!fZ05){ toast('Selecione Z01 e Z05',1); return; }
   const btn=document.getElementById('btn-importar');
   btn.disabled=true;
   try{
     setImpStatus('Lendo arquivos...');
-    const [wbZ01,wbZ05,wbSb8]=await Promise.all([readXlsx(fZ01),readXlsx(fZ05),readXlsx(fSb8)]);
+    const wbArr=await Promise.all([readXlsx(fZ01),readXlsx(fZ05),fSb8?readXlsx(fSb8):Promise.resolve(null)]);
+    const [wbZ01,wbZ05,wbSb8]=wbArr;
 
-    // Parsing robusto: localiza linha de dados pelo padrão do conteúdo
-    function xlsxRows(wb){ return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:''}); }
+    function xlsxRows(wb){ return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''}); }
     function findDataStart(rows, colIdx, pattern){
       for(let i=0;i<rows.length;i++){
         if(String(rows[i][colIdx]||'').trim().match(pattern)) return i;
       }
-      return 3; // fallback
+      return 3;
     }
 
-    // Z01: GTIN → {descr, pares, marca}
+    // ── Z01: col0=GTIN, col1=Descr, col2=Pares, col3=Marca ─────────────
     setImpStatus('Processando Z01...');
     const z01={};
     const z01rows=xlsxRows(wbZ01);
     const z01s=findDataStart(z01rows,0,/^\d{8,}/);
     z01rows.slice(z01s).forEach(r=>{
       const g=String(r[0]||'').trim(); if(!g.match(/^\d{8,}/))return;
-      z01[g]={descr:String(r[1]||'').trim(),pares:parseInt(r[2])||1,marca:String(r[3]||'').trim()};
+      z01[g]={descr:String(r[1]||'').trim(),pares:parseInt(String(r[2]||'1'))||1,marca:String(r[3]||'').trim()};
     });
 
-    // Z05: GTIN → [enderecos]
-    setImpStatus('Processando Z05...');
-    const z05={};
+    // ── SB8: col9=Lote (chave GTIN), col6=SaldoLote (em pares) ──────────
+    // SB8.Lote bate com Z05.GTIN para produtos com código de barra como lote
+    // qtSis = SUM(SaldoLote por Lote) ÷ pares
+    const sb8Saldo={};
+    if(wbSb8){
+      setImpStatus('Processando SB8...');
+      const sb8rows=xlsxRows(wbSb8);
+      const sb8s=findDataStart(sb8rows,6,/^[\d.]+$/); // localiza pelo SaldoLote numérico
+      sb8rows.slice(sb8s).forEach(r=>{
+        const lote=String(r[9]||'').trim();
+        const saldo=parseFloat(String(r[6]||'0'))||0;
+        if(lote.match(/^\d{8,}/)&&saldo>0){
+          sb8Saldo[lote]=(sb8Saldo[lote]||0)+saldo;
+        }
+      });
+      setImpStatus('SB8: '+Object.keys(sb8Saldo).length+' lotes com saldo...');
+    }
+
+    // ── Z05: col0=GTIN, col1=Descr, col2=Endereço, col4=Marca, col5=EstoqueMT ──
+    // EstoqueMT = qtd em caixas (backup quando SB8 não cobre o GTIN)
+    setImpStatus('Processando Z05 + cruzando SB8...');
     const z05rows=xlsxRows(wbZ05);
     const z05s=findDataStart(z05rows,0,/^\d{8,}/);
+
+    // Primeiro passo: montar estoque por GTIN (EstMT e SB8 se disponível)
+    const z05estMT={};
     z05rows.slice(z05s).forEach(r=>{
-      const g=String(r[0]||'').trim(),e=String(r[2]||'').trim();
-      if(!g.match(/^\d{8,}/)||!e)return;
-      if(!z05[g])z05[g]=[]; if(!z05[g].includes(e))z05[g].push(e);
+      const g=String(r[0]||'').trim();
+      if(!g.match(/^\d{8,}/)) return;
+      if(!(g in z05estMT)) z05estMT[g]=parseFloat(String(r[5]||'0'))||0;
     });
 
-    // SB8: Planilha dinâmica com 2 colunas (Rótulos de Linha=GTIN, Soma de Saldo=total)
-    setImpStatus('Processando SB8...');
-    const saldo={};
-    const sb8rows=xlsxRows(wbSb8);
-    // Pula linha de cabeçalho (row 0) e ignora linha "Total Geral" (última)
-    sb8rows.slice(1).forEach(r=>{
-      const l=String(r[0]||'').trim();
-      if(!l||l.toLowerCase().includes('total'))return; // pula total geral
-      const s=parseFloat(String(r[1]||'0').replace(',','.'))||0;
-      if(s>0) saldo[l]=s;
-    });
-    setImpStatus('Z01:'+Object.keys(z01).length+' Z05:'+Object.keys(z05).length+' SB8:'+Object.keys(saldo).length+' lotes...');
-
-    // Build rows
-    setImpStatus('Calculando posições...');
-    const rows=[];
-    for(const [gtin,tot] of Object.entries(saldo)){
-      const enderecos=z05[gtin]||[]; if(!enderecos.length) continue;
-      const meta=z01[gtin]||{pares:1,descr:'',marca:''};
+    // Segundo passo: para cada GTIN no Z05, calcular qtSis
+    const qtSisMap={};
+    for(const [gtin,estMT] of Object.entries(z05estMT)){
+      const meta=z01[gtin]||{pares:1};
       const pares=meta.pares||1;
-      const qtSis=Math.round(tot/pares*1000)/1000;
-      enderecos.forEach(end=>{
-        rows.push({inventario:'Julho-2026',gtin,descricao:meta.descr,marca:meta.marca,endereco:end,pares,qtd_sistema:qtSis});
-      });
+      if(sb8Saldo[gtin]!=null){
+        // SB8 cobre este GTIN: saldo em pares ÷ pares = caixas
+        qtSisMap[gtin]=Math.round(sb8Saldo[gtin]/pares*1000)/1000;
+      } else {
+        // Fallback: Z05.EstMT já está em caixas
+        qtSisMap[gtin]=estMT;
+      }
     }
+    const sb8Covered=Object.keys(qtSisMap).filter(g=>sb8Saldo[g]!=null).length;
+
+    // Terceiro passo: montar linhas finais
+    const rows=[];
+    const seenAddr=new Set();
+    z05rows.slice(z05s).forEach(r=>{
+      const gtin=String(r[0]||'').trim();
+      const addr=String(r[2]||'').trim();
+      if(!gtin.match(/^\d{8,}/)||!addr) return;
+      const key=gtin+'|'+addr;
+      if(seenAddr.has(key)) return;
+      seenAddr.add(key);
+      const meta=z01[gtin]||{descr:String(r[1]||'').trim(),pares:1,marca:String(r[4]||'').trim()};
+      rows.push({
+        inventario:'Julho-2026',
+        gtin,
+        descricao:meta.descr||String(r[1]||'').trim(),
+        marca:meta.marca||String(r[4]||'').trim(),
+        endereco:addr,
+        pares:meta.pares||1,
+        qtd_sistema:qtSisMap[gtin]||0
+      });
+    });
+    setImpStatus(`Z01:${Object.keys(z01).length} | Z05:${rows.length} posições | SB8 cobre ${sb8Covered} GTINs (restante via Z05)...`);
     setImpStatus(`Salvando ${rows.length} registros...`);
 
     // Upload to Supabase in batches
@@ -2089,7 +2122,7 @@ function closeImp(){ document.getElementById('imp-overlay').classList.remove('on
     <div style="padding:16px 18px 12px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between">
       <div>
         <div style="font-size:15px;font-weight:700;color:var(--txt)">📥 Importar Posição de Estoque</div>
-        <div style="font-size:11px;color:var(--mut);margin-top:2px">Z01 · Z05 · SB8 → Supabase inv_posicao</div>
+        <div style="font-size:11px;color:var(--mut);margin-top:2px">Z01 · Z05 → Supabase inv_posicao</div>
       </div>
       <button onclick="closeImp()" style="background:none;border:none;color:var(--mut);font-size:20px;cursor:pointer;padding:0 4px">✕</button>
     </div>
@@ -2120,12 +2153,12 @@ function closeImp(){ document.getElementById('imp-overlay').classList.remove('on
         </div>
       </div>
       <div class="imp-sec">
-        <label>3. SB8 — Saldo por lote (posição do dia)</label>
+        <label>3. SB8010 — Saldo por lote <span style="color:var(--mut);font-size:11px">(opcional)</span></label>
         <div class="imp-file" onclick="document.getElementById('imp-sb8').click()">
           <span style="font-size:20px">📦</span>
           <div style="flex:1;min-width:0">
             <div class="imp-fname" id="nm-sb8">Clique para selecionar</div>
-            <div style="font-size:10px;color:var(--mut);margin-top:1px">Planilha dinâmica: Lote · Saldo Total</div>
+            <div style="font-size:10px;color:var(--mut);margin-top:1px">Filial · Produto · Saldo Lote (não usado no cálculo)</div>
           </div>
           <span style="font-size:11px;color:var(--mut)">.xlsx</span>
           <input type="file" id="imp-sb8" accept=".xlsx" onchange="setImpFile('sb8',this)">
