@@ -323,7 +323,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V4.1</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V4.2</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -733,7 +733,7 @@ async function syncToSupabase(rec){
     await sb.from('inv_itens').delete().eq('contagem_id',cnt.id);
     const rows=rec.items.filter(i=>i.qtCnt>0).map(i=>({
       contagem_id:cnt.id,ean:i.ean,descricao:i.descr,
-      qtd_sistema:i.qtSis,qtd_contada:i.qtCnt,externo:i.ext||false
+      qtd_sistema:Math.round(i.qtSis||0),qtd_contada:Math.round(i.qtCnt||0),externo:i.ext||false
     }));
     if(rows.length){const{error:e2}=await sb.from('inv_itens').insert(rows);if(e2)throw e2;}
     toast('☁ Salvo');
@@ -801,7 +801,7 @@ async function loadPosicao(sb){
     POS_MAP={};
     for(const r of allData){
       // qtd_sistema = total do GTIN (mesmo valor repetido em todos endereços) — não acumular
-      if(!POS_MAP[r.gtin]) POS_MAP[r.gtin]={descr:r.descricao||'',marca:r.marca||'',pares:r.pares||1,qtSis:r.qtd_sistema||0};
+      if(!POS_MAP[r.gtin]) POS_MAP[r.gtin]={descr:r.descricao||'',marca:r.marca||'',pares:r.pares||1,qtSis:Math.round(r.qtd_sistema||0)};
     }
     if(POS.length>0){ POS_MODE=true; rebuildIdxFromPos(); }
     else{ POS_MODE=true; ADDR_IDX={}; ADDR_LIST=[]; }
@@ -2012,9 +2012,9 @@ async function importarPosicao(){
       // qtSis: SB8.Lote/pares se disponível, senão Z05.EstMT
       let qtSis=0;
       if(sb8Saldo[gtin]!=null){
-        qtSis=Math.round(sb8Saldo[gtin]/pares*1000)/1000;
+        qtSis=Math.round(sb8Saldo[gtin]/pares);
       } else {
-        qtSis=parseFloat(String(r[5]||'0'))||0;
+        qtSis=Math.round(parseFloat(String(r[5]||'0'))||0);
       }
       rows.push({inventario:'Julho-2026',gtin,descricao:meta.descr||String(r[1]||'').trim(),
         marca:meta.marca||String(r[4]||'').trim(),endereco:addr,pares,qtd_sistema:qtSis});
@@ -2028,7 +2028,7 @@ async function importarPosicao(){
       if(z05addrs[lote]) continue; // já tem endereço, coberto no passo 1
       const meta=z01[lote]; if(!meta) continue; // sem Z01 = sem pares
       const pares=meta.pares||1;
-      const qtSis=Math.round(saldo/pares*1000)/1000;
+      const qtSis=Math.round(saldo/pares);
       if(qtSis<=0) continue;
       rows.push({inventario:'Julho-2026',gtin:lote,descricao:meta.descr,
         marca:meta.marca,endereco:'SEM ENDEREÇO',pares,qtd_sistema:qtSis});
