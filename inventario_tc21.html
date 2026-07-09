@@ -1459,15 +1459,15 @@ function renderMon(){
       cntByGtin[it.ean]+=(it.qtCnt||0);
     });
   });
-  let volOk=0, volDv=0, volNd=0;
+  let volOk=0;
   Object.entries(POS_MAP).forEach(([gtin,pm])=>{
     const sys=pm.qtSis||0;
     const cnt=cntByGtin[gtin]||0;
-    if(cnt===0){ volNd+=sys; }
-    else if(cnt===sys){ volOk+=sys; }
-    else{ const match=Math.min(cnt,sys); volOk+=match; volDv+=Math.abs(cnt-sys); }
+    if(cnt>0 && cnt===sys){ volOk+=sys; }
   });
-  const volTotal=volOk+volDv+volNd||1;
+  const volDv=Math.max(0,cntVol-volOk);   // contados mas com divergência
+  const volNd=Math.max(0,sysVol-cntVol);  // não contados
+  const volTotal=sysVol||1;
   const acur=sysVol>0?Math.min(Math.round(volOk/sysVol*100),100):0;
   document.getElementById('m-acur').textContent=acur+'%';
   const C=226.2;
