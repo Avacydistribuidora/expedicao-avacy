@@ -472,6 +472,13 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
   <!-- ── MONITORAMENTO ── -->
   <div class="pg hide" id="p-mon">
+    <!-- ── Filtro C1/C2 ── -->
+    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
+      <span style="font-size:12px;color:var(--mut);font-weight:600">CONTAGEM:</span>
+      <button id="f-all" onclick="setMonFilter(0)" style="padding:5px 14px;border-radius:20px;border:1.5px solid var(--acc);background:var(--acc);color:#fff;font-size:12px;font-weight:700;cursor:pointer">Todos</button>
+      <button id="f-c1" onclick="setMonFilter(1)" style="padding:5px 14px;border-radius:20px;border:1.5px solid var(--bdr);background:transparent;color:var(--mut);font-size:12px;font-weight:700;cursor:pointer">C1</button>
+      <button id="f-c2" onclick="setMonFilter(2)" style="padding:5px 14px;border-radius:20px;border:1.5px solid var(--bdr);background:transparent;color:var(--mut);font-size:12px;font-weight:700;cursor:pointer">C2</button>
+    </div>
     <!-- ── KPI Row: 3 colunas ── -->
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
       <div class="kpi" style="background:var(--bg2);border-radius:var(--r);padding:14px 12px;margin:0">
@@ -700,6 +707,7 @@ function authUser(username,pwd){
 let CU=null; // current user {id,name,user,role}
 let CUR_ADDR=null, CUR_NCNT=null, CUR_SESS={};
 let DONE=[]; // carregado do Supabase
+let MON_FILTER=0; // 0=Todos, 1=C1, 2=C2
 let USERS=[]; // carregado do Supabase
 let POS=[]; // posições importadas do SB8+Z01+Z05
 let POS_MAP={}; // gtin→{descr,pares,qtSis}
@@ -1429,10 +1437,23 @@ function goTab(t){
 }
 
 // ═════════════════════ MONITORING ═════════════════════
+function setMonFilter(f){
+  MON_FILTER=f;
+  ['f-all','f-c1','f-c2'].forEach((id,i)=>{
+    const el=document.getElementById(id); if(!el) return;
+    const active=(i===f);
+    el.style.background=active?'var(--acc)':'transparent';
+    el.style.color=active?'#fff':'var(--mut)';
+    el.style.borderColor=active?'var(--acc)':'var(--bdr)';
+  });
+  renderMon();
+}
+
 function renderMon(){
   buildIdx();
   const isAdm=CU&&CU.role==='adm';
-  const VD=isAdm?DONE:DONE.filter(s=>s.op===CU.name); // visibleDone by role
+  let VD=isAdm?DONE:DONE.filter(s=>s.op===CU.name); // visibleDone by role
+  if(MON_FILTER>0) VD=VD.filter(s=>s.ncnt===MON_FILTER); // filtro C1/C2
   const addrs=[...new Set(VD.map(s=>s.addr))];
   const totalAddr=Object.keys(ADDR_IDX||{}).length;
   const counted=addrs.length;
@@ -1515,10 +1536,17 @@ function renderMon(){
   renderAddrSessions();
 }
 
+// Retorna bestByAddr respeitando MON_FILTER (0=Todos,1=C1,2=C2)
+function getFilteredBestByAddr(){
+  const src=MON_FILTER>0?DONE.filter(s=>s.ncnt===MON_FILTER):DONE;
+  const best={};
+  src.forEach(s=>{if(!best[s.addr]||s.ncnt>best[s.addr].ncnt)best[s.addr]=s;});
+  return best;
+}
+
 function getBrandData(){
   const byBrand={};
-  const bestByAddrB={};
-  DONE.forEach(s=>{if(!bestByAddrB[s.addr]||s.ncnt>bestByAddrB[s.addr].ncnt)bestByAddrB[s.addr]=s;});
+  const bestByAddrB=getFilteredBestByAddr();
   Object.values(bestByAddrB).forEach(sess=>{
     (sess.items||[]).forEach(it=>{
       const brand=(POS_MAP[it.ean]?.marca||'').trim().toUpperCase()||(it.descr||'?').split(' ')[0].toUpperCase()||'?';
@@ -1558,8 +1586,7 @@ function showBrandDetail(brand){
   const prods=document.getElementById('m-brand-prods');
   if(!detail) return;
   // Build product list for this brand from bestByAddr
-  const bestByAddrB={};
-  DONE.forEach(s=>{if(!bestByAddrB[s.addr]||s.ncnt>bestByAddrB[s.addr].ncnt)bestByAddrB[s.addr]=s;});
+  const bestByAddrB=getFilteredBestByAddr();
   const prodMap={};
   Object.values(bestByAddrB).forEach(sess=>{
     (sess.items||[]).forEach(it=>{
