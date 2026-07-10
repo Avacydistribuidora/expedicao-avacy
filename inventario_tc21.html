@@ -323,7 +323,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V5.5</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V5.6</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -1456,13 +1456,23 @@ let APU_FILTER='', APU_SORT_COL='dif', APU_SORT_ASC=false;
 
 // ═════ SUPABASE: APU_ROWS (inv_apuracao) ═════
 async function saveApuToSupabase(){
-  const sb=getSB(); if(!sb) return;
+  const sb=getSB();
+  if(!sb){toast('Supabase indisponível — dados não salvos na nuvem',1);return;}
   try{
+    toast('Salvando apuração no Supabase...');
+    const payload={inventario:'Julho-2026',rows:APU_ROWS,updated_at:new Date().toISOString()};
     const {error}=await sb.from('inv_apuracao')
-      .upsert({inventario:'Julho-2026',rows:APU_ROWS,updated_at:new Date().toISOString()},{onConflict:'inventario'});
-    if(error) console.warn('saveApuToSupabase err:',error.message);
-    else toast('Apuração salva no Supabase ✓');
-  }catch(e){console.warn('saveApuToSupabase:',e);}
+      .upsert(payload,{onConflict:'inventario'});
+    if(error){
+      console.error('saveApuToSupabase err:',error);
+      toast('Erro ao salvar: '+error.message+' (código: '+(error.code||'?')+')',1);
+    } else {
+      toast('Apuração salva no Supabase ✓ ('+APU_ROWS.length+' itens)');
+    }
+  }catch(e){
+    console.error('saveApuToSupabase exception:',e);
+    toast('Erro inesperado ao salvar: '+e.message,1);
+  }
 }
 
 async function loadApuFromSupabase(sb){
