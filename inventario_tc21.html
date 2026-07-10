@@ -322,7 +322,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V4.6</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V5.0</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -1436,97 +1436,113 @@ const APU_ROWS = [{"gtin": "37909690520413", "desc": "HAVAIANAS DUAL 8275 BRANCO
 let APU_FILTER = '';
 
 function renderApu(){
-  const el = document.getElementById('p-apu');
+  const el=document.getElementById('p-apu');
   if(!el) return;
+  const q=(APU_FILTER||'').toLowerCase();
+  let rows=q?APU_ROWS.filter(r=>
+    r.gtin.includes(APU_FILTER)||
+    (r.desc||'').toLowerCase().includes(q)||
+    (r.obs||'').toLowerCase().includes(q)||
+    (r.par||'').toLowerCase().includes(q)
+  ):[...APU_ROWS];
 
-  const q = APU_FILTER.toLowerCase();
-  const rows = q ? APU_ROWS.filter(r =>
-    r.gtin.includes(APU_FILTER) ||
-    r.desc.toLowerCase().includes(q) ||
-    r.obs.toLowerCase().includes(q) ||
-    r.par.toLowerCase().includes(q)
-  ) : APU_ROWS;
+  // Sort
+  if(APU_SORT_COL){
+    const k=APU_SORT_COL;
+    rows.sort((a,b)=>{
+      const va=typeof a[k]==='number'?a[k]:(a[k]||'').toString().toLowerCase();
+      const vb=typeof b[k]==='number'?b[k]:(b[k]||'').toString().toLowerCase();
+      return APU_SORT_ASC?(va>vb?1:va<vb?-1:0):(va<vb?1:va>vb?-1:0);
+    });
+  }
 
-  const armCols = [
-    {key:'a01',label:'ARM 01 (SB8 kits)'},
-    {key:'a02',label:'ARM 02'},
-    {key:'a03',label:'ARM 03'},
-    {key:'a04',label:'ARM 04'},
-    {key:'a05',label:'ARM 05'},
-    {key:'a66',label:'ARM 66'},
-    {key:'ajr',label:'ARM JR'},
-    {key:'arv',label:'ARM RV'},
+  const cols=[
+    {k:'gtin',   label:'GTIN',            align:'left',  w:'140px'},
+    {k:'desc',   label:'Descrição',        align:'left',  w:'220px'},
+    {k:'pares',  label:'Pares/Kit',        align:'center',w:'70px'},
+    {k:'protheus',label:'Protheus|(kits)',align:'center',w:'80px'},
+    {k:'inv',    label:'Inventário|(kits)',align:'center',w:'80px'},
+    {k:'dif',    label:'Diferença|(kits)',align:'center',w:'80px',color:'#ff9800'},
+    {k:'a01',    label:'ARM 01|(SB8)',    align:'center',w:'70px'},
+    {k:'a02',    label:'ARM 02',           align:'center',w:'60px'},
+    {k:'a03',    label:'ARM 03',           align:'center',w:'60px'},
+    {k:'a04',    label:'ARM 04',           align:'center',w:'60px'},
+    {k:'a05',    label:'ARM 05',           align:'center',w:'60px'},
+    {k:'a66',    label:'ARM 66',           align:'center',w:'60px'},
+    {k:'ajr',    label:'ARM JR',           align:'center',w:'60px'},
+    {k:'arv',    label:'ARM RV',           align:'center',w:'60px'},
+    {k:'tot',    label:'Total|Outros',    align:'center',w:'70px'},
+    {k:'obs',    label:'Obs',              align:'left',  w:'160px'},
+    {k:'par',    label:'PARADEIRO DO SALDO',align:'left', w:'220px',pur:true},
   ];
 
-  const thStyle = `background:#1a1a2e;color:#aaa;font-size:11px;font-weight:700;padding:8px 10px;white-space:nowrap;border:1px solid #2d2d4e;text-align:center;position:sticky;top:0;z-index:2;`;
-  const thStyleLeft = thStyle + 'text-align:left;';
-  const thStylePur = `background:#4a1060;color:#e0aaff;font-size:11px;font-weight:700;padding:8px 10px;white-space:nowrap;border:1px solid #6a30a0;text-align:left;position:sticky;top:0;z-index:2;`;
+  const thBase='background:#1a1a2e;color:#aaa;font-size:11px;font-weight:700;padding:7px 8px;border:1px solid #2d2d4e;white-space:nowrap;cursor:pointer;user-select:none;position:sticky;top:0;z-index:2;';
+  const thPur ='background:#4a1060;color:#e0aaff;font-size:11px;font-weight:700;padding:7px 8px;border:1px solid #6a30a0;white-space:nowrap;cursor:pointer;user-select:none;position:sticky;top:0;z-index:2;';
 
-  let h = `<div style="margin-bottom:8px;display:flex;gap:8px;align-items:center">
-    <input id="apu-search" type="text" placeholder="🔍  Buscar GTIN, produto, obs..." value="${APU_FILTER}"
-      oninput="APU_FILTER=this.value;renderApu()"
-      style="flex:1;background:var(--bg3);border:1.5px solid var(--bdr);border-radius:8px;color:var(--txt);font-size:14px;padding:9px 12px;outline:none">
-    <span style="font-size:12px;color:var(--mut);white-space:nowrap">${rows.length} / ${APU_ROWS.length} itens</span>
-  </div>
-  <div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 130px);border-radius:10px;border:1px solid #2d2d4e">
-  <table style="border-collapse:collapse;min-width:1200px;width:100%;font-size:13px">
-  <thead><tr>
-    <th style="${thStyleLeft}min-width:140px">GTIN</th>
-    <th style="${thStyleLeft}min-width:220px">Descrição</th>
-    <th style="${thStyle}">Pares/<br>Kit</th>
-    <th style="${thStyle}">Protheus<br>(kits)</th>
-    <th style="${thStyle}">Inventário<br>(kits)</th>
-    <th style="${thStyle}color:#ff9800">Diferença<br>(kits)</th>`;
-
-  armCols.forEach(c => {
-    h += `<th style="${thStyle}">${c.label}</th>`;
+  let ths='';
+  cols.forEach(c=>{
+    const arrow=APU_SORT_COL===c.k?(APU_SORT_ASC?' ▲':' ▼'):'';
+    const base=c.pur?thPur:thBase;
+    const ta=c.align==='center'?'text-align:center;':'';
+    ths+=`<th style="${base}${ta}min-width:${c.w}" onclick="apuSort('${c.k}')">${c.label.split(String.fromCharCode(10)).join('<br>')}${arrow}</th>`;
   });
 
-  h += `<th style="${thStyle}">Total<br>Outros</th>
-    <th style="${thStyleLeft}min-width:160px">Obs</th>
-    <th style="${thStylePur}min-width:220px">PARADEIRO DO SALDO</th>
-  </tr></thead><tbody>`;
-
-  rows.forEach((r, i) => {
-    const bg = i % 2 === 0 ? '#0d1117' : '#161b22';
-    const tdBase = `style="padding:7px 10px;border:1px solid #21262d;background:${bg};vertical-align:middle"`;
-    const tdCtr = `style="padding:7px 10px;border:1px solid #21262d;background:${bg};text-align:center;vertical-align:middle"`;
-
-    h += `<tr>
-      <td ${tdBase} style="padding:7px 10px;border:1px solid #21262d;background:${bg};font-size:11px;color:#8b949e;font-family:monospace">${r.gtin}</td>
-      <td ${tdBase} style="padding:7px 10px;border:1px solid #21262d;background:${bg};font-weight:600;line-height:1.3">${r.desc}</td>
-      <td ${tdCtr}>${r.pares}</td>
-      <td ${tdCtr}>${r.protheus}</td>
-      <td ${tdCtr}>${r.inv}</td>
-      <td ${tdCtr} style="padding:7px 10px;border:1px solid #21262d;background:${bg};text-align:center;font-weight:700;color:#ff9800">${r.dif}</td>`;
-
-    armCols.forEach(c => {
-      const val = r[c.key];
-      const colored = val > 0;
-      h += `<td style="padding:7px 10px;border:1px solid #21262d;background:${colored?'#1a3a5c':bg};text-align:center;font-weight:${colored?'700':'400'};color:${colored?'#58a6ff':'#444d56'}">${val > 0 ? val : 0}</td>`;
+  let trs='';
+  rows.forEach((r,i)=>{
+    const bg=i%2===0?'#0d1117':'#161b22';
+    const bpur=i%2===0?'#1a0a2e':'#1e0e38';
+    const td=(v,col)=>{
+      const arm=['a01','a02','a03','a04','a05','a66','ajr','arv'].includes(col.k);
+      const hiArm=arm&&v>0;
+      const bg2=hiArm?'#1a3a5c':bg;
+      const clr=col.color?col.color:hiArm?'#58a6ff':arm?'#444d56':'#e6edf3';
+      const fw=hiArm||col.k==='dif'?'700':'400';
+      const ta=col.align==='center'?'text-align:center;':'';
+      return `<td style="padding:6px 8px;border:1px solid #21262d;background:${bg2};${ta}color:${clr};font-weight:${fw};font-size:13px;vertical-align:middle">${v}</td>`;
+    };
+    trs+='<tr>';
+    cols.forEach(c=>{
+      let v=r[c.k]??'';
+      if(c.k==='gtin') trs+=`<td style="padding:6px 8px;border:1px solid #21262d;background:${bg};font-size:11px;color:#8b949e;font-family:monospace;vertical-align:middle">${v}</td>`;
+      else if(c.k==='desc') trs+=`<td style="padding:6px 8px;border:1px solid #21262d;background:${bg};font-weight:600;line-height:1.3;font-size:13px;vertical-align:middle">${v}</td>`;
+      else if(c.k==='par') trs+=`<td style="padding:6px 8px;border:1px solid #21262d;background:${bpur};color:#c084fc;font-size:12px;vertical-align:middle">${v}</td>`;
+      else trs+=td(v,c);
     });
-
-    h += `<td ${tdCtr} style="padding:7px 10px;border:1px solid #21262d;background:${bg};text-align:center;font-weight:700;color:#e6edf3">${r.tot}</td>
-      <td ${tdBase}>${r.obs}</td>
-      <td style="padding:7px 10px;border:1px solid #21262d;background:${i%2===0?'#1a0a2e':'#1e0e38'};color:#c084fc;font-size:12px">${r.par}</td>
-    </tr>`;
+    trs+='</tr>';
   });
 
-  h += '</tbody></table></div>';
-  el.innerHTML = h;
+  el.innerHTML=`
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+    <input id="apu-search" type="text" placeholder="🔍 Buscar GTIN, produto, obs..."
+      style="flex:1;min-width:200px;background:var(--bg3);border:1.5px solid var(--bdr);border-radius:8px;color:var(--txt);font-size:14px;padding:9px 12px;outline:none"
+      value="${APU_FILTER}"
+      oninput="APU_FILTER=this.value;renderApu()">
+    <span style="font-size:12px;color:var(--mut);white-space:nowrap">${rows.length}/${APU_ROWS.length} itens</span>
+    <button onclick="importApuXLSX()" style="background:var(--acc);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;padding:9px 14px;cursor:pointer;white-space:nowrap">📥 Importar</button>
+    <button onclick="exportApuXLSX()" style="background:#217346;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;padding:9px 14px;cursor:pointer;white-space:nowrap">⬇ Excel</button>
+  </div>
+  <div style="overflow:auto;max-height:calc(100vh - 140px);border-radius:8px;border:1px solid #2d2d4e">
+    <table style="border-collapse:collapse;width:max-content;min-width:100%">
+      <thead><tr>${ths}</tr></thead>
+      <tbody>${trs}</tbody>
+    </table>
+  </div>`;
+
+  // Restore focus on search
+  const si=document.getElementById('apu-search');
+  if(si&&document.activeElement!==si){ /* keep cursor */ }
+}
+
+let APU_SORT_COL='dif', APU_SORT_ASC=false;
+function apuSort(col){
+  if(APU_SORT_COL===col) APU_SORT_ASC=!APU_SORT_ASC;
+  else{ APU_SORT_COL=col; APU_SORT_ASC=false; }
+  renderApu();
 }
 
 
 function exportApuXLSX(){
-  if(typeof XLSX === 'undefined'){
-    const s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-    s.onload = () => _doExportApu();
-    s.onerror = () => alert('Sem conexão para baixar biblioteca de exportação.');
-    document.head.appendChild(s);
-    return;
-  }
-  _doExportApu();
+  _loadSheetJS(_doExportApu);
 }
 function _doExportApu(){
   const q = APU_FILTER.toLowerCase();
@@ -1556,6 +1572,126 @@ function _doExportApu(){
   XLSX.writeFile(wb, 'Apuracao_Divergencias.xlsx');
 }
 
+
+function _loadSheetJS(cb){
+  if(typeof XLSX!=='undefined'){ cb(); return; }
+  const s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  s.onload=cb;
+  s.onerror=()=>toast('Sem internet para carregar biblioteca Excel',1);
+  document.head.appendChild(s);
+}
+
+function importApuXLSX(){
+  _loadSheetJS(()=>{
+    const inp=document.createElement('input');
+    inp.type='file'; inp.accept='.xlsx,.xls';
+    inp.onchange=e=>{
+      const file=e.target.files[0]; if(!file) return;
+      const reader=new FileReader();
+      reader.onload=ev=>{
+        try{
+          const wb=XLSX.read(ev.target.result,{type:'array'});
+          const ws=wb.Sheets[wb.SheetNames[0]];
+          const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:0});
+          if(raw.length<3){ toast('Arquivo inválido',1); return; }
+          const n=x=>(!x||isNaN(Number(x)))?0:Math.round(Number(x));
+          const s=x=>String(x||'').trim();
+          let rows=[];
+
+          // ── Detectar formato ──────────────────────────────────────
+          // SB802: header na linha 2 (idx 2), contém "Produto","Armazem","Saldo Lote"
+          const isSB8 = raw.slice(0,5).some(r=>r.some(c=>String(c).trim()==='Produto'));
+
+          if(isSB8){
+            // Mapa Pares/Kit dos dados atuais
+            const paresMap={};
+            const descMap={};
+            APU_ROWS.forEach(r=>{ paresMap[r.gtin]=r.pares||12; descMap[r.gtin]=r.desc||r.gtin; });
+
+            let hIdx=raw.findIndex(r=>r.some(c=>String(c).trim()==='Produto'));
+            const hdr=raw[hIdx].map(c=>String(c).trim());
+            const ci=(nm)=>hdr.findIndex(h=>h===nm);
+            const iGtin=ci('Produto'), iArm=ci('Armazem'), iSaldo=ci('Saldo Lote');
+            const armKey={'01':'a01','02':'a02','03':'a03','04':'a04','05':'a05','66':'a66','JR':'ajr','RV':'arv'};
+            const map={};
+            for(let i=hIdx+1;i<raw.length;i++){
+              const r=raw[i];
+              const gtin=s(r[iGtin]); if(!gtin) continue;
+              const arm=String(r[iArm]||'').trim().padStart(2,'0');
+              const saldo=n(r[iSaldo]);
+              if(!map[gtin]) map[gtin]={a01:0,a02:0,a03:0,a04:0,a05:0,a66:0,ajr:0,arv:0};
+              const k=armKey[arm]||armKey[String(r[iArm]||'').trim()];
+              if(k) map[gtin][k]+=saldo;
+            }
+            for(const [gtin,a] of Object.entries(map)){
+              const outros=a.a02+a.a03+a.a04+a.a05+a.a66+a.ajr+a.arv;
+              if(outros===0) continue;
+              const pares=paresMap[gtin]||12;
+              const protheus=Math.round(a.a01/pares);
+              const tot=outros; // Total Outros em pares
+              rows.push({
+                gtin, desc:descMap[gtin]||gtin,
+                pares, protheus, inv:0,
+                dif: -Math.round(outros/pares), // saldo fora do ARM01 em kits
+                a01:Math.round(a.a01/pares),
+                a02:Math.round(a.a02/pares),
+                a03:Math.round(a.a03/pares),
+                a04:Math.round(a.a04/pares),
+                a05:Math.round(a.a05/pares),
+                a66:Math.round(a.a66/pares),
+                ajr:Math.round(a.ajr/pares),
+                arv:Math.round(a.arv/pares),
+                tot:Math.round(outros/pares), obs:'', par:''
+              });
+            }
+            toast('SB802 importado — kits calculados por Pares/Kit ✓');
+          } else {
+            // Formato Divergencias_Paradeiro_Kits
+            // 0=GTIN,1=Desc,2=Pares,3=Protheus,4=Inv,5=Dif,6=a01..13=arv,14=tot,15=obs,16=par
+            for(let i=1;i<raw.length;i++){
+              const r=raw[i]; if(!r[0]) continue;
+              rows.push({
+                gtin:s(r[0]),desc:s(r[1]),pares:n(r[2]),
+                protheus:n(r[3]),inv:n(r[4]),dif:n(r[5]),
+                a01:n(r[6]),a02:n(r[7]),a03:n(r[8]),a04:n(r[9]),
+                a05:n(r[10]),a66:n(r[11]),ajr:n(r[12]),arv:n(r[13]),
+                tot:n(r[14]),obs:s(r[15]),par:s(r[16])||'—'
+              });
+            }
+          }
+
+          if(!rows.length){ toast('Nenhum dado encontrado',1); return; }
+          APU_ROWS.length=0;
+          rows.forEach(r=>APU_ROWS.push(r));
+          try{ localStorage.setItem('apu_rows',JSON.stringify(APU_ROWS)); }catch(e){}
+          APU_FILTER='';
+          renderApu();
+          toast('Apuração atualizada — '+rows.length+' itens ✓');
+        }catch(err){
+          console.error(err);
+          toast('Erro ao ler arquivo: '+err.message,1);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    };
+    inp.click();
+  });
+}
+
+// Restore Apuração data from localStorage if available
+(function(){
+  try{
+    const saved=localStorage.getItem('apu_rows');
+    if(saved){
+      const parsed=JSON.parse(saved);
+      if(Array.isArray(parsed)&&parsed.length){
+        APU_ROWS.length=0;
+        parsed.forEach(r=>APU_ROWS.push(r));
+      }
+    }
+  }catch(e){}
+})();
 // ═════════════════════ TABS ═════════════════════
 function goTab(t){
   ['cnt','mon','est','end','apu'].forEach(x=>{
