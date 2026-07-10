@@ -322,7 +322,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V5.0</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V5.1</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -1604,11 +1604,29 @@ function importApuXLSX(){
           const isSB8 = raw.slice(0,5).some(r=>r.some(c=>String(c).trim()==='Produto'));
 
           if(isSB8){
-            // Mapa Pares/Kit dos dados atuais
-            const paresMap={};
-            const descMap={};
+            // ── Pares/Kit e descrições do APU_ROWS atual
+            const paresMap={}, descMap={};
             APU_ROWS.forEach(r=>{ paresMap[r.gtin]=r.pares||12; descMap[r.gtin]=r.desc||r.gtin; });
+            // Pares/Kit do POS_MAP (mais completo)
+            if(typeof POS_MAP!=='undefined'){
+              Object.entries(POS_MAP).forEach(([g,v])=>{
+                if(v.pares) paresMap[g]=v.pares;
+                if(v.descr) descMap[g]=v.descr;
+              });
+            }
 
+            // ── Soma contagens do inventário por EAN (em kits)
+            const invMap={};
+            if(typeof DONE!=='undefined'){
+              DONE.forEach(sess=>{
+                (sess.items||[]).forEach(it=>{
+                  if(!invMap[it.ean]) invMap[it.ean]=0;
+                  invMap[it.ean]+=(it.qtCnt||0);
+                });
+              });
+            }
+
+            // ── Agrupa SB802: soma lotes por GTIN × ARM
             let hIdx=raw.findIndex(r=>r.some(c=>String(c).trim()==='Produto'));
             const hdr=raw[hIdx].map(c=>String(c).trim());
             const ci=(nm)=>hdr.findIndex(h=>h===nm);
@@ -1617,35 +1635,38 @@ function importApuXLSX(){
             const map={};
             for(let i=hIdx+1;i<raw.length;i++){
               const r=raw[i];
-              const gtin=s(r[iGtin]); if(!gtin) continue;
-              const arm=String(r[iArm]||'').trim().padStart(2,'0');
+              const gtin=s(r[iGtin]); if(!gtin||gtin==='Produto') continue;
+              const armRaw=String(r[iArm]||'').trim();
+              const arm=armRaw.length<=2?armRaw.padStart(2,'0'):armRaw;
               const saldo=n(r[iSaldo]);
               if(!map[gtin]) map[gtin]={a01:0,a02:0,a03:0,a04:0,a05:0,a66:0,ajr:0,arv:0};
-              const k=armKey[arm]||armKey[String(r[iArm]||'').trim()];
+              const k=armKey[arm];
               if(k) map[gtin][k]+=saldo;
             }
+
+            // ── Monta rows cruzando SB802 com inventário
             for(const [gtin,a] of Object.entries(map)){
-              const outros=a.a02+a.a03+a.a04+a.a05+a.a66+a.ajr+a.arv;
-              if(outros===0) continue;
               const pares=paresMap[gtin]||12;
-              const protheus=Math.round(a.a01/pares);
-              const tot=outros; // Total Outros em pares
+              // Converte pares → kits
+              const a01k=Math.round(a.a01/pares), a02k=Math.round(a.a02/pares),
+                    a03k=Math.round(a.a03/pares), a04k=Math.round(a.a04/pares),
+                    a05k=Math.round(a.a05/pares), a66k=Math.round(a.a66/pares),
+                    ajrk=Math.round(a.ajr/pares), arvk=Math.round(a.arv/pares);
+              const totOutros=a02k+a03k+a04k+a05k+a66k+ajrk+arvk;
+              const protheus=a01k; // ARM01 = saldo Protheus principal
+              const inv=invMap[gtin]||0; // contagem inventário em kits
+              const dif=inv-protheus;
+              // Só mostra se tem divergência ou saldo em outros ARMs
+              if(totOutros===0 && dif===0) continue;
               rows.push({
                 gtin, desc:descMap[gtin]||gtin,
-                pares, protheus, inv:0,
-                dif: -Math.round(outros/pares), // saldo fora do ARM01 em kits
-                a01:Math.round(a.a01/pares),
-                a02:Math.round(a.a02/pares),
-                a03:Math.round(a.a03/pares),
-                a04:Math.round(a.a04/pares),
-                a05:Math.round(a.a05/pares),
-                a66:Math.round(a.a66/pares),
-                ajr:Math.round(a.ajr/pares),
-                arv:Math.round(a.arv/pares),
-                tot:Math.round(outros/pares), obs:'', par:''
+                pares, protheus, inv, dif,
+                a01:a01k, a02:a02k, a03:a03k, a04:a04k,
+                a05:a05k, a66:a66k, ajr:ajrk, arv:arvk,
+                tot:totOutros, obs:'', par:''
               });
             }
-            toast('SB802 importado — kits calculados por Pares/Kit ✓');
+            toast('SB802 importado — '+rows.length+' divergências encontradas ✓');
           } else {
             // Formato Divergencias_Paradeiro_Kits
             // 0=GTIN,1=Desc,2=Pares,3=Protheus,4=Inv,5=Dif,6=a01..13=arv,14=tot,15=obs,16=par
