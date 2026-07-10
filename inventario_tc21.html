@@ -277,7 +277,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 #qr-canvas{margin:0 auto 16px;background:#fff;padding:8px;border-radius:8px;display:inline-block}
 .qr-close{background:var(--bg3);border:1px solid var(--bdr);border-radius:8px;padding:8px 24px;color:var(--txt);font-size:13px;cursor:pointer;width:100%}
 /* ── SYNC BTN ── */
-.tb-sync{font-size:16px;line-height:1;padding:5px 8px}
+.tb-sync{font-size:18px;line-height:1;padding:6px 10px;background:var(--acc);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;color:#fff;border:none}
 @keyframes spin-tb{to{transform:rotate(360deg)}}
 .spinning{display:inline-block;animation:spin-tb .7s linear infinite}
 
@@ -323,7 +323,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V4.4</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V4.5</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -350,7 +350,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
         <div class="acoes-item" onclick="doLimpar();closeUserMenu()"><span class="ai-ico">🗑</span>Limpar Dados</div>
       </div>
     </div>
-    <button class="tb-btn tb-sync" id="btn-sync" onclick="doSync(this)" title="Sincronizar dados" style="display:none">🔄</button>
+    <button class="tb-btn tb-sync" id="btn-sync" onclick="doSync(this)" title="Atualizar dados">↻</button>
     <div class="acoes-wrap" id="acoes-wrap">
       <button class="btn-acoes" onclick="toggleAcoes(event)">⚙ Ações ▾</button>
       <div class="acoes-menu" id="acoes-menu">
@@ -872,7 +872,7 @@ function enterMain(){
   rb.style.cursor=adm?'pointer':'default';
   rb.className='rb '+(adm?'rb-adm':'rb-op');
   document.getElementById('acoes-wrap').style.display=adm?'flex':'none';
-  document.getElementById('btn-sync').style.display=adm?'':'none';
+  document.getElementById('btn-sync').style.display='';
   document.getElementById('t-mon').style.display=adm?'':'none';
   document.getElementById('t-est').style.display=adm?'':'none';
   document.getElementById('t-end').style.display=adm?'':'none';
@@ -1929,7 +1929,7 @@ function closeQR(){
 async function doSync(btn){
   if(btn.classList.contains('spinning'))return;
   const icon=btn.textContent;
-  btn.innerHTML='<span class="spinning">🔄</span>';
+  btn.innerHTML='<span class="spinning">↻</span>';
   btn.disabled=true;
   try{
     await loadFromSupabase();
@@ -1939,7 +1939,7 @@ async function doSync(btn){
   }catch(e){
     toast('Erro ao sincronizar',1);
   }finally{
-    btn.innerHTML=icon;
+    btn.textContent='↻';
     btn.disabled=false;
   }
 }
