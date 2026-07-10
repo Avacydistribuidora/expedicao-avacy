@@ -323,7 +323,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V5.3</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V5.4</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -554,6 +554,14 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
           <div id="m-brand-prods" style="max-height:260px;overflow-y:auto;font-size:12px"></div>
         </div>
       </div>
+    </div>
+    <div class="card" id="prod-search-card">
+      <div class="ct">🔍 Busca por Produto <span id="prod-search-count" style="color:var(--acc)"></span></div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <input id="prod-search-input" style="flex:1;min-width:160px;background:var(--bg3);border:1.5px solid var(--bdr);border-radius:8px;color:var(--txt);font-size:15px;padding:7px 10px;outline:none" placeholder="EAN ou descrição do produto..." oninput="renderProdSearch()" autocomplete="off" autocorrect="off" spellcheck="false">
+        <button class="btn btn-acc" style="padding:7px 14px;font-size:13px;width:auto" onclick="document.getElementById('prod-search-input').value='';renderProdSearch()">✕ Limpar</button>
+      </div>
+      <div id="prod-search-result"><div class="empty">Digite para buscar um produto</div></div>
     </div>
     <div class="card" id="addr-sessions-card">
       <div class="ct">📍 Endereços Contados <span id="addr-sess-count" style="color:var(--acc)"></span></div>
@@ -1690,23 +1698,23 @@ function renderMon(){
   document.getElementById('k-cnt-vol').textContent=Math.round(cntVol).toLocaleString('pt-BR');
   document.getElementById('k-vol-pct').textContent=volPct+'%';
   document.getElementById('bar-vol').style.width=volPct+'%';
-  // Acuracidade por volume: per-GTIN comparison
-  // Aggregate counted volumes per GTIN (best ncnt per address)
+  // Acuracidade: soma TUDO que foi contado vs saldo em estoque (ignora agrupamento por endereço)
   const cntByGtin={};
-  Object.values(bestByAddrV).forEach(sess=>{
+  VD.forEach(sess=>{
     (sess.items||[]).forEach(it=>{
       if(!cntByGtin[it.ean]) cntByGtin[it.ean]=0;
       cntByGtin[it.ean]+=(it.qtCnt||0);
     });
   });
+  const totalCntVol=Object.values(cntByGtin).reduce((s,v)=>s+v,0);
   let volOk=0;
   Object.entries(POS_MAP).forEach(([gtin,pm])=>{
     const sys=pm.qtSis||0;
     const cnt=cntByGtin[gtin]||0;
     if(cnt>0 && cnt===sys){ volOk+=sys; }
   });
-  const volDv=Math.max(0,cntVol-volOk);   // contados mas com divergência
-  const volNd=Math.max(0,sysVol-cntVol);  // não contados
+  const volDv=Math.max(0,totalCntVol-volOk);  // contados mas com divergência
+  const volNd=Math.max(0,sysVol-totalCntVol); // não contados
   const volTotal=sysVol||1;
   const acur=sysVol>0?Math.min(Math.round(volOk/sysVol*100),100):0;
   document.getElementById('m-acur').textContent=acur+'%';
@@ -1859,6 +1867,74 @@ function exportMarcas(){
   const today=new Date().toISOString().slice(0,10);
   XLSX.writeFile(wb,'ranking_marcas_'+today+'.xlsx');
   toast('Exportado!',0);
+}
+
+function renderProdSearch(){
+  const q=(document.getElementById('prod-search-input').value||'').trim().toLowerCase();
+  const el=document.getElementById('prod-search-result');
+  const cnt=document.getElementById('prod-search-count');
+  if(!q){el.innerHTML='<div class="empty">Digite para buscar um produto</div>';cnt.textContent='';return;}
+  const isAdm=CU&&CU.role==='adm';
+  const src=isAdm?DONE:DONE.filter(s=>s.op===CU.name);
+  // Collect all rows matching q: {ean, descr, addr, op, ncnt, ts, qtCnt, qtSis}
+  const rows=[];
+  src.forEach(sess=>{
+    (sess.items||[]).forEach(it=>{
+      const ean=String(it.ean||'').toLowerCase();
+      const descr=String(it.descr||'').toLowerCase();
+      if(!ean.includes(q)&&!descr.includes(q)) return;
+      rows.push({ean:it.ean,descr:it.descr||'',addr:sess.addr,op:sess.op||'—',ncnt:sess.ncnt||1,ts:sess.ts||'',qtCnt:it.qtCnt||0,qtSis:it.qtSis||0});
+    });
+  });
+  if(!rows.length){el.innerHTML='<div class="empty">Nenhum resultado encontrado</div>';cnt.textContent='';return;}
+  // Group by EAN
+  const byEan={};
+  rows.forEach(r=>{
+    if(!byEan[r.ean]) byEan[r.ean]={ean:r.ean,descr:r.descr,total:0,addrs:[]};
+    byEan[r.ean].total+=r.qtCnt;
+    byEan[r.ean].addrs.push(r);
+  });
+  const groups=Object.values(byEan).sort((a,b)=>b.total-a.total);
+  cnt.textContent='('+groups.length+' produto'+(groups.length!==1?'s':'')+', '+rows.length+' registro'+(rows.length!==1?'s':'')+')';
+  el.innerHTML=groups.map(g=>{
+    const rowsHtml=g.addrs.map(r=>{
+      const dt=r.ts?new Date(r.ts).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+      const dif=r.qtCnt-r.qtSis;
+      const difColor=dif===0?'var(--grn)':dif>0?'var(--acc)':'var(--red)';
+      return `<tr>
+        <td style="padding:5px 8px;font-size:12px;font-weight:600">${r.addr}</td>
+        <td style="padding:5px 8px;font-size:12px;text-align:center">C${r.ncnt}</td>
+        <td style="padding:5px 8px;font-size:12px">${r.op}</td>
+        <td style="padding:5px 8px;font-size:12px;text-align:right;font-weight:700">${r.qtCnt}</td>
+        <td style="padding:5px 8px;font-size:12px;text-align:right;color:${difColor};font-weight:700">${dif>0?'+':''}${dif}</td>
+        <td style="padding:5px 8px;font-size:12px;color:var(--mut)">${dt}</td>
+      </tr>`;
+    }).join('');
+    return `<div style="margin-bottom:12px;border:1px solid var(--bdr);border-radius:8px;overflow:hidden">
+      <div style="background:var(--bg3);padding:8px 12px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--txt)">${g.descr||g.ean}</div>
+          <div style="font-size:11px;color:var(--mut);margin-top:1px">${g.ean}</div>
+        </div>
+        <div style="font-size:14px;font-weight:800;color:var(--acc)">${g.total} kits</div>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="border-bottom:1px solid var(--bdr)">
+              <th style="padding:5px 8px;font-size:11px;color:var(--mut);text-align:left;font-weight:600">Endereço</th>
+              <th style="padding:5px 8px;font-size:11px;color:var(--mut);text-align:center;font-weight:600">Ctg</th>
+              <th style="padding:5px 8px;font-size:11px;color:var(--mut);text-align:left;font-weight:600">Operador</th>
+              <th style="padding:5px 8px;font-size:11px;color:var(--mut);text-align:right;font-weight:600">Qtd</th>
+              <th style="padding:5px 8px;font-size:11px;color:var(--mut);text-align:right;font-weight:600">Dif</th>
+              <th style="padding:5px 8px;font-size:11px;color:var(--mut);text-align:left;font-weight:600">Hora</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function renderAddrSessions(){
