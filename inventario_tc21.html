@@ -323,7 +323,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V5.8</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V5.9</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -1581,9 +1581,10 @@ function apuDrill(gtin){
   if(typeof DONE!=='undefined'){
     DONE.forEach(sess=>{
       (sess.items||[]).forEach(it=>{
-        if(String(it.ean).trim()===String(gtin).trim()){
+        {let _e=String(it.ean||'').trim();if(/^\d+$/.test(_e)&&_e.length<14)_e=_e.padStart(14,'0');
+        if(_e===String(gtin).trim()){
           const dt=sess.ts?new Date(sess.ts).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
-          entries.push({addr:sess.addr,ncnt:sess.ncnt||1,op:sess.op||'—',qtCnt:it.qtCnt||0,dt});
+          entries.push({addr:sess.addr,ncnt:sess.ncnt||1,op:sess.op||'—',qtCnt:it.qtCnt||0,dt});}
         }
       });
     });
@@ -1648,7 +1649,9 @@ function importApuXLSX(){
               z01Map={};
               for(let i=hIdx+1;i<raw.length;i++){
                 const r=raw[i];
-                const gtin=String(r[0]||'').trim(); if(!gtin) continue;
+                let gtin=String(r[0]||'').trim();
+                if(/^\d+$/.test(gtin)&&gtin.length<14)gtin=gtin.padStart(14,'0');
+                if(!gtin) continue;
                 z01Map[gtin]={pares:parseInt(r[2])||12, desc:String(r[1]||'').trim()};
               }
             } else if(flat.includes('Saldo Lote')){
@@ -1666,7 +1669,9 @@ function importApuXLSX(){
           const map={};
           for(let i=hIdx+1;i<sbRaw.length;i++){
             const r=sbRaw[i];
-            const gtin=String(r[iLote]||'').trim(); if(gtin.length<8) continue;
+            let gtin=String(r[iLote]||'').trim();
+            if(/^\d+$/.test(gtin)&&gtin.length<14)gtin=gtin.padStart(14,'0');
+            if(gtin.length<8) continue;
             const arm=String(r[iArm]||'').trim();
             const saldo=parseFloat(r[iSaldo])||0;
             if(!map[gtin]) map[gtin]={a01:0,a02:0,a03:0,a04:0,a05:0,a66:0,ajr:0,arv:0};
@@ -1674,7 +1679,11 @@ function importApuXLSX(){
           }
           // Mapa inventário contado (DONE)
           const invMap={};
-          if(typeof DONE!=='undefined') DONE.forEach(sess=>(sess.items||[]).forEach(it=>{invMap[it.ean]=(invMap[it.ean]||0)+(it.qtCnt||0);}));
+          if(typeof DONE!=='undefined') DONE.forEach(sess=>(sess.items||[]).forEach(it=>{
+            let ean=String(it.ean||'').trim();
+            if(/^\d+$/.test(ean)&&ean.length<14)ean=ean.padStart(14,'0');
+            invMap[ean]=(invMap[ean]||0)+(it.qtCnt||0);
+          }));
           // Fallback pares/desc do APU_ROWS atual
           const paresOld={}, descOld={};
           APU_ROWS.forEach(r=>{paresOld[r.gtin]=r.pares; descOld[r.gtin]=r.desc;});
