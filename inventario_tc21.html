@@ -323,7 +323,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V5.6</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V5.7</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -1458,20 +1458,29 @@ let APU_FILTER='', APU_SORT_COL='dif', APU_SORT_ASC=false;
 async function saveApuToSupabase(){
   const sb=getSB();
   if(!sb){toast('Supabase indisponível — dados não salvos na nuvem',1);return;}
+  if(!APU_ROWS.length){toast('Nenhum dado para salvar',1);return;}
+  toast('Salvando '+APU_ROWS.length+' itens no Supabase...');
   try{
-    toast('Salvando apuração no Supabase...');
+    // Tenta upsert com JSONB
     const payload={inventario:'Julho-2026',rows:APU_ROWS,updated_at:new Date().toISOString()};
-    const {error}=await sb.from('inv_apuracao')
-      .upsert(payload,{onConflict:'inventario'});
+    const {data,error}=await sb.from('inv_apuracao')
+      .upsert(payload,{onConflict:'inventario'})
+      .select('inventario');
     if(error){
       console.error('saveApuToSupabase err:',error);
-      toast('Erro ao salvar: '+error.message+' (código: '+(error.code||'?')+')',1);
+      // Tenta delete+insert como fallback
+      toast('Upsert falhou ('+error.code+'): '+error.message+' — tentando alternativa...',1);
+      const {error:de}=await sb.from('inv_apuracao').delete().eq('inventario','Julho-2026');
+      if(de){toast('Erro ao salvar: '+de.message,1);return;}
+      const {error:ie}=await sb.from('inv_apuracao').insert(payload);
+      if(ie){toast('Erro ao salvar: '+ie.message+' | Código: '+ie.code,1);return;}
+      toast('Apuração salva no Supabase ✓ ('+APU_ROWS.length+' itens)');
     } else {
       toast('Apuração salva no Supabase ✓ ('+APU_ROWS.length+' itens)');
     }
   }catch(e){
     console.error('saveApuToSupabase exception:',e);
-    toast('Erro inesperado ao salvar: '+e.message,1);
+    toast('Erro inesperado: '+e.message,1);
   }
 }
 
@@ -1556,6 +1565,7 @@ function renderApu(){
       value="${APU_FILTER}" oninput="APU_FILTER=this.value;renderApu()">
     <span style="font-size:12px;color:var(--mut);white-space:nowrap">${rows.length}/${APU_ROWS.length} itens</span>
     <button onclick="importApuXLSX()" style="background:var(--acc);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;padding:9px 14px;cursor:pointer;white-space:nowrap">📥 Importar SB8+Z01</button>
+    <button onclick="saveApuToSupabase()" style="background:#0969da;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;padding:9px 14px;cursor:pointer;white-space:nowrap">☁ Salvar Supabase</button>
     <button onclick="exportApuXLSX()" style="background:#217346;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;padding:9px 14px;cursor:pointer;white-space:nowrap">⬇ Excel</button>
   </div>
   <div style="overflow:auto;max-height:calc(100vh - 140px);border-radius:8px;border:1px solid #2d2d4e">
