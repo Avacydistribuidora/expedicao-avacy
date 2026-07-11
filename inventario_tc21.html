@@ -323,7 +323,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V6.1</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V6.2</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -1668,88 +1668,86 @@ function importApuXLSX(){
         r.onload=ev=>res({name:f.name,data:ev.target.result}); r.onerror=rej; r.readAsArrayBuffer(f);
       }))).then(results=>{
         try{
-          let sbRaw=null, z01Map=null;
+          let apuRaw=null, sbRaw=null, z01Map=null;
           results.forEach(({name,data})=>{
-            const wb=XLSX.read(data,{type:'array'});
+            const wb=XLSX.read(data,{type:'array',cellText:true,cellDates:false});
             const ws=wb.Sheets[wb.SheetNames[0]];
-            const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-            const flat=raw.slice(0,6).map(r=>r.join('|')).join('|');
-            if(flat.includes('Grade GTIN')||flat.includes('Pares')){
+            const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+            const flat=raw.slice(0,4).map(r=>r.join('|')).join('|');
+            if(flat.includes('Grade GTIN')){
+              // Z01
               const hIdx=raw.findIndex(r=>r.some(c=>String(c).includes('Grade GTIN')));
               z01Map={};
               for(let i=hIdx+1;i<raw.length;i++){
                 const r=raw[i];
-                let gtin=String(r[0]||'').trim();
-                if(/^\d+$/.test(gtin)&&gtin.length<14)gtin=gtin.padStart(14,'0');
-                if(!gtin) continue;
-                z01Map[gtin]={pares:parseInt(r[2])||12, desc:String(r[1]||'').trim()};
+                let g=normGtin(String(r[0]||'').trim()); if(!g) continue;
+                z01Map[g]={pares:parseInt(r[2])||12,desc:String(r[1]||'').trim()};
               }
             } else if(flat.includes('Saldo Lote')){
+              // SB802
               sbRaw=raw;
+            } else if(flat.includes('Codigo')||flat.includes('Nome do Produto')||flat.includes('Estoque')){
+              // Relatório de Apuração (base)
+              apuRaw=raw;
             }
           });
-          if(!sbRaw){toast('Selecione o arquivo SB802',1);return;}
-          // Header SB802
-          const hIdx=sbRaw.findIndex(r=>r.some(c=>String(c).trim()==='Produto'));
-          const hdr=sbRaw[hIdx].map(c=>String(c).trim());
-          const ci=nm=>hdr.findIndex(h=>h===nm);
-          const iArm=ci('Armazem'), iSaldo=ci('Saldo Lote'), iLote=ci('Lote');
-          const armK={'01':'a01','02':'a02','03':'a03','04':'a04','05':'a05','66':'a66','JR':'ajr','RV':'arv'};
-          // Agrupa soma de lotes por GTIN x ARM
-          const map={};
-          for(let i=hIdx+1;i<sbRaw.length;i++){
-            const r=sbRaw[i];
-            let gtin=String(r[iLote]||'').trim();
-            if(/^\d+$/.test(gtin)&&gtin.length<14)gtin=gtin.padStart(14,'0');
-            if(gtin.length<8) continue;
-            const arm=String(r[iArm]||'').trim();
-            const saldo=parseFloat(r[iSaldo])||0;
-            if(!map[gtin]) map[gtin]={a01:0,a02:0,a03:0,a04:0,a05:0,a66:0,ajr:0,arv:0};
-            const k=armK[arm]; if(k) map[gtin][k]+=saldo;
+
+          // ── BASE: Relatório de Apuração ──
+          if(!apuRaw){toast('Selecione o relatório de Apuração (Consolidado)',1);return;}
+          const hdrA=apuRaw[0].map(c=>String(c).trim());
+          const ciA=nm=>hdrA.findIndex(h=>h.toLowerCase().includes(nm.toLowerCase()));
+          const iGtin=ciA('Codigo'), iDesc=ciA('Nome'), iEst=ciA('Estoque'), iInv=ciA('Inventário')||ciA('Inventario'), iDif=ciA('Diferença')||ciA('Diferenca');
+
+          // ── SB802: ARMs 02/03/04/05/66/JR/RV por GTIN ──
+          const armMap={};
+          if(sbRaw){
+            const hIdx=sbRaw.findIndex(r=>r.some(c=>String(c).trim()==='Produto'));
+            const hdr=sbRaw[hIdx].map(c=>String(c).trim());
+            const ci=nm=>hdr.findIndex(h=>h===nm);
+            const iArm=ci('Armazem'),iSaldo=ci('Saldo Lote'),iLote=ci('Lote');
+            const armK={'02':'a02','03':'a03','04':'a04','05':'a05','66':'a66','JR':'ajr','RV':'arv'};
+            for(let i=hIdx+1;i<sbRaw.length;i++){
+              const r=sbRaw[i];
+              let g=normGtin(String(r[iLote]||'').trim()); if(g.length<8) continue;
+              const arm=String(r[iArm]||'').trim();
+              const k=armK[arm]; if(!k) continue; // ignora ARM 01 — vem do relatório
+              const saldo=parseFloat(r[iSaldo])||0;
+              if(!armMap[g]) armMap[g]={a02:0,a03:0,a04:0,a05:0,a66:0,ajr:0,arv:0};
+              armMap[g][k]+=saldo;
+            }
           }
-          // Mapa inventário contado (DONE)
-          const invMap={};
-          if(typeof DONE!=='undefined') DONE.forEach(sess=>(sess.items||[]).forEach(it=>{
-            let ean=String(it.ean||'').trim();
-            if(/^\d+$/.test(ean)&&ean.length<14)ean=ean.padStart(14,'0');
-            invMap[ean]=(invMap[ean]||0)+(it.qtCnt||0);
-          }));
-          // Fallback pares/desc do APU_ROWS atual
-          const paresOld={}, descOld={};
-          APU_ROWS.forEach(r=>{paresOld[r.gtin]=r.pares; descOld[r.gtin]=r.desc;});
-          // Monta rows
+
+          // ── Monta APU_ROWS ──
           const rows=[];
-          for(const [gtin,a] of Object.entries(map)){
+          for(let i=1;i<apuRaw.length;i++){
+            const r=apuRaw[i];
+            let gtin=normGtin(String(r[iGtin]||'').trim()); if(gtin.length<8) continue;
+            const desc=String(r[iDesc]||'').trim()||gtin;
+            const protheus=parseInt(r[iEst])||0;
+            const inv=parseInt(r[iInv])||0;
+            const dif=parseInt(r[iDif])||(inv-protheus);
+            // Pares: Z01 → padrão 12
             const z=z01Map?z01Map[gtin]:null;
-            const pares=(z&&z.pares)||paresOld[gtin]||12;
-            const desc=(z&&z.desc&&z.desc!==gtin?z.desc:null)||descOld[gtin]||(typeof POS_MAP!=='undefined'&&POS_MAP[gtin]&&POS_MAP[gtin].descr?POS_MAP[gtin].descr:null)||gtin;
-            const k=x=>Math.round(x/pares);
-            const a01=k(a.a01),a02=k(a.a02),a03=k(a.a03),a04=k(a.a04),
-                  a05=k(a.a05),a66=k(a.a66),ajr=k(a.ajr),arv=k(a.arv);
+            const pares=(z&&z.pares)||12;
+            // ARMs outros do SB802
+            const a=armMap[gtin]||{};
+            const kk=x=>Math.round((x||0)/pares);
+            const a02=kk(a.a02),a03=kk(a.a03),a04=kk(a.a04),
+                  a05=kk(a.a05),a66=kk(a.a66),ajr=kk(a.ajr),arv=kk(a.arv);
             const tot=a02+a03+a04+a05+a66+ajr+arv;
-            const inv=invMap[gtin]||0;
-            const dif=inv-a01;
-            if(tot===0&&dif===0) continue;
-            rows.push({gtin,desc,pares,protheus:a01,inv,dif,a01,a02,a03,a04,a05,a66,ajr,arv,tot,obs:'',par:''});
+            // Obs do relatório (aba Inventário tem coluna Obs)
+            const obs=iDif>=0&&r.length>iDif+1?String(r[iDif+1]||'').trim():'';
+            rows.push({gtin,desc,pares,protheus,inv,dif,a01:protheus,a02,a03,a04,a05,a66,ajr,arv,tot,obs,par:''});
           }
-          if(!rows.length){toast('Nenhuma divergência encontrada',1);return;}
+          if(!rows.length){toast('Nenhum dado encontrado no relatório',1);return;}
           APU_ROWS.length=0; rows.forEach(r=>APU_ROWS.push(r));
           try{localStorage.setItem('apu_rows',JSON.stringify(APU_ROWS));}catch(e){}
           saveApuToSupabase();
-
-          // Atualiza POS_MAP com saldo ARM 01 (para aba Estoque)
-          if(typeof POS_MAP!=='undefined'){
-            rows.forEach(r=>{
-              if(!POS_MAP[r.gtin]) POS_MAP[r.gtin]={descr:r.desc,marca:'',pares:r.pares,qtSis:0};
-              POS_MAP[r.gtin].qtSis=r.protheus; // protheus = ARM01 em kits
-              POS_MAP[r.gtin].descr=POS_MAP[r.gtin].descr||r.desc;
-            });
-          }
-
           APU_FILTER=''; APU_SORT_COL='dif'; APU_SORT_ASC=false;
           renderApu();
-          if(typeof renderEst==='function'&&document.getElementById('p-est')&&!document.getElementById('p-est').classList.contains('hide')) renderEst();
-          toast('Apuração: '+rows.length+' itens'+(z01Map?' | SB8+Z01':' | SB8')+' ✓');
+          const hasSb=sbRaw?' + SB8':'';
+          const hasZ=z01Map?' + Z01':'';
+          toast('Apuração: '+rows.length+' itens'+hasSb+hasZ+' ✓');
         }catch(err){console.error(err);toast('Erro: '+err.message,1);}
       });
     };
