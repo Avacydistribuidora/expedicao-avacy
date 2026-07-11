@@ -482,8 +482,8 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
       <button id="f-c2" onclick="setMonFilter(2)" style="padding:5px 14px;border-radius:20px;border:1.5px solid var(--bdr);background:transparent;color:var(--mut);font-size:12px;font-weight:700;cursor:pointer">C2</button>
       <button id="f-c3" onclick="setMonFilter(3)" style="padding:5px 14px;border-radius:20px;border:1.5px solid var(--bdr);background:transparent;color:var(--mut);font-size:12px;font-weight:700;cursor:pointer">C3</button>
     </div>
-    <!-- ── KPI Row: 3 colunas ── -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+    <!-- ── KPI Row: 2 colunas ── -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div class="kpi" style="background:var(--bg2);border-radius:var(--r);padding:14px 12px;margin:0">
         <div class="kn c-acc" id="k-sys-vol">—</div>
         <div class="kl">Total Estoque Sistema</div>
@@ -494,18 +494,26 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
         <div class="kl">Total Contagem</div>
         <div style="font-size:11px;color:var(--mut);margin-top:2px">volumes</div>
       </div>
-            <div class="kpi" style="background:var(--bg2);border-radius:var(--r);padding:14px 12px;margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
-        <div class="acur-big" id="m-acur">—</div>
-        <div class="kl">Acuracidade</div>
-        <div style="font-size:11px;color:var(--mut);margin-top:2px">% volumes OK vs sistema</div>
-      </div>
     </div>
-    <!-- ── ENDEREÇOS ── -->
-    <div class="card" style="margin:0">
-      <div class="ct">📍 ENDEREÇOS</div>
-      <div class="prog-pct" id="m-pct">0%</div>
-      <div class="prog-tr"><div class="prog-br" id="m-bar" style="width:0%"></div></div>
-      <div class="prog-s" id="m-sub">—</div>
+    <!-- ── ENDEREÇOS | Acuracidade ── -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="card" style="margin:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div class="ct" style="margin-bottom:0">📍 ENDEREÇOS</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-acc" style="padding:4px 10px;font-size:11px;width:auto" onclick="openAddrModal()">🔍 Detalhes</button>
+            <button class="btn" style="padding:4px 10px;font-size:11px;width:auto;background:var(--bg3)" onclick="_loadSheetJS(exportEnderecosMon)">📥 XLSX</button>
+          </div>
+        </div>
+        <div class="prog-pct" id="m-pct">0%</div>
+        <div class="prog-tr"><div class="prog-br" id="m-bar" style="width:0%"></div></div>
+        <div class="prog-s" id="m-sub">—</div>
+      </div>
+      <div class="card" style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <div class="ct" style="align-self:flex-start;margin-bottom:6px">🎯 Acuracidade</div>
+        <div class="acur-big" id="m-acur">—</div>
+        <div class="acur-s">% volumes OK vs sistema</div>
+      </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <!-- Por Operador -->
@@ -2210,6 +2218,97 @@ function exportEnderecos(){
   toast(rows.length+' registros exportados ✓');
 }
 
+function openAddrModal(){
+  document.getElementById('addr-modal').style.display='flex';
+  renderAddrModal();
+}
+function closeAddrModal(){
+  document.getElementById('addr-modal').style.display='none';
+}
+function renderAddrModal(){
+  const isAdm=CU&&CU.role==='adm';
+  const VD=isAdm?DONE:DONE.filter(s=>s.op===CU.name);
+  const filt=((document.getElementById('addr-modal-search')||{value:''}).value||'').trim().toUpperCase();
+  const allAddrs=Object.keys(ADDR_IDX||{}).sort();
+  const countedSet=new Set(VD.map(s=>s.addr));
+  const rows=[];
+  allAddrs.forEach(addr=>{
+    if(filt && !addr.includes(filt)) return;
+    const sess=VD.filter(s=>s.addr===addr).sort((a,b)=>a.ncnt-b.ncnt);
+    if(sess.length){
+      sess.forEach(s=>{
+        const bip=(s.items||[]).filter(it=>it.qtCnt>0).length;
+        const ok=(s.items||[]).filter(it=>it.qtCnt>0&&it.qtCnt===it.qtSis).length;
+        rows.push({addr,ncnt:s.ncnt,op:s.op||'—',ts:s.ts||'—',bip,ok,dv:bip-ok,counted:true});
+      });
+    } else {
+      rows.push({addr,ncnt:0,op:'—',ts:'—',bip:0,ok:0,dv:0,counted:false});
+    }
+  });
+  const totalAll=allAddrs.length;
+  const totalCounted=[...new Set(rows.filter(r=>r.counted).map(r=>r.addr))].length;
+  const totalNB=totalAll-totalCounted;
+  document.getElementById('addr-modal-sub').textContent=totalCounted+' bipados · '+totalNB+' não bipados · '+totalAll+' total';
+  const clrs=['','#3fb950','#f78166','#d29922'];
+  document.getElementById('addr-modal-tbody').innerHTML=rows.map(r=>r.counted?`
+    <tr style="cursor:pointer;border-bottom:1px solid #21262d" onclick="closeAddrModal();showAddrDetail('${r.addr.replace(/'/g,"\'")}',${r.ncnt})" onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background=''">
+      <td style="padding:7px 12px;font-size:12px;font-family:monospace;color:#e6edf3">${r.addr}</td>
+      <td style="padding:7px 8px;text-align:center"><span style="background:${clrs[r.ncnt]||'#6e7681'};color:#fff;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700">C${r.ncnt}</span></td>
+      <td style="padding:7px 12px;font-size:12px;color:#c9d1d9">${r.op}</td>
+      <td style="padding:7px 8px;text-align:right;font-size:12px;color:#58a6ff;font-weight:600">${r.bip}</td>
+      <td style="padding:7px 8px;text-align:right;font-size:12px;color:#3fb950;font-weight:600">${r.ok}</td>
+      <td style="padding:7px 8px;text-align:right;font-size:12px;color:${r.dv>0?'#f78166':'#6e7681'};font-weight:${r.dv>0?'700':'400'}">${r.dv||'—'}</td>
+      <td style="padding:7px 12px;font-size:11px;color:#6e7681">${r.ts}</td>
+    </tr>`:`
+    <tr style="border-bottom:1px solid #21262d;opacity:0.55">
+      <td style="padding:7px 12px;font-size:12px;font-family:monospace;color:#8b949e">${r.addr}</td>
+      <td style="padding:7px 8px;text-align:center"><span style="background:#30363d;color:#8b949e;border-radius:4px;padding:2px 7px;font-size:11px">—</span></td>
+      <td colspan="4" style="padding:7px 12px;font-size:11px;color:#6e7681;font-style:italic">Não bipado</td>
+      <td></td>
+    </tr>`).join('') || '<tr><td colspan="7" style="padding:20px;text-align:center;color:#6e7681">Nenhum endereço</td></tr>';
+}
+function exportEnderecosMon(){
+  if(typeof XLSX==='undefined'){toast('SheetJS não carregado',1);return;}
+  const isAdm=CU&&CU.role==='adm';
+  const VD=isAdm?DONE:DONE.filter(s=>s.op===CU.name);
+  // Build set of counted addresses
+  const countedAddrs=new Set(VD.map(s=>s.addr));
+  // All addresses from ADDR_IDX
+  const allAddrs=Object.keys(ADDR_IDX||{}).sort();
+  const data=[['Endereço','Status','Contagem','Operador','Data/Hora','Bipados','OK','Divergência']];
+  // Counted addresses with sessions
+  allAddrs.forEach(addr=>{
+    const sess=VD.filter(s=>s.addr===addr).sort((a,b)=>a.ncnt-b.ncnt);
+    if(sess.length){
+      sess.forEach(s=>{
+        const bip=(s.items||[]).filter(it=>it.qtCnt>0).length;
+        const ok=(s.items||[]).filter(it=>it.qtCnt>0&&it.qtCnt===it.qtSis).length;
+        const dv=bip-ok;
+        data.push([addr,'Bipado','C'+s.ncnt,s.op||'',s.ts||'',bip,ok,dv]);
+      });
+    } else {
+      data.push([addr,'Não bipado','','','','','','']);
+    }
+  });
+  // Addresses counted but not in ADDR_IDX (extravagantes)
+  [...countedAddrs].filter(a=>!allAddrs.includes(a)).sort().forEach(addr=>{
+    VD.filter(s=>s.addr===addr).sort((a,b)=>a.ncnt-b.ncnt).forEach(s=>{
+      const bip=(s.items||[]).filter(it=>it.qtCnt>0).length;
+      const ok=(s.items||[]).filter(it=>it.qtCnt>0&&it.qtCnt===it.qtSis).length;
+      data.push([addr,'Bipado','C'+s.ncnt,s.op||'',s.ts||'',bip,ok,bip-ok]);
+    });
+  });
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[{wch:16},{wch:11},{wch:9},{wch:18},{wch:18},{wch:9},{wch:7},{wch:11}];
+  // Color Status column: red for Não bipado
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Endereços');
+  const dt=new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
+  XLSX.writeFile(wb,'enderecos_'+dt+'.xlsx');
+  const nbCount=data.slice(1).filter(r=>r[1]==='Não bipado').length;
+  toast((data.length-1)+' endereços exportados ('+nbCount+' não bipados) ✓');
+}
+
 function exportApuracao(){
   if(!DONE.length){toast('Nenhuma contagem para exportar',1);return;}
   if(typeof XLSX==='undefined'){toast('SheetJS não carregado',1);return;}
@@ -2644,6 +2743,41 @@ function closeImp(){ document.getElementById('imp-overlay').classList.remove('on
             </tr>
           </thead>
           <tbody id="apu-drill-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL ENDEREÇOS DRILL ── -->
+  <div id="addr-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;padding:16px">
+    <div style="background:#161b22;border:1px solid #30363d;border-radius:12px;width:100%;max-width:800px;max-height:88vh;display:flex;flex-direction:column">
+      <div style="padding:16px 20px;border-bottom:1px solid #21262d;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:#e6edf3">📍 Endereços Contados</div>
+          <div id="addr-modal-sub" style="font-size:12px;color:#6e7681;margin-top:2px">—</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button onclick="_loadSheetJS(exportEnderecosMon)" style="background:#238636;border:none;color:#fff;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600">📥 XLSX</button>
+          <button onclick="closeAddrModal()" style="background:none;border:none;color:#6e7681;font-size:22px;cursor:pointer;padding:0;line-height:1">✕</button>
+        </div>
+      </div>
+      <div style="padding:10px 16px;border-bottom:1px solid #21262d">
+        <input id="addr-modal-search" placeholder="Filtrar endereço..." oninput="renderAddrModal()" style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:7px 10px;color:#e6edf3;font-size:13px">
+      </div>
+      <div style="overflow-y:auto;flex:1">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:#0d1117;position:sticky;top:0">
+              <th style="padding:8px 12px;text-align:left;font-size:11px;color:#8b949e;font-weight:600;border-bottom:1px solid #21262d">Endereço</th>
+              <th style="padding:8px 8px;text-align:center;font-size:11px;color:#8b949e;font-weight:600;border-bottom:1px solid #21262d">Contagem</th>
+              <th style="padding:8px 12px;text-align:left;font-size:11px;color:#8b949e;font-weight:600;border-bottom:1px solid #21262d">Operador</th>
+              <th style="padding:8px 8px;text-align:right;font-size:11px;color:#8b949e;font-weight:600;border-bottom:1px solid #21262d">Bipados</th>
+              <th style="padding:8px 8px;text-align:right;font-size:11px;color:#8b949e;font-weight:600;border-bottom:1px solid #21262d">OK</th>
+              <th style="padding:8px 8px;text-align:right;font-size:11px;color:#8b949e;font-weight:600;border-bottom:1px solid #21262d">Div.</th>
+              <th style="padding:8px 12px;text-align:left;font-size:11px;color:#8b949e;font-weight:600;border-bottom:1px solid #21262d">Data/Hora</th>
+            </tr>
+          </thead>
+          <tbody id="addr-modal-tbody"></tbody>
         </table>
       </div>
     </div>
