@@ -323,7 +323,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V5.9</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V6.0</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -358,6 +358,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
         <div class="acoes-item" onclick="importApuXLSX();closeAcoes()"><span class="ai-ico">🔄</span>Importar SB8+Z01 (Apuração)</div>
         <div class="acoes-item" onclick="exportProtheus();closeAcoes()"><span class="ai-ico">📊</span>Exportar Inventário</div>
         <div class="acoes-item" onclick="exportEnderecos();closeAcoes()"><span class="ai-ico">📍</span>Exportar Endereços</div>
+        <div class="acoes-item" onclick="saveApuToSupabase();closeAcoes()"><span class="ai-ico">☁</span>Salvar Apuração (Supabase)</div>
         <div class="acoes-item" onclick="exportApuracao();closeAcoes()"><span class="ai-ico">📋</span>Exportar Apuração</div>
         <div class="acoes-item" onclick="openQR();closeAcoes()"><span class="ai-ico">📱</span>QR Code</div>
         <div class="acoes-item" onclick="goUsers();closeAcoes()"><span class="ai-ico">👥</span>Gerenciar Usuários</div>
@@ -1562,8 +1563,6 @@ function renderApu(){
       style="flex:1;min-width:200px;background:var(--bg3);border:1.5px solid var(--bdr);border-radius:8px;color:var(--txt);font-size:14px;padding:9px 12px;outline:none"
       value="${APU_FILTER}" oninput="APU_FILTER=this.value;renderApu()">
     <span style="font-size:12px;color:var(--mut);white-space:nowrap">${rows.length}/${APU_ROWS.length} itens</span>
-    <button onclick="importApuXLSX()" style="background:var(--acc);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;padding:9px 14px;cursor:pointer;white-space:nowrap">📥 Importar SB8+Z01</button>
-    <button onclick="saveApuToSupabase()" style="background:#0969da;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;padding:9px 14px;cursor:pointer;white-space:nowrap">☁ Salvar Supabase</button>
     <button onclick="exportApuXLSX()" style="background:#217346;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;padding:9px 14px;cursor:pointer;white-space:nowrap">⬇ Excel</button>
   </div>
   <div style="overflow:auto;max-height:calc(100vh - 140px);border-radius:8px;border:1px solid #2d2d4e">
