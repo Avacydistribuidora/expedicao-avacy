@@ -323,7 +323,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V5.7</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V5.8</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -1457,40 +1457,38 @@ let APU_FILTER='', APU_SORT_COL='dif', APU_SORT_ASC=false;
 // ═════ SUPABASE: APU_ROWS (inv_apuracao) ═════
 async function saveApuToSupabase(){
   const sb=getSB();
-  if(!sb){toast('Supabase indisponível — dados não salvos na nuvem',1);return;}
+  if(!sb){toast('Supabase indisponível',1);return;}
   if(!APU_ROWS.length){toast('Nenhum dado para salvar',1);return;}
   toast('Salvando '+APU_ROWS.length+' itens no Supabase...');
   try{
-    // Tenta upsert com JSONB
-    const payload={inventario:'Julho-2026',rows:APU_ROWS,updated_at:new Date().toISOString()};
-    const {data,error}=await sb.from('inv_apuracao')
-      .upsert(payload,{onConflict:'inventario'})
-      .select('inventario');
-    if(error){
-      console.error('saveApuToSupabase err:',error);
-      // Tenta delete+insert como fallback
-      toast('Upsert falhou ('+error.code+'): '+error.message+' — tentando alternativa...',1);
-      const {error:de}=await sb.from('inv_apuracao').delete().eq('inventario','Julho-2026');
-      if(de){toast('Erro ao salvar: '+de.message,1);return;}
-      const {error:ie}=await sb.from('inv_apuracao').insert(payload);
-      if(ie){toast('Erro ao salvar: '+ie.message+' | Código: '+ie.code,1);return;}
-      toast('Apuração salva no Supabase ✓ ('+APU_ROWS.length+' itens)');
-    } else {
-      toast('Apuração salva no Supabase ✓ ('+APU_ROWS.length+' itens)');
+    // Apaga dados antigos
+    const {error:de}=await sb.from('inv_apuracao').delete().eq('inventario','Julho-2026');
+    if(de){toast('Erro ao limpar tabela: '+de.message,1);return;}
+    // Insere em lotes de 500 (evita limite de payload)
+    const BATCH=500;
+    for(let i=0;i<APU_ROWS.length;i+=BATCH){
+      const lote=APU_ROWS.slice(i,i+BATCH).map(r=>({inventario:'Julho-2026',gtin:r.gtin,dados:r}));
+      const {error:ie}=await sb.from('inv_apuracao').insert(lote);
+      if(ie){toast('Erro no lote '+(Math.floor(i/BATCH)+1)+': '+ie.message,1);return;}
     }
-  }catch(e){
-    console.error('saveApuToSupabase exception:',e);
-    toast('Erro inesperado: '+e.message,1);
-  }
+    toast('Apuração salva ✓ ('+APU_ROWS.length+' itens)');
+  }catch(e){toast('Erro inesperado: '+e.message,1);}
 }
 
 async function loadApuFromSupabase(sb){
   if(!sb) sb=getSB(); if(!sb) return;
   try{
-    const {data,error}=await sb.from('inv_apuracao').select('rows').eq('inventario','Julho-2026').single();
-    if(!error&&data&&Array.isArray(data.rows)&&data.rows.length){
+    let all=[], from=0, PAGE=1000;
+    while(true){
+      const {data,error}=await sb.from('inv_apuracao').select('dados').eq('inventario','Julho-2026').range(from,from+PAGE-1);
+      if(error||!data||!data.length) break;
+      all=all.concat(data.map(r=>r.dados).filter(Boolean));
+      if(data.length<PAGE) break;
+      from+=PAGE;
+    }
+    if(all.length){
       APU_ROWS.length=0;
-      data.rows.forEach(r=>APU_ROWS.push(r));
+      all.forEach(r=>APU_ROWS.push(r));
       try{localStorage.setItem('apu_rows',JSON.stringify(APU_ROWS));}catch(e){}
     }
   }catch(e){console.warn('loadApuFromSupabase:',e);}
