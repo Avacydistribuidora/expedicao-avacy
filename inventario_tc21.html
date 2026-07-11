@@ -323,7 +323,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V6.5</span></div></div>
+    <div class="lhead"><div class="llogo">📦</div><div class="ltitle">Inventário Matriz<br><span style="font-size:14px;font-weight:600;color:var(--mut)">Julho - 2026</span></div><div class="lsub">Faça login para continuar <span style="opacity:.45;font-size:10px">V6.6</span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -1724,15 +1724,15 @@ function importApuXLSX(){
           for(let i=1;i<apuRaw.length;i++){
             const r=apuRaw[i];
             let gtin=normGtin(String(r[iGtin]||'').trim()); if(gtin.length<8) continue;
+            // Z01 deve ser declarado antes de desc (evita TDZ)
+            const z=z01Map?z01Map[gtin]:null;
+            const pares=(z&&z.pares)||12;
             const rawDesc=String(r[iDesc]||'').trim();
             const isNC=rawDesc===''||/^n[ãa]o cadastrado$/i.test(rawDesc);
             const desc=isNC?(z&&z.desc)||rawDesc||gtin:rawDesc;
             const protheus=parseInt(r[iEst])||0;
             const inv=parseInt(r[iInv])||0;
             const dif=parseInt(r[iDif])||(inv-protheus);
-            // Pares: Z01 → padrão 12
-            const z=z01Map?z01Map[gtin]:null;
-            const pares=(z&&z.pares)||12;
             // ARMs outros do SB802
             const a=armMap[gtin]||{};
             const kk=x=>Math.round((x||0)/pares);
