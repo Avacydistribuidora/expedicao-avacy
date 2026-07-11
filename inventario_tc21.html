@@ -494,43 +494,18 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
         <div class="kl">Total Contagem</div>
         <div style="font-size:11px;color:var(--mut);margin-top:2px">volumes</div>
       </div>
-      <div class="kpi" style="background:var(--bg2);border-radius:var(--r);padding:14px 12px;margin:0;display:flex;flex-direction:column;justify-content:center">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:12px;color:var(--mut)">📦 Volumes contados vs sistema</span>
-          <span id="k-vol-pct" style="font-size:22px;font-weight:800;color:var(--acc)">0%</span>
-        </div>
-        <div class="prog-tr" style="margin-top:8px"><div class="prog-br" id="bar-vol" style="width:0%"></div></div>
+            <div class="kpi" style="background:var(--bg2);border-radius:var(--r);padding:14px 12px;margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <div class="acur-big" id="m-acur">—</div>
+        <div class="kl">Acuracidade</div>
+        <div style="font-size:11px;color:var(--mut);margin-top:2px">% volumes OK vs sistema</div>
       </div>
     </div>
-    <!-- ── 3-col row: ENDEREÇOS / Acuracidade / Distribuição ── -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-      <div class="card" style="margin:0">
-        <div class="ct">📍 ENDEREÇOS</div>
-        <div class="prog-pct" id="m-pct">0%</div>
-        <div class="prog-tr"><div class="prog-br" id="m-bar" style="width:0%"></div></div>
-        <div class="prog-s" id="m-sub">—</div>
-      </div>
-      <div class="card" style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
-        <div class="ct" style="align-self:flex-start">🎯 Acuracidade</div>
-        <div class="acur-big" id="m-acur">—</div>
-        <div class="acur-s">% volumes contados vs sistema</div>
-      </div>
-      <div class="card" style="margin:0">
-        <div class="ct">🔵 Distribuição</div>
-        <div class="dw">
-          <svg width="90" height="90" viewBox="0 0 100 100" style="flex-shrink:0">
-            <circle cx="50" cy="50" r="36" fill="none" stroke="var(--bdr)" stroke-width="16"/>
-            <circle id="d-ok" cx="50" cy="50" r="36" fill="none" stroke="var(--grn)" stroke-width="16" stroke-dasharray="0 226.2" transform="rotate(-90 50 50)" style="transition:stroke-dasharray .5s"/>
-            <circle id="d-dv" cx="50" cy="50" r="36" fill="none" stroke="var(--red)" stroke-width="16" stroke-dasharray="0 226.2" transform="rotate(-90 50 50)" style="transition:stroke-dasharray .5s"/>
-            <text x="50" y="54" text-anchor="middle" fill="var(--txt)" font-size="16" font-weight="bold" id="d-pct">—</text>
-          </svg>
-          <div style="flex:1;font-size:12px">
-            <div class="leg-i"><div class="leg-d" style="background:var(--grn)"></div><span id="l-ok">OK: 0</span></div>
-            <div class="leg-i"><div class="leg-d" style="background:var(--red)"></div><span id="l-dv">Divergência: 0</span></div>
-            <div class="leg-i"><div class="leg-d" style="background:var(--mut)"></div><span id="l-nd">Não bipado: 0</span></div>
-          </div>
-        </div>
-      </div>
+    <!-- ── ENDEREÇOS ── -->
+    <div class="card" style="margin:0">
+      <div class="ct">📍 ENDEREÇOS</div>
+      <div class="prog-pct" id="m-pct">0%</div>
+      <div class="prog-tr"><div class="prog-br" id="m-bar" style="width:0%"></div></div>
+      <div class="prog-s" id="m-sub">—</div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <!-- Por Operador -->
@@ -1822,8 +1797,7 @@ function renderMon(){
   const volPct=sysVol>0?Math.min(Math.round(cntVol/sysVol*100),100):0;
   document.getElementById('k-sys-vol').textContent=Math.round(sysVol).toLocaleString('pt-BR');
   document.getElementById('k-cnt-vol').textContent=Math.round(cntVol).toLocaleString('pt-BR');
-  document.getElementById('k-vol-pct').textContent=volPct+'%';
-  document.getElementById('bar-vol').style.width=volPct+'%';
+
   // Acuracidade: soma TUDO que foi contado vs saldo em estoque (ignora agrupamento por endereço)
   const cntByGtin={};
   VD.forEach(sess=>{
@@ -1844,16 +1818,7 @@ function renderMon(){
   const volTotal=sysVol||1;
   const acur=sysVol>0?Math.min(Math.round(volOk/sysVol*100),100):0;
   document.getElementById('m-acur').textContent=acur+'%';
-  const C=226.2;
-  const okA=volOk/volTotal*C, dvA=volDv/volTotal*C;
-  document.getElementById('d-ok').setAttribute('stroke-dasharray',okA+' '+(C-okA));
-  const dvEl=document.getElementById('d-dv');
-  dvEl.setAttribute('stroke-dasharray',dvA+' '+(C-dvA));
-  dvEl.setAttribute('transform','rotate('+(-90+okA/C*360)+' 50 50)');
-  document.getElementById('d-pct').textContent=acur+'%';
-  document.getElementById('l-ok').textContent='OK: '+volOk.toLocaleString('pt-BR')+' vol';
-  document.getElementById('l-dv').textContent='Divergência: '+volDv.toLocaleString('pt-BR')+' vol';
-  document.getElementById('l-nd').textContent='Não contado: '+Math.round(volNd).toLocaleString('pt-BR')+' vol';
+
   // Operator ranking: volumes + endereços + % do total
   const byOp={};
   const totalAddrDone=Object.keys(bestByAddrV).length||1;
