@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Inventário Matriz — Julho 2026</title>
+<title>Inventário Matriz — Julho 2026 | V6.7</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--bg2:#161b22;--bg3:#21262d;--acc:#2196f3;--grn:#4caf50;--red:#f44336;--ylw:#ff9800;--pur:#9c27b0;--txt:#e6edf3;--mut:#8b949e;--bdr:#30363d;--r:10px}
@@ -342,7 +342,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
 <div id="s-main" class="scr">
   <div class="topbar">
     <span style="font-size:17px">📦</span>
-    <span class="tb-t" id="tb-t">INVENTÁRIO</span>
+    <span class="tb-t" id="tb-t">INVENTÁRIO <span style="font-size:10px;opacity:.5;font-weight:400">V6.7</span></span>
     <span id="lock-badge" style="display:none;background:#f85149;color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:10px;letter-spacing:.5px">🔒 BLOQUEADO</span>
     <div style="position:relative">
       <span class="rb" id="tb-rb" style="cursor:default" onclick="toggleUserMenu(event)">OP</span>
@@ -706,6 +706,7 @@ let CU=null; // current user {id,name,user,role}
 let CUR_ADDR=null, CUR_NCNT=null, CUR_SESS={};
 let DONE=[]; // carregado do Supabase
 let INV_LOCKED=false; // bloqueio de inventário
+const APP_VERSION='V6.7';
 let MON_FILTER=0; // 0=Todos, 1=C1, 2=C2
 let USERS=[]; // carregado do Supabase
 let POS=[]; // posições importadas do SB8+Z01+Z05
