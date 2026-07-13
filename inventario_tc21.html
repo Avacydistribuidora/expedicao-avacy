@@ -343,6 +343,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
   <div class="topbar">
     <span style="font-size:17px">📦</span>
     <span class="tb-t" id="tb-t">INVENTÁRIO</span>
+    <span id="lock-badge" style="display:none;background:#f85149;color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:10px;letter-spacing:.5px">🔒 BLOQUEADO</span>
     <div style="position:relative">
       <span class="rb" id="tb-rb" style="cursor:default" onclick="toggleUserMenu(event)">OP</span>
       <div class="acoes-menu" id="user-menu">
@@ -361,6 +362,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe U
         <div class="acoes-item" onclick="exportApuracao();closeAcoes()"><span class="ai-ico">📋</span>Exportar Apuração</div>
         <div class="acoes-item" onclick="openQR();closeAcoes()"><span class="ai-ico">📱</span>QR Code</div>
         <div class="acoes-item" onclick="goUsers();closeAcoes()"><span class="ai-ico">👥</span>Gerenciar Usuários</div>
+        <div class="acoes-item" id="lock-menu-item" style="display:none" onclick="toggleInvLock();closeAcoes()"><span class="ai-ico" id="lock-menu-ico">🔒</span><span id="lock-menu-lbl">Bloquear Inventário</span></div>
       </div>
     </div>
     <button class="tb-btn" onclick="doLogout()">⏻ Sair</button>
@@ -703,6 +705,7 @@ function authUser(username,pwd){
 let CU=null; // current user {id,name,user,role}
 let CUR_ADDR=null, CUR_NCNT=null, CUR_SESS={};
 let DONE=[]; // carregado do Supabase
+let INV_LOCKED=false; // bloqueio de inventário
 let MON_FILTER=0; // 0=Todos, 1=C1, 2=C2
 let USERS=[]; // carregado do Supabase
 let POS=[]; // posições importadas do SB8+Z01+Z05
@@ -785,6 +788,7 @@ async function loadFromSupabase(){
     await loadPosicao(sb);
     // Carrega apuração SB8+Z01 do Supabase e recalcula inv com EANs normalizados
     await loadApuFromSupabase(sb);
+    await loadLockState(sb);
     rebuildApuInv();
   }catch(e){
     console.error('Erro Supabase:',e);
@@ -879,6 +883,7 @@ function enterMain(){
   document.getElementById('t-cnt').classList.add('on'); document.getElementById('t-mon').classList.remove('on'); document.getElementById('t-est').classList.remove('on'); document.getElementById('t-end').classList.remove('on'); document.getElementById('t-apu').classList.remove('on'); 
   document.getElementById('p-cnt').classList.remove('hide'); document.getElementById('p-mon').classList.add('hide'); document.getElementById('p-est').classList.add('hide'); document.getElementById('p-end').classList.add('hide'); document.getElementById('p-apu').classList.add('hide'); 
   go('main');
+  applyLockUI();
   buildIdx();
   // Always clear in-progress session on login — start fresh at address input
   CUR_ADDR=null; CUR_NCNT=null; CUR_SESS={};
@@ -954,6 +959,7 @@ function onAI(){
 function selAddr(a){ document.getElementById('addr-inp').value=a; document.getElementById('addr-sugg').innerHTML=''; irAddr(); }
 
 function irAddr(){
+  if(checkLock('Não é possível iniciar contagem.')) return;
   const v=document.getElementById('addr-inp').value.trim().toUpperCase();
   if(!v){toast('Informe um endereço',1);return;}
   buildIdx();
@@ -1073,6 +1079,7 @@ async function lookupProd(ean){
 }
 
 async function bipar(){
+  if(checkLock('Bipagem não permitida.')) return;
   const el=document.getElementById('scan-inp');
   let ean=el.value.trim(); if(!ean)return;
   if(ean.length===13) ean='0'+ean;
@@ -2122,6 +2129,7 @@ let _togNBOpen=false;
 function togDetNB(){ _togNBOpen=!_togNBOpen; document.getElementById('tog-nb-body').classList.toggle('show',_togNBOpen); document.getElementById('tog-nb-ico').classList.toggle('open',_togNBOpen); }
 
 async function deleteSess(){
+  if(checkLock('Exclusão não permitida.')) return;
   if(!_detAddr||!_detNCnt){go('main');goTab('mon');return;}
   const sb=getSB();
   if(sb){
@@ -2134,6 +2142,7 @@ async function deleteSess(){
 }
 
 async function delAddrSess(addr,ncnt){
+  if(checkLock('Exclusão não permitida.')) return;
   const sb=getSB();
   if(sb){
     const{error}=await sb.from('inv_contagens').delete()
@@ -2267,6 +2276,46 @@ function renderAddrModal(){
       <td></td>
     </tr>`).join('') || '<tr><td colspan="7" style="padding:20px;text-align:center;color:#6e7681">Nenhum endereço</td></tr>';
 }
+// ═════════════════════ BLOQUEIO DE INVENTÁRIO ═════════════════════
+async function loadLockState(sb){
+  if(!sb) sb=getSB(); if(!sb) return;
+  try{
+    const {data}=await sb.from('inv_apuracao').select('dados').eq('inventario','__CONFIG__').eq('gtin','__LOCK__').single();
+    INV_LOCKED=!!(data&&data.dados&&data.dados.locked);
+  }catch(e){ INV_LOCKED=false; }
+  applyLockUI();
+}
+async function saveLockState(locked){
+  const sb=getSB(); if(!sb){toast('Supabase indisponível',1);return;}
+  await sb.from('inv_apuracao').upsert({inventario:'__CONFIG__',gtin:'__LOCK__',dados:{locked,ts:new Date().toISOString()}});
+}
+async function toggleInvLock(){
+  if(!CU||CU.role!=='adm'){toast('Apenas admin pode alterar o bloqueio',1);return;}
+  const newState=!INV_LOCKED;
+  const msg=newState
+    ?'🔒 Bloquear inventário?\nImpedirá novas bipagens e exclusões para todos os operadores.'
+    :'🔓 Desbloquear inventário?\nPermitirá novas bipagens e exclusões.';
+  if(!confirm(msg)) return;
+  INV_LOCKED=newState;
+  await saveLockState(newState);
+  applyLockUI();
+  toast(newState?'Inventário bloqueado 🔒':'Inventário desbloqueado 🔓');
+}
+function applyLockUI(){
+  const badge=document.getElementById('lock-badge');
+  const item=document.getElementById('lock-menu-item');
+  const ico=document.getElementById('lock-menu-ico');
+  const lbl=document.getElementById('lock-menu-lbl');
+  if(badge) badge.style.display=INV_LOCKED?'':'none';
+  if(item) item.style.display=(CU&&CU.role==='adm')?'':'none';
+  if(ico) ico.textContent=INV_LOCKED?'🔓':'🔒';
+  if(lbl) lbl.textContent=INV_LOCKED?'Desbloquear Inventário':'Bloquear Inventário';
+}
+function checkLock(msg){
+  if(INV_LOCKED){toast('🔒 Inventário bloqueado. '+(msg||''),1);return true;}
+  return false;
+}
+
 function exportEnderecosMon(){
   if(typeof XLSX==='undefined'){toast('SheetJS não carregado',1);return;}
   const isAdm=CU&&CU.role==='adm';
@@ -2393,6 +2442,7 @@ function exportApuracao(){
 }
 
 async function doLimpar(){
+  if(checkLock('Limpeza não permitida.')) return;
   if(!confirm('⚠️ Isso apagará TODAS as contagens.\nConfirmar?'))return;
   if(!confirm('Tem certeza? Esta ação NÃO pode ser desfeita.'))return;
   const sb=getSB();
