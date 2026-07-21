@@ -1338,6 +1338,7 @@ function renderResumo() {
     <div class="stat-card verde"><div class="label">Valor Total NFs</div><div class="value" style="font-size:15px">R$ ${totVal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
     <div class="stat-card laranja"><div class="label">Total Caixas</div><div class="value">${totCx.toLocaleString('pt-BR')}</div><div class="sub">${totPar.toLocaleString('pt-BR')} pares</div></div>
     <div class="stat-card vermelho"><div class="label">Total Frete</div><div class="value" style="font-size:15px">R$ ${totFrete.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
+    <div class="stat-card" style="border-top:3px solid #6f42c1"><div class="label">% Frete / Valor NF</div><div class="value" style="color:#6f42c1">${totVal>0?(totFrete/totVal*100).toFixed(3)+'%':'—'}</div><div class="sub">custo médio de frete</div></div>
   </div>
 
   <!-- GRÁFICOS -->
@@ -1379,7 +1380,8 @@ function renderResumo() {
     <td colspan="3">TOTAL</td><td>${totNFs}</td>
     <td>${totCx.toLocaleString('pt-BR')}</td><td>${totPar.toLocaleString('pt-BR')}</td>
     <td>R$ ${totVal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
-    <td>R$ ${totFrete.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td><td></td>
+    <td>R$ ${totFrete.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+    <td><b>${totVal>0?(totFrete/totVal*100).toFixed(3)+'%':'—'}</b></td>
   </tr></tfoot></table></div>
   </div>`;
 
