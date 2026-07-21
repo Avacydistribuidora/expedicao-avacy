@@ -1937,14 +1937,41 @@ async function executarImportacao() {
   addLog(`\n${'─'.repeat(44)}`);
   addLog(`✅ Importadas: ${ok}${fail>0?' | ❌ Erros: '+fail:''}`);
 
-  // Atualiza sidebar
+  // Recarrega tudo do Supabase para garantir dados frescos na sidebar
+  addLog('\n📡 Sincronizando com o banco…');
+  try {
+    const { data: fresh, error: fe } = await db
+      .from('carretas')
+      .select('*, nfs(*)')
+      .order('num', { ascending: true });
+    if (!fe && fresh) {
+      carretasCache = fresh.map(dbToApp);
+      addLog(`✅ ${carretasCache.length} carreta(s) carregadas do banco.`);
+    } else if (fe) {
+      addLog('⚠️ Erro ao sincronizar: ' + fe.message);
+    }
+  } catch(e) {
+    addLog('⚠️ Usando cache local: ' + e.message);
+  }
+
   renderSidebar();
 
+  // Expande automaticamente o primeiro ano com dados para o usuário ver
+  const anos = [...new Set(
+    carretasCache.map(c => (c.data || '').slice(0, 4)).filter(a => /^\d{4}$/.test(a))
+  )].sort();
+  if (anos.length > 0) {
+    // abre o primeiro ano (ex: 2026)
+    try { toggleYear(anos[0]); } catch(e) {}
+  }
+
   document.getElementById('impBtnImportar').disabled = false;
-  renderImpPreview();  // atualiza badges
+  renderImpPreview();
 
   if (fail === 0) {
-    impSetStatus(`✅ ${ok} carreta(s) importadas com sucesso!`, 'ok');
+    impSetStatus(`✅ ${ok} carreta(s) importadas! Veja na sidebar à esquerda.`, 'ok');
+  } else {
+    impSetStatus(`⚠️ ${ok} importadas, ${fail} com erro. Veja o log acima.`, 'err');
   }
 }
 </script>
