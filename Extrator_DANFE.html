@@ -305,6 +305,72 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
 .empty { text-align: center; padding: 50px 20px; color: #aaa; }
 .empty .icon { font-size: 48px; margin-bottom: 10px; }
 .empty p { font-size: 14px; }
+
+/* ── MODAL IMPORTADOR ── */
+.imp-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.55); z-index: 9999;
+  align-items: center; justify-content: center;
+}
+.imp-overlay.open { display: flex; }
+.imp-modal {
+  background: white; border-radius: 12px;
+  width: 92vw; max-width: 1100px; max-height: 90vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 8px 40px rgba(0,0,0,.4);
+  overflow: hidden;
+}
+.imp-modal-header {
+  background: var(--azul-escuro); color: white;
+  padding: 14px 20px; font-size: 15px; font-weight: 700;
+  display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+}
+.imp-modal-header .close-btn {
+  margin-left: auto; background: none; border: none;
+  color: white; font-size: 20px; cursor: pointer; opacity: .8; line-height: 1;
+}
+.imp-modal-header .close-btn:hover { opacity: 1; }
+.imp-modal-body { padding: 18px; overflow-y: auto; flex: 1; }
+.imp-drop {
+  border: 2px dashed var(--azul-medio); border-radius: 10px;
+  padding: 36px; text-align: center; cursor: pointer;
+  background: #f7faff; transition: background .2s;
+}
+.imp-drop:hover, .imp-drop.dragover { background: var(--azul-claro); }
+.imp-drop p { font-size: 14px; font-weight: 600; color: var(--azul-escuro); margin-top: 8px; }
+.imp-drop small { font-size: 12px; color: #888; }
+.imp-status { padding: 9px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; display: none; margin-top: 12px; }
+.imp-status.ok   { background: #d4edda; color: #155724; display: block; }
+.imp-status.err  { background: #f8d7da; color: #721c24; display: block; }
+.imp-status.info { background: #cce5ff; color: #004085; display: block; }
+.imp-info-row {
+  display: flex; gap: 10px; margin: 14px 0; flex-wrap: wrap;
+}
+.imp-chip {
+  background: var(--azul-claro); border-radius: 8px;
+  padding: 8px 14px; font-size: 13px; flex: 1; min-width: 130px;
+  text-align: center;
+}
+.imp-chip strong { display: block; font-size: 18px; color: var(--azul-escuro); }
+.imp-table-wrap { overflow-x: auto; border: 1px solid var(--borda); border-radius: 7px; }
+.imp-table-wrap table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.imp-table-wrap th { background: var(--azul-escuro); color: white; padding: 8px 10px; white-space: nowrap; text-align: left; }
+.imp-table-wrap td { padding: 7px 10px; border-bottom: 1px solid var(--borda); white-space: nowrap; }
+.imp-table-wrap td.r { text-align: right; }
+.imp-table-wrap td.c { text-align: center; }
+.imp-table-wrap tr:last-child td { border-bottom: none; }
+.imp-table-wrap tr:nth-child(even) td { background: #f7f9fc; }
+.imp-badge-n { background: #d4edda; color: #155724; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+.imp-badge-e { background: #fff3cd; color: #856404; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+.imp-prog-bg { background: #e9ecef; border-radius: 8px; height: 18px; overflow: hidden; margin: 10px 0; }
+.imp-prog-fill { height: 100%; background: var(--azul-medio); border-radius: 8px; transition: width .3s; }
+.imp-log {
+  background: #1a1a2e; color: #a8d8a8; font-family: monospace;
+  font-size: 12px; padding: 12px; border-radius: 7px;
+  max-height: 220px; overflow-y: auto; white-space: pre-wrap;
+  line-height: 1.5; margin-top: 10px; display: none;
+}
+.imp-footer { padding: 12px 20px; border-top: 1px solid var(--borda); display: flex; gap: 10px; flex-shrink: 0; align-items: center; flex-wrap: wrap; }
 </style>
 </head>
 <body>
@@ -334,7 +400,10 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
   <nav class="sidebar">
     <div class="sidebar-header">
       📋 Carretas
-      <button onclick="abrirAbaCarregar()">+ Nova</button>
+      <div style="display:flex;gap:4px">
+        <button onclick="abrirAbaCarregar()">+ Nova</button>
+        <button onclick="abrirImportador()" title="Importar Planilha Base (.xlsx)" style="background:var(--laranja)">📥</button>
+      </div>
     </div>
     <div class="tree" id="sidebarTree">
       <!-- gerado por JS -->
@@ -1496,6 +1565,450 @@ document.getElementById('dataProg').valueAsDate = new Date();
 document.getElementById('dtColeta').valueAsDate = new Date();
 initDB().then(() => { renderSidebar(); showTab('tab-resumo'); renderResumo(); });
 checkVersion();
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  IMPORTADOR DE PLANILHA BASE
+// ══════════════════════════════════════════════════════════════════════════════
+let impCarretas = [];   // carretas parsed from xlsx
+let impExistSet = new Set();  // nums already in DB
+
+function abrirImportador() {
+  // Sincroniza existentes com o cache atual
+  impExistSet = new Set(getCarretas().map(c => c.num));
+  // Reset UI
+  document.getElementById('impStatus').className = 'imp-status';
+  document.getElementById('impPreview').style.display = 'none';
+  document.getElementById('impLog').style.display = 'none';
+  document.getElementById('impLog').textContent = '';
+  document.getElementById('impProgBg').style.display = 'none';
+  document.getElementById('impProgFill').style.width = '0%';
+  document.getElementById('impProgressLabel').textContent = '';
+  document.getElementById('impBtnImportar').style.display = 'none';
+  impCarretas = [];
+  document.getElementById('impOverlay').classList.add('open');
+}
+
+function fecharImportador() {
+  document.getElementById('impOverlay').classList.remove('open');
+}
+
+// File input handler
+document.getElementById('impFileInput').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (f) processarXLSX(f);
+  e.target.value = '';
+});
+
+// Drag & drop
+const impDrop = document.getElementById('impDrop');
+impDrop.addEventListener('dragover', e => { e.preventDefault(); impDrop.classList.add('dragover'); });
+impDrop.addEventListener('dragleave', () => impDrop.classList.remove('dragover'));
+impDrop.addEventListener('drop', e => {
+  e.preventDefault(); impDrop.classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if (f) processarXLSX(f);
+});
+
+function impSetStatus(msg, type) {
+  const el = document.getElementById('impStatus');
+  el.textContent = msg;
+  el.className = 'imp-status ' + type;
+}
+
+// ── DATE / NUMBER HELPERS ────────────────────────────────────────────────────
+function impDateToISO(val) {
+  if (!val) return null;
+  if (val instanceof Date) {
+    if (isNaN(val.getTime())) return null;
+    const utc = new Date(val.getTime() - val.getTimezoneOffset() * 60000);
+    return utc.toISOString().slice(0, 10);
+  }
+  if (typeof val === 'number') {
+    const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+    return impDateToISO(d);
+  }
+  if (typeof val === 'string') {
+    const m1 = val.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m1) return `${m1[3]}-${m1[2].padStart(2,'0')}-${m1[1].padStart(2,'0')}`;
+    if (/^\d{4}-\d{2}-\d{2}/.test(val)) return val.slice(0, 10);
+  }
+  return null;
+}
+function impFmtDate(iso) {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+function impFmtBRL(v) {
+  if (v == null || v === '') return '—';
+  return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function impParseNum(val) {
+  if (val == null) return null;
+  if (typeof val === 'number') return isNaN(val) ? null : val;
+  if (typeof val === 'string') {
+    const n = parseFloat(val.trim().replace(/\./g,'').replace(',','.'));
+    return isNaN(n) ? null : n;
+  }
+  return null;
+}
+function impOrdinal(str) {
+  const m = String(str||'').match(/^(\d+)/);
+  return m ? parseInt(m[1]) : null;
+}
+function impBuildHmap(row) {
+  const map = {};
+  (row||[]).forEach((c,i) => { if (c!=null && c!=='') map[String(c).trim().toUpperCase()] = i; });
+  return map;
+}
+function impCol(map, ...names) {
+  for (const n of names) if (map[n] !== undefined) return map[n];
+  return null;
+}
+function impCell(row, idx) {
+  return (idx !== null && idx !== undefined && idx < row.length) ? row[idx] : null;
+}
+
+// ── PARSE RESUMO ────────────────────────────────────────────────────────────
+function impParseResumo(wb) {
+  const map = {};
+  const ws = wb.Sheets['RESUMO'];
+  if (!ws) return map;
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+  for (const row of rows) {
+    if (!row || !row[0]) continue;
+    const num = impOrdinal(row[0]);
+    if (!num) continue;
+    map[num] = { data: impDateToISO(row[1]) };
+  }
+  return map;
+}
+
+// ── PARSE XLSX ───────────────────────────────────────────────────────────────
+async function processarXLSX(file) {
+  if (!/\.(xlsx|xls)$/i.test(file.name)) {
+    impSetStatus('⚠️ Selecione um arquivo .xlsx', 'err'); return;
+  }
+  impSetStatus('⏳ Lendo planilha…', 'info');
+  document.getElementById('impPreview').style.display = 'none';
+  document.getElementById('impBtnImportar').style.display = 'none';
+
+  try {
+    const buf = await file.arrayBuffer();
+    const wb  = XLSX.read(new Uint8Array(buf), { type: 'array', cellDates: true });
+
+    const resumoMap = impParseResumo(wb);
+    const sheetRx   = /^(\d+)[ªº°]?\s*(CARRETA|BITREM)/i;
+    impCarretas = [];
+
+    for (const sheetName of wb.SheetNames) {
+      const m = sheetName.match(sheetRx);
+      if (!m) continue;
+      const num  = parseInt(m[1]);
+      const tipo = m[2].toUpperCase();
+      const ws   = wb.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+      if (rows.length < 3) continue;
+
+      const hmap = impBuildHmap(rows[1]);
+      const iOrig  = impCol(hmap, 'ORIGEM');
+      const iDtFat = impCol(hmap, 'DT FATURAMENTO');
+      const iDtCol = impCol(hmap, 'DT COLETA');
+      const iSeg   = impCol(hmap, 'SEGUIU VIAGEM');
+      const iDtEnt = impCol(hmap, 'DT ENTREGA');
+      const iDtSis = impCol(hmap, 'DT SISTEMA');
+      const iPar   = impCol(hmap, 'QTDS PARES', 'QTD PARES', 'PARES');
+      const iCax   = impCol(hmap, 'QTDS CAIXAS', 'QTD CAIXAS', 'CAIXAS');
+      const iVal   = impCol(hmap, 'VALOR NF');
+      const iNF    = impCol(hmap, 'NF');
+      const iTrp   = impCol(hmap, 'TRANSPORTADORA');
+      const iFrt   = impCol(hmap, 'FRETE');
+      const iShp   = impCol(hmap, 'SHIPMENT');
+      const iPla   = impCol(hmap, 'PLACA');
+      const iPes   = impCol(hmap, 'PESO');
+      const iVlm   = impCol(hmap, 'VLM M3', 'VLM M³', 'VOL M3');
+
+      let dtColeta=null, dtEntrega=null, dtSistema=null;
+      let seguiuViagem=null, transportadora=null, frete=null;
+      let shipment=null, placa=null, origemPad=null, hdrDone=false;
+      const nfs = [];
+      let totalVlm = 0;
+
+      for (let r = 2; r < rows.length; r++) {
+        const row = rows[r];
+        if (!row || row.every(v => v==null||v==='')) continue;
+
+        if (!hdrDone) {
+          dtColeta      = impDateToISO(impCell(row, iDtCol));
+          dtEntrega     = impDateToISO(impCell(row, iDtEnt));
+          dtSistema     = impDateToISO(impCell(row, iDtSis));
+          const sv      = impCell(row, iSeg);
+          seguiuViagem  = sv ? (sv instanceof Date ? impDateToISO(sv) : String(sv)) : null;
+          const tr      = impCell(row, iTrp);
+          transportadora = tr ? String(tr).trim() : null;
+          frete         = impParseNum(impCell(row, iFrt));
+          const sh      = impCell(row, iShp);
+          shipment      = sh ? String(sh).trim() : null;
+          const pl      = impCell(row, iPla);
+          placa         = pl ? String(pl).trim() : null;
+          const or      = impCell(row, iOrig);
+          origemPad     = or ? String(or).trim() : null;
+          hdrDone       = true;
+        }
+
+        const nfRaw  = impCell(row, iNF);
+        const valorNF = impParseNum(impCell(row, iVal));
+        if (nfRaw == null && valorNF == null) continue;
+
+        const nfNum  = nfRaw != null ? (parseInt(String(nfRaw).replace(/\D/g,'')) || null) : null;
+        const or2    = impCell(row, iOrig);
+        const origem = or2 ? String(or2).trim() : origemPad;
+        const peso   = impParseNum(impCell(row, iPes));
+        const vlm    = impParseNum(impCell(row, iVlm));
+        const dtFat  = impDateToISO(impCell(row, iDtFat));
+        if (vlm) totalVlm += vlm;
+
+        nfs.push({
+          nf: nfNum, nfRaw: nfNum ? String(nfNum) : null,
+          dtStr:    dtFat ? impFmtDate(dtFat) : null,
+          valorNF:  valorNF || 0,
+          qtdCaixas: impParseNum(impCell(row, iCax)) != null ? Math.round(impParseNum(impCell(row, iCax))) : null,
+          qtdPares:  impParseNum(impCell(row, iPar))  != null ? Math.round(impParseNum(impCell(row, iPar)))  : null,
+          origem: origem||null, remessa: null, peso,
+          vlmM3: vlm != null ? String(vlm) : null,
+          arquivo: sheetName, tipoDoc: 'danfe', ok: true,
+        });
+      }
+
+      if (nfs.length === 0 && !hdrDone) continue;
+
+      const progDate = resumoMap[num]?.data ?? dtColeta;
+      impCarretas.push({
+        id:           `c${num}_${Date.now()}`,
+        num, tipo,
+        data:         progDate,
+        dtColeta, dtEntrega, dtSistema, seguiuViagem, transportadora,
+        frete:        frete || 0, shipment, placa,
+        volM3:        totalVlm > 0 ? String(Math.round(totalVlm)) : null,
+        nfs,
+        totalCaixas:  nfs.reduce((s,n) => s+(n.qtdCaixas||0), 0),
+        totalPares:   nfs.reduce((s,n) => s+(n.qtdPares||0),  0),
+        totalValor:   nfs.reduce((s,n) => s+(n.valorNF||0),   0),
+        criadoEm:     new Date().toISOString(),
+      });
+    }
+
+    impCarretas.sort((a,b) => a.num - b.num);
+
+    if (impCarretas.length === 0) {
+      impSetStatus('⚠️ Nenhuma aba de carreta encontrada no arquivo.', 'err'); return;
+    }
+
+    impSetStatus(`✅ ${impCarretas.length} carretas encontradas em "${file.name}"`, 'ok');
+    renderImpPreview();
+
+  } catch(e) {
+    console.error(e);
+    impSetStatus(`❌ Erro ao ler o arquivo: ${e.message}`, 'err');
+  }
+}
+
+// ── RENDER PREVIEW ──────────────────────────────────────────────────────────
+function renderImpPreview() {
+  impExistSet = new Set(getCarretas().map(c => c.num));
+
+  const totalNFs   = impCarretas.reduce((s,c) => s+c.nfs.length, 0);
+  const totalPares = impCarretas.reduce((s,c) => s+c.totalPares, 0);
+  const novos      = impCarretas.filter(c => !impExistSet.has(c.num)).length;
+
+  document.getElementById('impChips').innerHTML = `
+    <div class="imp-chip"><strong>${impCarretas.length}</strong>Carretas</div>
+    <div class="imp-chip"><strong>${novos}</strong>Novas</div>
+    <div class="imp-chip"><strong>${totalNFs.toLocaleString('pt-BR')}</strong>NFs</div>
+    <div class="imp-chip"><strong>${totalPares.toLocaleString('pt-BR')}</strong>Pares</div>
+  `;
+
+  const tbody = document.getElementById('impTbody');
+  tbody.innerHTML = '';
+  impCarretas.forEach((c, i) => {
+    const ex = impExistSet.has(c.num);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="c"><input type="checkbox" class="imp-chk" data-idx="${i}" ${!ex?'checked':''}></td>
+      <td><strong>${c.num}ª ${c.tipo==='BITREM'?'BITREM':'CARRETA'}</strong></td>
+      <td>${impFmtDate(c.data)}</td>
+      <td>${c.transportadora||'—'}</td>
+      <td class="r">${impFmtBRL(c.frete)}</td>
+      <td>${c.shipment||'—'}</td>
+      <td>${c.placa||'—'}</td>
+      <td class="c">${c.nfs.length}</td>
+      <td class="r">${c.totalPares.toLocaleString('pt-BR')}</td>
+      <td class="r">${impFmtBRL(c.totalValor)}</td>
+      <td class="c"><span class="${ex?'imp-badge-e':'imp-badge-n'}">${ex?'⚠️ Já existe':'🆕 Novo'}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('impChkAll').checked = true;
+  document.getElementById('impPreview').style.display = 'block';
+  document.getElementById('impBtnImportar').style.display = '';
+  atualizarImpSel();
+
+  document.querySelectorAll('.imp-chk').forEach(cb =>
+    cb.addEventListener('change', atualizarImpSel)
+  );
+}
+
+function toggleImpAll(checked) {
+  document.querySelectorAll('.imp-chk').forEach(cb => cb.checked = checked);
+  atualizarImpSel();
+}
+
+function atualizarImpSel() {
+  const total = document.querySelectorAll('.imp-chk').length;
+  const sel   = document.querySelectorAll('.imp-chk:checked').length;
+  document.getElementById('impSelCount').textContent = `${sel} de ${total} selecionadas`;
+  document.getElementById('impChkAll').indeterminate = sel>0 && sel<total;
+}
+
+// ── IMPORTAR ─────────────────────────────────────────────────────────────────
+async function executarImportacao() {
+  if (!db) { alert('Sem conexão com o Supabase.'); return; }
+
+  const selected = [];
+  document.querySelectorAll('.imp-chk:checked').forEach(cb =>
+    selected.push(impCarretas[parseInt(cb.dataset.idx)])
+  );
+  if (selected.length === 0) { alert('Selecione ao menos uma carreta.'); return; }
+
+  const existentes = selected.filter(c => impExistSet.has(c.num));
+  if (existentes.length > 0) {
+    const ok = confirm(
+      `${existentes.length} carreta(s) já existem: ${existentes.map(c=>c.num+'ª').join(', ')}.\n\nSobrescrever?`
+    );
+    if (!ok) return;
+  }
+
+  document.getElementById('impBtnImportar').disabled = true;
+  document.getElementById('impProgBg').style.display = 'block';
+  const log = document.getElementById('impLog');
+  log.style.display = 'block';
+  log.textContent = `Importando ${selected.length} carreta(s)…\n${'─'.repeat(44)}\n`;
+
+  function addLog(msg) { log.textContent += msg+'\n'; log.scrollTop = log.scrollHeight; }
+  function setImpProg(done, total, lbl) {
+    const pct = total>0 ? Math.round(done/total*100) : 0;
+    document.getElementById('impProgFill').style.width = pct+'%';
+    document.getElementById('impProgressLabel').textContent = lbl;
+  }
+
+  let ok=0, fail=0;
+
+  for (let i=0; i<selected.length; i++) {
+    const c = selected[i];
+    const lbl = `${c.num}ª ${c.tipo==='BITREM'?'BITREM':'CARRETA'}`;
+    setImpProg(i, selected.length, `Importando ${lbl} (${i+1}/${selected.length})…`);
+
+    try {
+      // Se já existe, reutiliza o ID existente
+      if (impExistSet.has(c.num)) {
+        const existing = getCarretas().find(x => x.num === c.num);
+        if (existing) {
+          await db.from('nfs').delete().eq('carreta_id', existing.id);
+          await db.from('carretas').delete().eq('id', existing.id);
+          c.id = existing.id;
+          carretasCache = carretasCache.filter(x => x.num !== c.num);
+        }
+      }
+
+      // Salva usando a função existente do app
+      await salvarCarretaNoBanco(c);
+      impExistSet.add(c.num);
+      ok++;
+      addLog(`✅ ${lbl.padEnd(14)} | ${String(c.nfs.length).padStart(3)} NFs | ${c.totalPares.toLocaleString('pt-BR').padStart(8)} pares | R$ ${impFmtBRL(c.totalValor)}`);
+    } catch(e) {
+      fail++;
+      addLog(`❌ ${lbl} — ERRO: ${e.message||JSON.stringify(e)}`);
+    }
+    await new Promise(r => setTimeout(r, 60));
+  }
+
+  setImpProg(selected.length, selected.length, 'Concluído!');
+  addLog(`\n${'─'.repeat(44)}`);
+  addLog(`✅ Importadas: ${ok}${fail>0?' | ❌ Erros: '+fail:''}`);
+
+  // Atualiza sidebar
+  renderSidebar();
+
+  document.getElementById('impBtnImportar').disabled = false;
+  renderImpPreview();  // atualiza badges
+
+  if (fail === 0) {
+    impSetStatus(`✅ ${ok} carreta(s) importadas com sucesso!`, 'ok');
+  }
+}
 </script>
+
+<!-- MODAL IMPORTADOR -->
+<input type="file" id="impFileInput" accept=".xlsx,.xls" style="display:none">
+<div class="imp-overlay" id="impOverlay" onclick="if(event.target===this)fecharImportador()">
+  <div class="imp-modal">
+    <div class="imp-modal-header">
+      📥 Importar Planilha Base FOB
+      <button class="close-btn" onclick="fecharImportador()">✕</button>
+    </div>
+    <div class="imp-modal-body">
+      <div class="imp-drop" id="impDrop" onclick="document.getElementById('impFileInput').click()">
+        <div style="font-size:36px">📊</div>
+        <p>Arraste o arquivo <strong>FOB 2026.xlsx</strong> ou clique para selecionar</p>
+        <small>Formato: .xlsx · Importa todas as abas de carretas automaticamente</small>
+      </div>
+      <div class="imp-status" id="impStatus"></div>
+
+      <div id="impPreview" style="display:none">
+        <div class="imp-info-row" id="impChips"></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="impChkAll" checked onchange="toggleImpAll(this.checked)">
+            Selecionar todas
+          </label>
+          <span id="impSelCount" style="font-size:12px;color:#888"></span>
+        </div>
+        <div class="imp-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:32px">✓</th>
+                <th>Carreta</th>
+                <th>Data Prog.</th>
+                <th>Transportadora</th>
+                <th>Frete (R$)</th>
+                <th>Shipment</th>
+                <th>Placa</th>
+                <th style="text-align:center">NFs</th>
+                <th style="text-align:right">Pares</th>
+                <th style="text-align:right">Valor NF</th>
+                <th style="text-align:center">Banco</th>
+              </tr>
+            </thead>
+            <tbody id="impTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="impProgressLabel" style="font-size:13px;font-weight:600;color:#444;margin-top:12px"></div>
+      <div class="imp-prog-bg" id="impProgBg" style="display:none">
+        <div class="imp-prog-fill" id="impProgFill"></div>
+      </div>
+      <div class="imp-log" id="impLog"></div>
+    </div>
+    <div class="imp-footer">
+      <button class="imp-btn" id="impBtnImportar" style="display:none;background:var(--verde);color:white;border:none;padding:9px 22px;border-radius:7px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit"
+        onclick="executarImportacao()">🚀 Importar Selecionadas</button>
+      <button style="background:white;color:var(--azul-medio);border:2px solid var(--azul-medio);padding:9px 22px;border-radius:7px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit"
+        onclick="fecharImportador()">Fechar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
