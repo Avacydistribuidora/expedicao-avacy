@@ -1573,6 +1573,7 @@ let impCarretas = [];   // carretas parsed from xlsx
 let impExistSet = new Set();  // nums already in DB
 
 function abrirImportador() {
+  _registrarEventosImp();  // garante listeners registrados após DOM completo
   // Sincroniza existentes com o cache atual
   impExistSet = new Set(getCarretas().map(c => c.num));
   // Reset UI
@@ -1592,22 +1593,27 @@ function fecharImportador() {
   document.getElementById('impOverlay').classList.remove('open');
 }
 
-// File input handler
-document.getElementById('impFileInput').addEventListener('change', e => {
-  const f = e.target.files[0];
-  if (f) processarXLSX(f);
-  e.target.value = '';
-});
+// Registra eventos do modal na primeira abertura (elementos existem só após o script carregar)
+let _impEventsOk = false;
+function _registrarEventosImp() {
+  if (_impEventsOk) return;
+  _impEventsOk = true;
 
-// Drag & drop
-const impDrop = document.getElementById('impDrop');
-impDrop.addEventListener('dragover', e => { e.preventDefault(); impDrop.classList.add('dragover'); });
-impDrop.addEventListener('dragleave', () => impDrop.classList.remove('dragover'));
-impDrop.addEventListener('drop', e => {
-  e.preventDefault(); impDrop.classList.remove('dragover');
-  const f = e.dataTransfer.files[0];
-  if (f) processarXLSX(f);
-});
+  document.getElementById('impFileInput').addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (f) processarXLSX(f);
+    e.target.value = '';
+  });
+
+  const drop = document.getElementById('impDrop');
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('dragover'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+  drop.addEventListener('drop', e => {
+    e.preventDefault(); drop.classList.remove('dragover');
+    const f = e.dataTransfer.files[0];
+    if (f) processarXLSX(f);
+  });
+}
 
 function impSetStatus(msg, type) {
   const el = document.getElementById('impStatus');
