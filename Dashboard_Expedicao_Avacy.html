@@ -76,7 +76,7 @@ header{background:#0d2167;border-bottom:2px solid #8b1111;
 .user-menu a.danger-item{color:var(--red)}
 
 /* ── KPI ROW ───────────────────────────────────────────────── */
-.kpi-row{display:grid;grid-template-columns:repeat(7,1fr);gap:9px;
+.kpi-row{display:grid;grid-template-columns:repeat(8,1fr);gap:9px;
   padding:9px 18px;background:#e8edf5;border-bottom:2px solid #8b1111;flex-shrink:0}
 .kpi{background:var(--card);border:1px solid var(--border);border-radius:8px;
   padding:10px 13px;position:relative;overflow:hidden}
@@ -85,6 +85,7 @@ header{background:#0d2167;border-bottom:2px solid #8b1111;
 .kpi.c-sep::before{background:var(--orange)}.kpi.c-sepd::before{background:var(--purple)}
 .kpi.c-conf::before{background:var(--teal)}.kpi.c-exp::before{background:var(--green)}
 .kpi.c-pend::before{background:var(--red)}.kpi.c-prio::before{background:#f97316}
+.kpi.c-recebido::before{background:#059669}
 .kpi .lbl{font-size:8.5px;color:#6b7a99;text-transform:uppercase;letter-spacing:.07em}
 .kpi .val{font-size:26px;font-weight:800;margin:3px 0 1px;line-height:1}
 
@@ -399,7 +400,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v4.1 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v4.2 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -407,7 +408,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v4.1</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v4.2</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -446,6 +447,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <!-- KPI ROW -->
 <div class="kpi-row">
   <div class="kpi c-fat"><div class="lbl">Faturado</div><div class="val" id="k-fat" style="color:var(--blue)">0</div></div>
+  <div class="kpi c-recebido" style="cursor:pointer" onclick="document.getElementById('sfStatus').value='Recebido';onStatusChange()" title="Ver recebidos"><div class="lbl">Recebido</div><div class="val" id="k-rec" style="color:#059669">0</div></div>
   <div class="kpi c-sep"><div class="lbl">Em Separação</div><div class="val" id="k-sep" style="color:var(--orange)">0</div></div>
   <div class="kpi c-sepd"><div class="lbl">Separado</div><div class="val" id="k-sepd" style="color:var(--purple)">0</div></div>
   <div class="kpi c-conf"><div class="lbl">Conferido</div><div class="val" id="k-conf" style="color:var(--teal)">0</div></div>
@@ -531,7 +533,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
       </div>
       <select id="sfStatus" onchange="onStatusChange()">
         <option value="">Todos os status</option>
-        <option>Faturado</option><option>Em Separação</option>
+        <option>Faturado</option><option>Recebido</option><option>Em Separação</option>
         <option>Separado</option><option>Conferido</option>
         <option>Expedido</option><option>Pendente</option>
         <option value="__PRIO__">⭐ Priorizados</option>
@@ -768,7 +770,7 @@ ALTER TABLE avacy_records ADD COLUMN IF NOT EXISTS chave_nfe TEXT;</pre>
 // CONSTANTES
 // ═══════════════════════════════════════════════════════════
 const LS_REC='avacy8_rec',LS_ST='avacy8_st',LS_USERS='avacy8_users',SS_USER='avacy8_session';
-const STATUS_ORDER={Faturado:1,'Em Separação':2,Separado:3,Recebido:3.5,Conferido:4,Expedido:5,Pendente:0.5};
+const STATUS_ORDER={Faturado:1,Recebido:1.5,'Em Separação':2,Separado:3,Conferido:4,Expedido:5,Pendente:0.5};
 const SC_CLASS={Faturado:'fat','Em Separação':'sep',Separado:'sepd',Recebido:'recebido',Conferido:'conf',Expedido:'exp',Pendente:'pend'};
 const MESES=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
@@ -1121,7 +1123,7 @@ function importVDK(arrayBuffer){
           if(!stMap[nota])stMap[nota]={obs:''};
           // Só avança o status se o novo for "mais adiantado"
           const curSt=stMap[nota].status||'Faturado';
-          const ord={Faturado:1,'Em Separação':2,Separado:3,Recebido:3.5,Conferido:4,Expedido:5,Pendente:0.5};
+          const ord={Faturado:1,Recebido:1.5,'Em Separação':2,Separado:3,Conferido:4,Expedido:5,Pendente:0.5};
           if((ord[mappedSt]||0)>(ord[curSt]||0)){
             stMap[nota].status=mappedSt;
             const tsMap2={Expedido:'ts_exp','Em Separação':'ts_sep',Separado:'ts_sepd',Conferido:'ts_conf',Pendente:'ts_pend',Faturado:'ts_fat'};
@@ -1171,7 +1173,7 @@ async function importCSV(){
   const pw=document.getElementById('progWrap'),pf=document.getElementById('progFill'),pt=document.getElementById('progTxt');
   pw.classList.add('show');pf.style.width='10%';pt.textContent='Sincronizando status…';
   // PRÉ-SYNC: busca status do Supabase para capturar pré-bipes antes de processar
-  const PROG={Faturado:1,'Em Separação':2,Separado:3,Recebido:3.5,Conferido:4,Expedido:5,Pendente:0.5};
+  const PROG={Faturado:1,Recebido:1.5,'Em Separação':2,Separado:3,Conferido:4,Expedido:5,Pendente:0.5};
   if(SB_URL&&SB_KEY){
     try{
       const _sb=await fetch(`${SB_URL.replace(/\/+$/,'')}/rest/v1/avacy_status?select=*`,
@@ -1416,7 +1418,7 @@ function doBipe(){
     const logKey=bipeMode==='sep'?'scan_log':bipeMode==='recebido'?'rec_log':'sep_log';
     const existing=stMap[val]||{obs:''};
     // Só registra se ainda não foi bipado nesse status ou anterior
-    const stOrd={'Faturado':1,'Em Separação':2,'Separado':3,'Recebido':3.5,'Conferido':4,'Expedido':5};
+    const stOrd={'Faturado':1,'Recebido':1.5,'Em Separação':2,'Separado':3,'Conferido':4,'Expedido':5};
     if((stOrd[existing.status]||0)<(stOrd[newSt]||0)){
       stMap[val]={...existing,status:newSt,pre_scan:true,[tsKey]:n,[logKey]:{user:cu?.username||'?',ts:n,code:val},_ts:new Date().toISOString()};
       saveLS();sbSyncStatus(val);
@@ -1442,7 +1444,7 @@ function doBipe(){
       sd.sep_log={user:cu?.username||'?',ts:n,code:val};sd._ts=new Date().toISOString();
       stMap[r.nota]=sd;changed++;
       bipeLogEntries.unshift({nota:r.nota,user:cu?.username||'?',ts:n,ok:true,action:'Separado',mode:'sepd'});
-    }else if(bipeMode==='recebido'&&st==='Separado'){
+    }else if(bipeMode==='recebido'&&(st==='Faturado'||st==='Pendente')){
       sd.status='Recebido';sd.ts_recebido=n;
       sd.rec_log={user:cu?.username||'?',ts:n,code:val};sd._ts=new Date().toISOString();
       stMap[r.nota]=sd;changed++;
@@ -1455,7 +1457,7 @@ function doBipe(){
   saveLS();
   if(changed>0){
     // BUG FIX: sincroniza com Supabase para garantir persistência ao reabrir
-    found.forEach(r=>{const st=stMap[r.nota]?.status;if(st==='Em Separação'||st==='Separado'||st==='Recebido')sbSyncStatus(r.nota);});
+    found.forEach(r=>{const st=stMap[r.nota]?.status;if(['Em Separação','Separado','Recebido'].includes(st))sbSyncStatus(r.nota);});
     showBipeFeedback('ok',`✔ ${changed} pedido(s) → ${bipeMode==='sep'?'Em Separação':bipeMode==='recebido'?'Recebido':'Separado'}`);onFilterChange()
   }
   else showBipeFeedback('warn',`⚠ Status incompatível (${found[0]&&stMap[found[0].nota]?.status})`);
@@ -1481,14 +1483,22 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeBipeModal();cl
 // ═══════════════════════════════════════════════════════════
 // AÇÕES NA TABELA
 // ═══════════════════════════════════════════════════════════
+function advanceToSep(nota){
+  const sd=stMap[nota];if(!sd)return;const n=nowStr();const cu=getCurrentUser();
+  if(['Faturado','Recebido','Pendente'].includes(sd.status)){
+    sd.status='Em Separação';sd.ts_sep=n;sd.scan_log={user:cu?.username||'?',ts:n,code:'manual'};sd._ts=new Date().toISOString();
+    saveLS();sbSyncStatus(nota);onFilterChange();hlRow(nota,'hl');
+  }
+}
 function setRecebido(nota){
-  const sd=stMap[nota];if(!sd||sd.status!=='Separado')return;const n=nowStr();const cu=getCurrentUser();
+  const sd=stMap[nota];if(!sd||!(sd.status==='Faturado'||sd.status==='Pendente'))return;const n=nowStr();const cu=getCurrentUser();
   sd.status='Recebido';sd.ts_recebido=n;sd.rec_log={user:cu?.username||'?',ts:n,code:'manual'};sd._ts=new Date().toISOString();
   saveLS();sbSyncStatus(nota);onFilterChange();hlRow(nota,'hl-p');
 }
 function advance(nota){
   const sd=stMap[nota];if(!sd)return;const n=nowStr();const cu=getCurrentUser();
-  if(sd.status==='Faturado'){sd.status='Em Separação';sd.ts_sep=n;sd.scan_log={user:cu?.username||'?',ts:n,code:'manual'};sd._ts=new Date().toISOString()}
+  if(sd.status==='Faturado'||sd.status==='Pendente'){sd.status='Recebido';sd.ts_recebido=n;sd.rec_log={user:cu?.username||'?',ts:n,code:'manual'};sd._ts=new Date().toISOString()}
+  else if(sd.status==='Recebido'){sd.status='Em Separação';sd.ts_sep=n;sd.scan_log={user:cu?.username||'?',ts:n,code:'manual'};sd._ts=new Date().toISOString()}
   else if(sd.status==='Em Separação'){sd.status='Separado';sd.ts_sepd=n;sd.sep_log={user:cu?.username||'?',ts:n,code:'manual'};sd._ts=new Date().toISOString()}
   saveLS();sbSyncStatus(nota);onFilterChange();hlRow(nota,'hl');
 }
@@ -1537,9 +1547,10 @@ function toggleRowMenu(nota,btn){
   const sd=stMap[nota]||{};const st=sd.status||'Faturado';
   const isAdmin=getCurrentUser()?.role==='admin';
   const items=[];
-  if(st==='Faturado'){items.push({cls:'rp-sep',icon:'▶',label:'Em Separação',fn:`advance('${nota}')`});items.push({cls:'rp-pend',icon:'⚠',label:'Pendente',fn:`setPendente('${nota}')`})}
+  if(st==='Faturado'){items.push({cls:'rp-recebido',icon:'✓',label:'Recebido',fn:`setRecebido('${nota}')`});items.push({cls:'rp-sep',icon:'▶',label:'Em Separação (pular)',fn:`advanceToSep('${nota}')`});items.push({cls:'rp-pend',icon:'⚠',label:'Pendente',fn:`setPendente('${nota}')`})}
+  else if(st==='Recebido'){items.push({cls:'rp-sep',icon:'▶',label:'Em Separação',fn:`advance('${nota}')`})}
   else if(st==='Em Separação'){items.push({cls:'rp-sepd',icon:'✓',label:'Separado',fn:`advance('${nota}')`})}
-  else if(st==='Separado'){items.push({cls:'rp-recebido',icon:'✓',label:'Recebido',fn:`setRecebido('${nota}')`})}
+  else if(st==='Separado'){}
   else if(st==='Pendente'){items.push({cls:'rp-resume',icon:'↩',label:'Retomar',fn:`retomar('${nota}')`})}
   if(isAdmin)items.push({cls:'rp-del',icon:'🗑',label:'Excluir registro',fn:`deleteRecord('${nota}')`});
   if(!items.length)return;
@@ -1704,14 +1715,14 @@ function updateDashboard(list){
     if(r.origem==='GRU'||r.origem==='MATRIZ'){origC[r.origem]++;origV[r.origem]=(origV[r.origem]||0)+vol;}
     if(r.transportadora){const k=r.transportadora.length>22?r.transportadora.slice(0,22)+'…':r.transportadora;transpC[k]=(transpC[k]||0)+1;transpV[k]=(transpV[k]||0)+vol;}
   });
-  document.getElementById('k-fat').textContent=fat;document.getElementById('k-sep').textContent=sep;
-  document.getElementById('k-sepd').textContent=sepd;if(document.getElementById('k-rec'))document.getElementById('k-rec').textContent=rec;document.getElementById('k-conf').textContent=conf;
+  document.getElementById('k-fat').textContent=fat;document.getElementById('k-rec').textContent=rec;document.getElementById('k-sep').textContent=sep;
+  document.getElementById('k-sepd').textContent=sepd;document.getElementById('k-conf').textContent=conf;
   document.getElementById('k-exp').textContent=exp;
   document.getElementById('k-pend').textContent=pend;
   document.getElementById('k-prio').textContent=prio;
   drawDonut('cStatus',[
-    {label:'Faturado',value:fat,color:'#58a6ff'},{label:'Em Separação',value:sep,color:'#f97316'},
-    {label:'Separado',value:sepd,color:'#a371f7'},{label:'Recebido',value:rec,color:'#059669'},{label:'Conferido',value:conf,color:'#2dd4bf'},
+    {label:'Faturado',value:fat,color:'#58a6ff'},{label:'Recebido',value:rec,color:'#059669'},{label:'Em Separação',value:sep,color:'#f97316'},
+    {label:'Separado',value:sepd,color:'#a371f7'},{label:'Conferido',value:conf,color:'#2dd4bf'},
     {label:'Expedido',value:exp,color:'#3fb950'},{label:'Pendente',value:pend,color:'#f85149'},
   ]);
   drawBars('cOrigem',Object.entries(origC).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([l,v])=>({label:l,value:v,vol:origV[l]||0,color:l==='GRU'?'#2dd4bf':'#58a6ff'})));
