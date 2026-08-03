@@ -401,7 +401,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v5.2 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v5.3 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -409,7 +409,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v5.2</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v5.3</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1758,7 +1758,7 @@ function _render(){
         const sepTs=st==='Em Separação'?(sd.scan_log?.ts||sd.ts_sep||''):(sd.sep_log?.ts||sd.ts_sepd||'');
         const sepClr=st==='Em Separação'?'var(--orange)':st==='Separado'?'#9333ea':st==='Conferido'?'var(--teal)':'var(--muted)';
         if(!sepU)return'<span style="color:var(--muted)">—</span>';
-        return'<span style="font-size:10px;color:'+sepClr+';font-weight:700" title="'+esc(sepU+' '+sepTs)+'">'+(sepTs?'<span style="font-weight:400;opacity:.85">'+esc(sepTs)+'</span><br>':'')+esc(sepU)+'</span>';
+        return'<span style="font-size:10px;color:'+sepClr+';font-weight:700" title="'+esc(sepU+' '+sepTs)+'">'+(sepTs?'<span style="font-weight:400;opacity:.85;white-space:nowrap">'+esc(sepTs)+'</span><br>':'')+esc(sepU)+'</span>';
       })()}</td>
       <td>${origemBadge(r.origem)}</td>
       <td>${r.xconf?`<span class="conf-yes">✔</span>`:`<span class="conf-no">—</span>`}</td>
