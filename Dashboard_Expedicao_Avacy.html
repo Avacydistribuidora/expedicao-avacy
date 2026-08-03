@@ -408,7 +408,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v5.8 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v5.9 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -416,7 +416,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v5.8</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v5.9</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1262,7 +1262,9 @@ async function importCSV(){
       const c=rows[i];if(!c||c.length<2)continue;
       const nota=clean(c[iNota]||'');if(!nota)continue;
       const xconf=clean(iXCon>=0?c[iXCon]||'':''),rom=clean(iRom>=0?c[iRom]||'':'');
-      const auth=clean(iAuth>=0?c[iAuth]||'':'');
+      const _authRaw=clean(iAuth>=0?c[iAuth]||'':'');
+      // Converte formato banco YYYYMMDD HH:MM → DD/MM/YYYY HH:MM
+      const auth=(()=>{if(!_authRaw)return'';const m=_authRaw.match(/^(\d{4})(\d{2})(\d{2})\s*(\d{2}:\d{2})/);if(m)return m[3]+'/'+m[2]+'/'+m[1]+' '+m[4];return _authRaw;})();
       const etiq=clean(iEtiq>=0?c[iEtiq]||'':'');
       // Etiqueta: 'DD/MM/YYYY HH:MM USUARIO'
       const _em=etiq.match(/^(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2})\s+(.+)$/);
