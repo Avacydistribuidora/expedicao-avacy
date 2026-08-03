@@ -211,10 +211,12 @@ td{padding:7px 10px;vertical-align:middle}
 .badge.conf{background:rgba(45,212,191,.12);color:var(--teal);  border:1px solid rgba(45,212,191,.3)}
 .badge.exp {background:rgba(63,185,80,.12); color:var(--green); border:1px solid rgba(63,185,80,.3)}
 .badge.pend{background:rgba(248,81,73,.14); color:var(--red);   border:1px solid rgba(248,81,73,.35)}
+.badge.recebido{background:rgba(5,150,105,.12);color:#059669;border:1px solid rgba(5,150,105,.3)}
 .dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0}
 .dot.fat {background:var(--blue)}.dot.sep{background:var(--orange);animation:pulse 1.2s infinite}
 .dot.sepd{background:var(--purple)}.dot.conf{background:var(--teal)}.dot.exp{background:var(--green)}
 .dot.pend{background:var(--red);animation:pulse .8s infinite}
+.dot.recebido{background:#059669}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
 .ts{font-size:8.5px;color:var(--muted);display:block;margin-top:2px}
 
@@ -256,6 +258,7 @@ td{padding:7px 10px;vertical-align:middle}
 .row-popover a.rp-sepd{color:var(--purple)}
 .row-popover a.rp-pend{color:var(--red)}
 .row-popover a.rp-resume{color:var(--green)}
+.row-popover a.rp-recebido{color:#059669}
 .row-popover a.rp-del{color:var(--red);border-top:1px solid var(--border)!important;margin-top:2px}
 
 /* Priority star */
@@ -357,6 +360,7 @@ td{padding:7px 10px;vertical-align:middle}
 .bipe-log-status{font-size:10px;font-weight:700}
 .bipe-log-ok-sep {color:var(--orange)}
 .bipe-log-ok-sepd{color:var(--purple)}
+.bipe-log-ok-rec{color:#059669}
 .bipe-log-warn{color:var(--muted)}
 .bipe-log-user{color:var(--muted);font-size:9.5px}
 .bipe-log-ts{color:var(--muted);font-size:9.5px;margin-left:auto}
@@ -395,7 +399,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.9 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v4.0 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -403,7 +407,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.9</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v4.0</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -476,7 +480,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     <div class="toolbar">
       <!-- Bipar — primeiro na toolbar -->
       <button class="btn" onclick="openBipeModal('sep')" title="Bipar → Em Separação"
-              style="border-color:rgba(249,115,22,.55);color:var(--orange);font-weight:700">
+              style="display:none;border-color:rgba(249,115,22,.55);color:var(--orange);font-weight:700">
         <svg width="20" height="14" viewBox="0 0 44 28" fill="currentColor">
           <rect x="0" y="0" width="3" height="28"/><rect x="5" y="0" width="1.5" height="28"/>
           <rect x="8" y="0" width="4" height="28"/><rect x="14" y="0" width="2" height="28"/>
@@ -488,7 +492,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
         Em separação
       </button>
       <button class="btn" onclick="openBipeModal('sepd')" title="Bipar → Separado"
-              style="border-color:rgba(163,113,247,.45);color:var(--purple)">
+              style="display:none;border-color:rgba(163,113,247,.45);color:var(--purple)">
         <svg width="20" height="14" viewBox="0 0 44 28" fill="currentColor">
           <rect x="0" y="0" width="3" height="28"/><rect x="5" y="0" width="2" height="28"/>
           <rect x="9" y="0" width="5" height="28"/><rect x="16" y="0" width="1.5" height="28"/>
@@ -497,6 +501,17 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
           <rect x="38" y="0" width="1.5" height="28"/><rect x="41" y="0" width="3" height="28"/>
         </svg>
         Separado
+      </button>
+      <button class="btn" onclick="openBipeModal('recebido')" title="Bipar → Recebido"
+              style="border-color:rgba(5,150,105,.45);color:#059669;font-weight:700">
+        <svg width="20" height="14" viewBox="0 0 44 28" fill="currentColor">
+          <rect x="0" y="0" width="3" height="28"/><rect x="5" y="0" width="2" height="28"/>
+          <rect x="9" y="0" width="5" height="28"/><rect x="16" y="0" width="1.5" height="28"/>
+          <rect x="20" y="0" width="3" height="28"/><rect x="25" y="0" width="1" height="28"/>
+          <rect x="28" y="0" width="4" height="28"/><rect x="34" y="0" width="2" height="28"/>
+          <rect x="38" y="0" width="1.5" height="28"/><rect x="41" y="0" width="3" height="28"/>
+        </svg>
+        Recebido
       </button>
       <div class="tb-divider"></div>
       <!-- Busca -->
@@ -679,7 +694,7 @@ ALTER TABLE avacy_records ADD COLUMN IF NOT EXISTS chave_nfe TEXT;</pre>
       <div class="prog-txt" id="progTxt">Aguarde…</div>
       <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
     </div>
-    <div class="modal-hint">ℹ️ <strong>Protheus CSV:</strong> NOTA · NOME_CLIENTE · TRANSPORTADORA · LOJA · FAT · RAJLOG · MENSAGEM_NOTA · XCONF · ROMANIEO · DATA_EMISSAO<br><strong>VDK GRU XLS:</strong> Pedido · NF/Serie · Dt. Expedição · Cliente · Transportadora · Situação (detecção automática)</div>
+    <div class="modal-hint">ℹ️ <strong>Protheus CSV:</strong> NOTA · NOME_CLIENTE · TRANSPORTADORA · LOJA · FAT · RAJLOG · MENSAGEM_NOTA · XCONF · ROMANIEO · DATA_EMISSAO<br><strong>QRY (.csv):</strong> FAT · LOJA · NOTA · EMISSÃO · NOME DO CLIENTE · VENDEDOR · TRANSPORTADORA · VOL · STATUS · ORIG (detecção automática)<br><strong>VDK GRU XLS:</strong> Pedido · NF/Serie · Dt. Expedição · Cliente · Transportadora · Situação (detecção automática)</div>
     <div class="modal-act">
       <button class="btn" onclick="closeModal()">Cancelar</button>
       <button class="btn primary" id="btnImport" onclick="importCSV()" disabled>✓ Importar</button>
@@ -749,8 +764,8 @@ ALTER TABLE avacy_records ADD COLUMN IF NOT EXISTS chave_nfe TEXT;</pre>
 // CONSTANTES
 // ═══════════════════════════════════════════════════════════
 const LS_REC='avacy8_rec',LS_ST='avacy8_st',LS_USERS='avacy8_users',SS_USER='avacy8_session';
-const STATUS_ORDER={Faturado:1,'Em Separação':0,Separado:2,Conferido:3,Expedido:4,Pendente:0.5};
-const SC_CLASS={Faturado:'fat','Em Separação':'sep',Separado:'sepd',Conferido:'conf',Expedido:'exp',Pendente:'pend'};
+const STATUS_ORDER={Faturado:1,'Em Separação':2,Separado:3,Recebido:3.5,Conferido:4,Expedido:5,Pendente:0.5};
+const SC_CLASS={Faturado:'fat','Em Separação':'sep',Separado:'sepd',Recebido:'recebido',Conferido:'conf',Expedido:'exp',Pendente:'pend'};
 const MESES=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
 // ═══════════════════════════════════════════════════════════
@@ -1093,7 +1108,7 @@ function importVDK(arrayBuffer){
           romaneio:'',mensagem:'',
           origem:'GRU',xconf:'',
           loja:serie,fat:fat,vendedor:'',
-          volume:iVol>=0?String(c[iVol]||'').trim():''
+          volume:iVol>=0?String(parseInt((c[iVol]||'0').toString().replace(',','.'))||0):''
         };
         const situacao=iSit>=0?String(c[iSit]||'').trim():'';
         const mappedSt=mapSituacao(situacao);
@@ -1102,7 +1117,7 @@ function importVDK(arrayBuffer){
           if(!stMap[nota])stMap[nota]={obs:''};
           // Só avança o status se o novo for "mais adiantado"
           const curSt=stMap[nota].status||'Faturado';
-          const ord={Faturado:1,'Em Separação':2,Separado:3,Conferido:4,Expedido:5,Pendente:0.5};
+          const ord={Faturado:1,'Em Separação':2,Separado:3,Recebido:3.5,Conferido:4,Expedido:5,Pendente:0.5};
           if((ord[mappedSt]||0)>(ord[curSt]||0)){
             stMap[nota].status=mappedSt;
             const tsMap2={Expedido:'ts_exp','Em Separação':'ts_sep',Separado:'ts_sepd',Conferido:'ts_conf',Pendente:'ts_pend',Faturado:'ts_fat'};
@@ -1132,6 +1147,18 @@ function importVDK(arrayBuffer){
   });
 }
 
+function mapQRYStatus(s){
+  const v=(s||'').toLowerCase().trim();
+  if(!v)return null;
+  if(v==='recebido')return'Recebido';
+  if(v==='conferido')return'Conferido';
+  if(v==='expedido')return'Expedido';
+  if(v==='separado')return'Separado';
+  if(v.includes('separação')||v.includes('separacao')||v==='em separação'||v==='em separacao')return'Em Separação';
+  if(v==='pendente')return'Pendente';
+  if(v==='faturado')return'Faturado';
+  return null;
+}
 async function importCSV(){
   if(!csvContent){alert('Selecione um arquivo.');return}
   // Detecta formato VDK (XLS/XLSX)
@@ -1140,7 +1167,7 @@ async function importCSV(){
   const pw=document.getElementById('progWrap'),pf=document.getElementById('progFill'),pt=document.getElementById('progTxt');
   pw.classList.add('show');pf.style.width='10%';pt.textContent='Sincronizando status…';
   // PRÉ-SYNC: busca status do Supabase para capturar pré-bipes antes de processar
-  const PROG={Faturado:1,'Em Separação':2,Separado:3,Conferido:4,Expedido:5,Pendente:0.5};
+  const PROG={Faturado:1,'Em Separação':2,Separado:3,Recebido:3.5,Conferido:4,Expedido:5,Pendente:0.5};
   if(SB_URL&&SB_KEY){
     try{
       const _sb=await fetch(`${SB_URL.replace(/\/+$/,'')}/rest/v1/avacy_status?select=*`,
@@ -1160,13 +1187,15 @@ async function importCSV(){
     pf.style.width='30%';pt.textContent=`${rows.length-1} linhas…`;
     if(rows.length<2){alert('Arquivo sem dados.');pw.classList.remove('show');return}
     const hdr=rows[0].map(h=>h.trim());
-    const iNota=cIdx(hdr,'NOTA'),iNome=cIdx(hdr,'NOME_CLIENTE','A1_NOME'),iTrasp=cIdx(hdr,'TRANSPORTADORA');
-    const iEmis=cIdx(hdr,'DATA_EMISSAO'),iAuth=cIdx(hdr,'DT_HR_AUTORIZACAO'),iRom=cIdx(hdr,'ROMANIEO','ROMANEIO');
+    const iNota=cIdx(hdr,'NOTA'),iNome=cIdx(hdr,'NOME_CLIENTE','A1_NOME','NOME DO CLIENTE','NOME_DO_CLIENTE'),iTrasp=cIdx(hdr,'TRANSPORTADORA');
+    const iEmis=cIdx(hdr,'DATA_EMISSAO','EMISSÃO','EMISSAO'),iAuth=cIdx(hdr,'DT_HR_AUTORIZACAO'),iRom=cIdx(hdr,'ROMANIEO','ROMANEIO');
     const iMens=cIdx(hdr,'MENSAGEM_NOTA','MENSAGEM'),iRaj=cIdx(hdr,'RAJLOG'),iXCon=cIdx(hdr,'XCONF','CONF');
     const iLoja=cIdx(hdr,'LOJA'),iFat=cIdx(hdr,'FAT');
     const iVend=cIdx(hdr,'VENDEDOR','A3_NOME','C5_VEND','NOME_VENDEDOR');
     const iChave=cIdx(hdr,'CHAVE_NFE','CHAVE_NF','CHAVE');
     const iVolCSV=cIdx(hdr,'VOLUME1','VOLUME','VOL','QTD_VOL');
+    const iOrig=cIdx(hdr,'ORIG');
+    const iStatusQRY=cIdx(hdr,'STATUS');
     const iEtiq=cIdx(hdr,'ETIQUETA');
     const iDtSep=cIdx(hdr,'DT/HR EM SEPARAÇÃO','DT/HR EM SEPARACAO','DT_HR_EM_SEPARACAO','DTHRSEP');
     const iUserSep=cIdx(hdr,'USUÁRIO SEPARADO','USUARIO SEPARADO','USUARIO_SEPARADO','USER_SEP');
@@ -1193,9 +1222,10 @@ async function importCSV(){
       const userSep=clean(iUserSep>=0?c[iUserSep]||'':'');
       const dtSepd=clean(iDtSepd>=0?c[iDtSepd]||'':'');
       const csvSt=dtSepd?'Separado':dtSep?'Em Separação':null;
+      const qrySt=iStatusQRY>=0?mapQRYStatus(clean(c[iStatusQRY]||'')):null;
       const fd={nome_cliente:clean(iNome>=0?c[iNome]||'':''),transportadora:clean(iTrasp>=0?c[iTrasp]||'':''),
         data_emissao:fmtDate(clean(iEmis>=0?c[iEmis]||':':'')),romaneio:rom,
-        mensagem:clean(iMens>=0?c[iMens]||'':''),origem:origemFromRaj(clean(iRaj>=0?c[iRaj]||'':'')),
+        mensagem:clean(iMens>=0?c[iMens]||'':''),origem:(iOrig>=0&&clean(c[iOrig]||''))?clean(c[iOrig]||'').toUpperCase():origemFromRaj(clean(iRaj>=0?c[iRaj]||'':'')),
         xconf,loja:clean(iLoja>=0?c[iLoja]||'':''),fat:clean(iFat>=0?c[iFat]||'':''),
         vendedor:clean(iVend>=0?c[iVend]||'':''),
         chave_nfe:clean(iChave>=0?c[iChave]||'':''),
@@ -1232,6 +1262,8 @@ async function importCSV(){
             if(!stMap[nota].ts_conf)stMap[nota].ts_conf=n;
           }
         }
+        // Status QRY direto (sem datas explícitas)
+        if(qrySt&&!csvSt&&(PROG[qrySt]||0)>(PROG[stMap[nota].status||'Faturado']||0)){stMap[nota].status=qrySt;}
         // Status do CSV (datas reais de separação) — nunca regride status
         if(csvSt&&(PROG[csvSt]||0)>(PROG[stMap[nota].status||'Faturado']||0)){
           stMap[nota].status=csvSt;
@@ -1276,6 +1308,9 @@ async function importCSV(){
           stMap[nota].status='Conferido';
           stMap[nota].ts_fat=auth||n;
           stMap[nota].ts_conf=stMap[nota].ts_conf||n;
+        } else if(qrySt&&(PROG[qrySt]||0)>1){
+          stMap[nota].status=qrySt;
+          stMap[nota].ts_fat=auth||n;
         } else {
           // BUG FIX: Preservar pré-bipe por nota, FAT ou LOJA
           const fatVal=fd.fat,lojaVal=fd.loja;
@@ -1341,14 +1376,16 @@ async function importCSV(){
 // BIPE MODAL
 // ═══════════════════════════════════════════════════════════
 let bipeMode='sep',bipeLogEntries=[];
-const BIPE_COLOR={sep:'#f97316',sepd:'#a371f7'};
+const BIPE_COLOR={sep:'#f97316',sepd:'#a371f7',recebido:'#059669'};
 
 function openBipeModal(mode){
   bipeMode=mode||'sep';bipeLogEntries=[];
-  const isSep=bipeMode==='sep';
-  document.getElementById('bipeTitle').textContent=isSep?'Digitar ou bipar Pedidos':'Concluir Separação';
+  const isSep=bipeMode==='sep',isRecebido=bipeMode==='recebido';
+  document.getElementById('bipeTitle').textContent=isSep?'Digitar ou bipar Pedidos':isRecebido?'Confirmar Recebimento':'Concluir Separação';
   document.getElementById('bipeSub').innerHTML=isSep
     ?'Ao pressionar o <strong>Enter</strong> — mudará o status para <strong style="color:var(--orange)">Em Separação</strong>'
+    :isRecebido
+    ?'Ao pressionar o <strong>Enter</strong> — mudará para <strong style="color:#059669">Recebido</strong>'
     :'Ao pressionar o <strong>Enter</strong> — mudará para <strong style="color:var(--purple)">Separado</strong>';
   const col=BIPE_COLOR[bipeMode];
   document.getElementById('bipeIconSvg').querySelectorAll('rect').forEach(r=>r.setAttribute('fill',col));
@@ -1370,12 +1407,12 @@ function doBipe(){
   const found=[...activeRecs,...expedidoRecs].filter(r=>r.fat===val||r.loja===val||r.nota===val);
   if(!found.length){
     // Pré-bipe: nota ainda não importada — registra em stMap para aplicar quando CSV chegar
-    const newSt=bipeMode==='sep'?'Em Separação':'Separado';
-    const tsKey=bipeMode==='sep'?'ts_sep':'ts_sepd';
-    const logKey=bipeMode==='sep'?'scan_log':'sep_log';
+    const newSt=bipeMode==='sep'?'Em Separação':bipeMode==='recebido'?'Recebido':'Separado';
+    const tsKey=bipeMode==='sep'?'ts_sep':bipeMode==='recebido'?'ts_recebido':'ts_sepd';
+    const logKey=bipeMode==='sep'?'scan_log':bipeMode==='recebido'?'rec_log':'sep_log';
     const existing=stMap[val]||{obs:''};
     // Só registra se ainda não foi bipado nesse status ou anterior
-    const stOrd={'Faturado':1,'Em Separação':2,'Separado':3,'Conferido':4,'Expedido':5};
+    const stOrd={'Faturado':1,'Em Separação':2,'Separado':3,'Recebido':3.5,'Conferido':4,'Expedido':5};
     if((stOrd[existing.status]||0)<(stOrd[newSt]||0)){
       stMap[val]={...existing,status:newSt,pre_scan:true,[tsKey]:n,[logKey]:{user:cu?.username||'?',ts:n,code:val},_ts:new Date().toISOString()};
       saveLS();sbSyncStatus(val);
@@ -1401,6 +1438,11 @@ function doBipe(){
       sd.sep_log={user:cu?.username||'?',ts:n,code:val};sd._ts=new Date().toISOString();
       stMap[r.nota]=sd;changed++;
       bipeLogEntries.unshift({nota:r.nota,user:cu?.username||'?',ts:n,ok:true,action:'Separado',mode:'sepd'});
+    }else if(bipeMode==='recebido'&&st==='Separado'){
+      sd.status='Recebido';sd.ts_recebido=n;
+      sd.rec_log={user:cu?.username||'?',ts:n,code:val};sd._ts=new Date().toISOString();
+      stMap[r.nota]=sd;changed++;
+      bipeLogEntries.unshift({nota:r.nota,user:cu?.username||'?',ts:n,ok:true,action:'Recebido',mode:'recebido'});
     }else{
       skip++;bipeLogEntries.unshift({nota:r.nota,user:cu?.username||'?',ts:n,ok:false,st});
     }
@@ -1409,8 +1451,8 @@ function doBipe(){
   saveLS();
   if(changed>0){
     // BUG FIX: sincroniza com Supabase para garantir persistência ao reabrir
-    found.forEach(r=>{const st=stMap[r.nota]?.status;if(st==='Em Separação'||st==='Separado')sbSyncStatus(r.nota);});
-    showBipeFeedback('ok',`✔ ${changed} pedido(s) → ${bipeMode==='sep'?'Em Separação':'Separado'}`);onFilterChange()
+    found.forEach(r=>{const st=stMap[r.nota]?.status;if(st==='Em Separação'||st==='Separado'||st==='Recebido')sbSyncStatus(r.nota);});
+    showBipeFeedback('ok',`✔ ${changed} pedido(s) → ${bipeMode==='sep'?'Em Separação':bipeMode==='recebido'?'Recebido':'Separado'}`);onFilterChange()
   }
   else showBipeFeedback('warn',`⚠ Status incompatível (${found[0]&&stMap[found[0].nota]?.status})`);
   renderBipeLog();
@@ -1425,7 +1467,7 @@ function renderBipeLog(){
   if(!bipeLogEntries.length){el.innerHTML='<div class="bipe-log-empty">Nenhum bipe nesta sessão</div>';return}
   el.innerHTML=bipeLogEntries.map(e=>`<div class="bipe-log-row">
     <span class="bipe-log-nota">${esc(e.nota)}</span>
-    ${e.ok?`<span class="bipe-log-status ${e.mode==='sep'?'bipe-log-ok-sep':'bipe-log-ok-sepd'}">✔ ${e.action}</span>`:`<span class="bipe-log-warn">⚠ ${esc(e.st||'')}</span>`}
+    ${e.ok?`<span class="bipe-log-status ${e.mode==='sep'?'bipe-log-ok-sep':e.mode==='recebido'?'bipe-log-ok-rec':'bipe-log-ok-sepd'}">✔ ${e.action}</span>`:`<span class="bipe-log-warn">⚠ ${esc(e.st||'')}</span>`}
     <span class="bipe-log-user">👤 ${esc(e.user)}</span>
     <span class="bipe-log-ts">${esc(e.ts)}</span>
   </div>`).join('');
@@ -1435,6 +1477,11 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeBipeModal();cl
 // ═══════════════════════════════════════════════════════════
 // AÇÕES NA TABELA
 // ═══════════════════════════════════════════════════════════
+function setRecebido(nota){
+  const sd=stMap[nota];if(!sd||sd.status!=='Separado')return;const n=nowStr();const cu=getCurrentUser();
+  sd.status='Recebido';sd.ts_recebido=n;sd.rec_log={user:cu?.username||'?',ts:n,code:'manual'};sd._ts=new Date().toISOString();
+  saveLS();sbSyncStatus(nota);onFilterChange();hlRow(nota,'hl-p');
+}
 function advance(nota){
   const sd=stMap[nota];if(!sd)return;const n=nowStr();const cu=getCurrentUser();
   if(sd.status==='Faturado'){sd.status='Em Separação';sd.ts_sep=n;sd.scan_log={user:cu?.username||'?',ts:n,code:'manual'};sd._ts=new Date().toISOString()}
@@ -1488,7 +1535,7 @@ function toggleRowMenu(nota,btn){
   const items=[];
   if(st==='Faturado'){items.push({cls:'rp-sep',icon:'▶',label:'Em Separação',fn:`advance('${nota}')`});items.push({cls:'rp-pend',icon:'⚠',label:'Pendente',fn:`setPendente('${nota}')`})}
   else if(st==='Em Separação'){items.push({cls:'rp-sepd',icon:'✓',label:'Separado',fn:`advance('${nota}')`})}
-  else if(st==='Separado'){}
+  else if(st==='Separado'){items.push({cls:'rp-recebido',icon:'✓',label:'Recebido',fn:`setRecebido('${nota}')`})}
   else if(st==='Pendente'){items.push({cls:'rp-resume',icon:'↩',label:'Retomar',fn:`retomar('${nota}')`})}
   if(isAdmin)items.push({cls:'rp-del',icon:'🗑',label:'Excluir registro',fn:`deleteRecord('${nota}')`});
   if(!items.length)return;
@@ -1593,7 +1640,7 @@ function _render(){
       ?`<p>Nenhum registro com os filtros atuais.</p><p style="font-size:12px;color:var(--muted)">${tot} registros em memória — use "Limpar filtros" para ver todos</p><button class="btn" onclick="clearFilters()">Limpar filtros</button>`
       :`<p>Nenhum dado importado.</p><button class="btn primary" onclick="openModal()">📥 Importar CSV do Protheus</button>`;
     body.innerHTML=`<tr><td colspan="16"><div class="empty"><div class="ico">${tot>0?'🔎':'📂'}</div>${msg}</div></td></tr>`;return}
-  const tsMap={Faturado:'ts_fat','Em Separação':'ts_sep',Separado:'ts_sepd',Conferido:'ts_conf',Expedido:'ts_exp',Pendente:'ts_pend'};
+  const tsMap={Faturado:'ts_fat','Em Separação':'ts_sep',Separado:'ts_sepd',Recebido:'ts_recebido',Conferido:'ts_conf',Expedido:'ts_exp',Pendente:'ts_pend'};
   const _isAdmin=getCurrentUser()?.role==='admin';
   body.innerHTML=list.map(r=>{
     const sd=stMap[r.nota]||{status:'Faturado',obs:''};const st=sd.status||'Faturado';const sc=SC_CLASS[st]||'fat';
@@ -1637,7 +1684,7 @@ function _render(){
 // DASHBOARD GRÁFICOS
 // ═══════════════════════════════════════════════════════════
 function updateDashboard(list){
-  let fat=0,sep=0,sepd=0,conf=0,exp=0,pend=0,prio=0;
+  let fat=0,sep=0,sepd=0,rec=0,conf=0,exp=0,pend=0,prio=0;
   const origC={GRU:0,MATRIZ:0},transpC={};
   // Conta priorizados em TODOS os registros (ativo+expedido), não só os filtrados
   const allRecs=[...activeRecs,...expedidoRecs];
@@ -1646,20 +1693,20 @@ function updateDashboard(list){
   list.forEach(r=>{
     const sd=stMap[r.nota]||{};const st=sd.status||'Faturado';
     if(st==='Faturado')fat++;else if(st==='Em Separação')sep++;
-    else if(st==='Separado')sepd++;else if(st==='Conferido')conf++;
+    else if(st==='Separado')sepd++;else if(st==='Recebido')rec++;else if(st==='Conferido')conf++;
     else if(st==='Expedido')exp++;else if(st==='Pendente')pend++;
     const vol=parseInt((r.volume||'').toString().replace(/\D/g,''))||0;
     if(r.origem==='GRU'||r.origem==='MATRIZ'){origC[r.origem]++;origV[r.origem]=(origV[r.origem]||0)+vol;}
     if(r.transportadora){const k=r.transportadora.length>22?r.transportadora.slice(0,22)+'…':r.transportadora;transpC[k]=(transpC[k]||0)+1;transpV[k]=(transpV[k]||0)+vol;}
   });
   document.getElementById('k-fat').textContent=fat;document.getElementById('k-sep').textContent=sep;
-  document.getElementById('k-sepd').textContent=sepd;document.getElementById('k-conf').textContent=conf;
+  document.getElementById('k-sepd').textContent=sepd;if(document.getElementById('k-rec'))document.getElementById('k-rec').textContent=rec;document.getElementById('k-conf').textContent=conf;
   document.getElementById('k-exp').textContent=exp;
   document.getElementById('k-pend').textContent=pend;
   document.getElementById('k-prio').textContent=prio;
   drawDonut('cStatus',[
     {label:'Faturado',value:fat,color:'#58a6ff'},{label:'Em Separação',value:sep,color:'#f97316'},
-    {label:'Separado',value:sepd,color:'#a371f7'},{label:'Conferido',value:conf,color:'#2dd4bf'},
+    {label:'Separado',value:sepd,color:'#a371f7'},{label:'Recebido',value:rec,color:'#059669'},{label:'Conferido',value:conf,color:'#2dd4bf'},
     {label:'Expedido',value:exp,color:'#3fb950'},{label:'Pendente',value:pend,color:'#f85149'},
   ]);
   drawBars('cOrigem',Object.entries(origC).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([l,v])=>({label:l,value:v,vol:origV[l]||0,color:l==='GRU'?'#2dd4bf':'#58a6ff'})));
