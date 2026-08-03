@@ -198,6 +198,12 @@ tbody tr.st-exp:hover{background:rgba(63,185,80,.08)}
 tbody tr.st-pend{background:rgba(248,81,73,.07)}
 tbody tr.st-pend:hover{background:rgba(248,81,73,.12)}
 /* Priority row – high visibility */
+tbody tr.st-canc{background:#1a1a2e !important;color:#fff}
+tbody tr.st-canc td{color:#fff !important;opacity:.9}
+tbody tr.st-canc:hover{background:#22223b !important}
+tbody tr.st-dev{background:#2d1b1b !important;color:#fff}
+tbody tr.st-dev td{color:#fff !important;opacity:.9}
+tbody tr.st-dev:hover{background:#3d2020 !important}
 tbody tr.prio-row{
   background:linear-gradient(90deg,rgba(249,115,22,.22) 0%,rgba(249,115,22,.09) 6%,rgba(249,115,22,.03) 100%) !important;
   outline:1px solid rgba(249,115,22,.35);outline-offset:-1px}
@@ -217,6 +223,8 @@ td{padding:7px 10px;vertical-align:middle}
 .badge.conf    {background:rgba(36,99,204,.11); color:#2463cc;     border:1px solid rgba(36,99,204,.3)}
 .badge.exp     {background:rgba(22,163,74,.11); color:#16a34a;     border:1px solid rgba(22,163,74,.3)}
 .badge.pend    {background:rgba(248,81,73,.14); color:var(--red);  border:1px solid rgba(248,81,73,.35)}
+.badge.canc    {background:#1a1a2e;            color:#a0a8c0;     border:1px solid #333}
+.badge.dev     {background:#2d1b1b;            color:#e07070;     border:1px solid #5a2e2e}
 .dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0}
 .dot.fat     {background:#6b7a99}
 .dot.recebido{background:#ea580c}
@@ -408,7 +416,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v5.9 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v6.0 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -416,7 +424,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v5.9</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v6.0</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -544,6 +552,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
         <option>Faturado</option><option>Recebido</option><option>Em Separação</option>
         <option>Separado</option><option>Conferido</option>
         <option>Expedido</option><option>Pendente</option>
+        <option>Cancelado</option><option>Devolução</option>
         <option value="__PRIO__">⭐ Priorizados</option>
       </select>
       <select id="sfOrigem" onchange="onFilterChange()">
@@ -779,7 +788,7 @@ ALTER TABLE avacy_records ADD COLUMN IF NOT EXISTS chave_nfe TEXT;</pre>
 // ═══════════════════════════════════════════════════════════
 const LS_REC='avacy8_rec',LS_ST='avacy8_st',LS_USERS='avacy8_users',SS_USER='avacy8_session';
 const STATUS_ORDER={Faturado:1,Recebido:1.5,'Em Separação':2,Separado:3,Conferido:4,Expedido:5,Pendente:0.5};
-const SC_CLASS={Faturado:'fat','Em Separação':'sep',Separado:'sepd',Recebido:'recebido',Conferido:'conf',Expedido:'exp',Pendente:'pend'};
+const SC_CLASS={Faturado:'fat','Em Separação':'sep',Separado:'sepd',Recebido:'recebido',Conferido:'conf',Expedido:'exp',Pendente:'pend',Cancelado:'canc',Devolução:'dev'};
 const MESES=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
 // ═══════════════════════════════════════════════════════════
@@ -1218,7 +1227,7 @@ async function importCSV(){
   const pw=document.getElementById('progWrap'),pf=document.getElementById('progFill'),pt=document.getElementById('progTxt');
   pw.classList.add('show');pf.style.width='10%';pt.textContent='Sincronizando status…';
   // PRÉ-SYNC: busca status do Supabase para capturar pré-bipes antes de processar
-  const PROG={Faturado:1,Recebido:1.5,'Em Separação':2,Separado:3,Conferido:4,Expedido:5,Pendente:0.5};
+  const PROG={Faturado:1,Recebido:1.5,'Em Separação':2,Separado:3,Conferido:4,Expedido:5,Pendente:0.5,Cancelado:6,Devolução:6};
   if(SB_URL&&SB_KEY){
     try{
       const _sb=await fetch(`${SB_URL.replace(/\/+$/,'')}/rest/v1/avacy_status?select=*`,
@@ -1308,6 +1317,8 @@ async function importCSV(){
              fetch(`${_b}/rest/v1/avacy_status?nota=eq.${encodeURIComponent(_sk)}`,{method:'DELETE',headers:_h}).catch(()=>{});}
          }}
         const curSt=stMap[nota].status||'Faturado';
+        // Sempre atualiza ts_fat com a hora real do DT_HR_AUTORIZACAO do QRY
+        if(auth)stMap[nota].ts_fat=auth;
         if(rom){
           // Romaneio preenchido → sempre Expedido
           stMap[nota].status='Expedido';
@@ -1607,6 +1618,8 @@ function toggleRowMenu(nota,btn){
   else if(st==='Pendente'){items.push({cls:'rp-resume',icon:'↩',label:'Retomar',fn:`retomar('${nota}')`})}
   if(isAdmin){
     items.push({cls:'rp-sep-edit',icon:'👷',label:'Editar Separador',fn:`editSeparador('${nota}')`});
+    items.push({cls:'rp-canc',icon:'✕',label:'Cancelado',fn:`setAdminStatus('${nota}','Cancelado')`});
+    items.push({cls:'rp-dev',icon:'↩',label:'Devolução',fn:`setAdminStatus('${nota}','Devolução')`});
     items.push({cls:'rp-del',icon:'🗑',label:'Excluir registro',fn:`deleteRecord('${nota}')`});
   }
   if(!items.length)return;
@@ -1637,6 +1650,14 @@ function editSeparador(nota){
   stMap[nota]._ts=new Date().toISOString();
   saveLS();sbSyncStatus(nota);onFilterChange();
   toast('✔ Separador: '+val+' — '+tsVal);
+}
+function setAdminStatus(nota,novoSt){
+  if(getCurrentUser()?.role!=='admin'){alert('Apenas o administrador.');return}
+  if(!stMap[nota])stMap[nota]={obs:''};
+  stMap[nota].status=novoSt;
+  stMap[nota]._ts=new Date().toISOString();
+  saveLS();sbSyncStatus(nota);onFilterChange();
+  toast('✔ Status definido: '+novoSt+' — '+nota);
 }
 function closeRowMenu(){document.getElementById('rowPopover').classList.remove('open');_openPopNota=null}
 document.addEventListener('click',e=>{if(!e.target.closest('.act-trigger')&&!e.target.closest('#rowPopover'))closeRowMenu()});
@@ -1749,7 +1770,7 @@ function _render(){
     const hasAct=_isAdmin||['Faturado','Em Separação','Separado','Pendente'].includes(st);
     const acaoBtn=`<button class="act-trigger ${hasAct?'has-actions':''}" onclick="toggleRowMenu('${esc(r.nota)}',this)" title="Ações do pedido">⋮</button>`;
     // Classes de linha: prioridade > status tint
-    const stTint={'Em Separação':'st-sep',Separado:'st-sepd',Conferido:'st-conf',Expedido:'st-exp',Pendente:'st-pend'};
+    const stTint={'Em Separação':'st-sep',Separado:'st-sepd',Conferido:'st-conf',Expedido:'st-exp',Pendente:'st-pend',Cancelado:'st-canc',Devolução:'st-dev'};
     const rowCls=(isPrio&&!r.romaneio)?'prio-row':(stTint[st]||'');
     return`<tr id="r-${r.nota.replace(/\W/g,'_')}" class="${rowCls}">
       <td style="text-align:center"><button class="prio-btn ${isPrio?'on':''}" onclick="togglePriority('${esc(r.nota)}')" title="${isPrio?'Remover prioridade':'Marcar como prioritário'}">${isPrio?'⭐':'☆'}</button></td>
