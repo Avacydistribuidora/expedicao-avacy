@@ -401,7 +401,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v4.7 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v4.8 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -409,7 +409,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v4.7</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v4.8</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1261,6 +1261,10 @@ async function importCSV(){
       const _em=etiq.match(/^(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2})\s+(.+)$/);
       const etiqTs=_em?_em[1].trim():(etiq?nowStr():'');
       const etiqUser=_em?_em[2].trim():'';
+      // Romaneio: 'DD/MM/YYYY HH:MM USUARIO'
+      const _rm=rom.match(/^(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2})\s+(.+)$/);
+      const romTs=_rm?_rm[1].trim():(rom?'':'');
+      const romUser=_rm?_rm[2].trim():'';
       // Campos de separação do CSV
       const dtSep=clean(iDtSep>=0?c[iDtSep]||'':'');
       const userSep=clean(iUserSep>=0?c[iUserSep]||'':'');
@@ -1298,7 +1302,8 @@ async function importCSV(){
         if(rom){
           // Romaneio preenchido → sempre Expedido
           stMap[nota].status='Expedido';
-          if(!stMap[nota].ts_exp)stMap[nota].ts_exp=n;
+          if(!stMap[nota].ts_exp)stMap[nota].ts_exp=romTs||n;
+          if(romUser&&!stMap[nota].romaneio_user)stMap[nota].romaneio_user=romUser;
         } else if(xconf==='S'){
           // CONF=S sem romaneio → Conferido (respeita Pendente manual)
           if(curSt!=='Pendente'){
@@ -1334,7 +1339,8 @@ async function importCSV(){
         if(rom){
           stMap[nota].status='Expedido';
           stMap[nota].ts_fat=auth||n;
-          stMap[nota].ts_exp=stMap[nota].ts_exp||n;
+          stMap[nota].ts_exp=stMap[nota].ts_exp||romTs||n;
+          if(romUser)stMap[nota].romaneio_user=romUser;
         } else if(csvSt&&!['Conferido','Expedido'].includes(stMap[nota].status||'')){
           // Datas de separação do CSV em registro novo
           stMap[nota].status=csvSt;
@@ -1744,7 +1750,7 @@ function _render(){
       <td>${r.xconf?`<span class="conf-yes">✔</span>`:`<span class="conf-no">—</span>`}</td>
       <td>${acaoBtn}</td>
       <td><input class="obs-inp" value="${esc(sd.obs||'')}" placeholder="Observação…" onchange="saveObs('${esc(r.nota)}',this.value)"></td>
-      <td>${r.romaneio?`<span class="rom-yes" title="${esc(r.romaneio)}">✓ ${r.romaneio.slice(0,10)}</span>`:`<span class="rom-no">—</span>`}</td>
+      <td>${r.romaneio?(()=>{const _r=r.romaneio.match(/^(\d{2}\/\d{2}\/\d{4}(?:\s+\d{2}:\d{2})?)\s+(.*)/);const romDate=_r?_r[1]:r.romaneio.slice(0,10);const romNm=stMap[r.nota]?.romaneio_user||(_r?_r[2]:'');return`<span class="rom-yes" title="${esc(r.romaneio)}">✓ ${esc(romDate)}${romNm?'<br><span style="font-size:9px;opacity:.8">'+esc(romNm)+'</span>':''}</span>`;})():`<span class="rom-no">—</span>`}</td>
       <td>${r.mensagem?`<span class="mens" title="${esc(r.mensagem)}">${r.mensagem}</span>`:`<span style="color:var(--muted);font-size:11px">—</span>`}</td>
       <td>${r.chave_nfe?`<span class="clip" style="max-width:100px;font-size:9px;font-family:monospace;color:var(--muted)" title="${esc(r.chave_nfe)}">${r.chave_nfe}</span>`:`<span style="color:var(--muted);font-size:11px">—</span>`}</td>
     </tr>`;
