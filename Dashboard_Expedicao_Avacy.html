@@ -401,7 +401,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v4.8 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v4.9 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -409,7 +409,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v4.8</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v4.9</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1744,8 +1744,14 @@ function _render(){
       <td><span class="clip-sm" title="${esc(r.vendedor||'')}" style="color:${r.vendedor?'var(--text)':'var(--muted)'}">${r.vendedor||'—'}</span></td>
       <td><span class="clip-sm" title="${esc(r.transportadora)}">${r.transportadora||'—'}</span></td>
       <td style="text-align:right;font-size:11px;color:var(--muted);font-family:monospace">${r.volume||'—'}</td>
-      <td><div class="has-tip"><span class="badge ${sc}"><span class="dot ${sc}"></span>${st}</span>${ts?`<span class="ts">${ts}</span>`:''}${tipHtml}</div></td>
-      <td><span class="clip-sm" style="font-size:10px;color:${sd.sep_log?.user?'#059669':'var(--muted)'}" title="${esc(sd.sep_log?.user||'')}">${sd.sep_log?.user||'—'}</span></td>
+      <td><div class="has-tip"><span class="badge ${sc}"><span class="dot ${sc}"></span>${st}</span>${tipHtml}</div></td>
+      <td>${(()=>{
+        const sepU=st==='Em Separação'?(sd.scan_log?.user||sd.separador||''):(sd.sep_log?.user||sd.separador||'');
+        const sepTs=st==='Em Separação'?(sd.scan_log?.ts||sd.ts_sep||''):(sd.sep_log?.ts||sd.ts_sepd||'');
+        const sepClr=st==='Em Separação'?'var(--orange)':st==='Separado'?'#9333ea':st==='Conferido'?'var(--teal)':'var(--muted)';
+        if(!sepU)return\`<span style="color:var(--muted)">—</span>\`;
+        return\`<span style="font-size:10px;color:\${sepClr};font-weight:700" title="\${esc(sepU+' '+sepTs)}">\${esc(sepU)}\${sepTs?\`<br><span style="font-size:9px;font-weight:400;opacity:.75">\${esc(sepTs)}</span>\`:''}</span>\`;
+      })()}</td>
       <td>${origemBadge(r.origem)}</td>
       <td>${r.xconf?`<span class="conf-yes">✔</span>`:`<span class="conf-no">—</span>`}</td>
       <td>${acaoBtn}</td>
