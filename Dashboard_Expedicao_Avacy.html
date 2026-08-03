@@ -401,7 +401,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v5.0 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v5.2 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -409,7 +409,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v5.0</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v5.2</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1609,17 +1609,25 @@ function toggleRowMenu(nota,btn){
 }
 function editSeparador(nota){
   const sd=stMap[nota]||{};
-  const cur=sd.sep_log?.user||sd.separador||'';
-  const novo=prompt('Separador para nota '+nota+':\n(atual: "'+(cur||'—')+'")',cur);
+  const curU=sd.sep_log?.user||sd.separador||'';
+  const curTs=sd.sep_log?.ts||sd.ts_sepd||'';
+  const curVal=curTs?curU+' '+curTs:curU;
+  const novo=prompt('Separador para nota '+nota+':\nFormato: NOME DD/MM/YYYY HH:MM  (ou só NOME para usar data/hora atual)\n(atual: "'+(curVal||'—')+'")',curVal);
   if(novo===null)return;
   if(!stMap[nota])stMap[nota]={obs:''};
-  const val=novo.trim();
+  const raw=novo.trim();
+  // Parse: NOME DD/MM/YYYY HH:MM
+  const mParsed=raw.match(/^(.+?)\s+(\d{2}\/\d{2}\/\d{4}(?:\s+\d{2}:\d{2})?)$/);
+  const val=mParsed?mParsed[1].trim():raw;
+  const tsVal=mParsed?mParsed[2].trim():(()=>{const d=new Date();const dd=String(d.getDate()).padStart(2,'0');const mm=String(d.getMonth()+1).padStart(2,'0');const yy=d.getFullYear();const hh=String(d.getHours()).padStart(2,'0');const mi=String(d.getMinutes()).padStart(2,'0');return dd+'/'+mm+'/'+yy+' '+hh+':'+mi;})();
   stMap[nota].separador=val;
   if(!stMap[nota].sep_log)stMap[nota].sep_log={};
   stMap[nota].sep_log.user=val;
+  stMap[nota].sep_log.ts=tsVal;
+  if(!stMap[nota].ts_sepd)stMap[nota].ts_sepd=tsVal;
   stMap[nota]._ts=new Date().toISOString();
   saveLS();sbSyncStatus(nota);onFilterChange();
-  toast('✔ Separador atualizado: '+(val||'(limpo)'));
+  toast('✔ Separador: '+val+' — '+tsVal);
 }
 function closeRowMenu(){document.getElementById('rowPopover').classList.remove('open');_openPopNota=null}
 document.addEventListener('click',e=>{if(!e.target.closest('.act-trigger')&&!e.target.closest('#rowPopover'))closeRowMenu()});
@@ -1750,7 +1758,7 @@ function _render(){
         const sepTs=st==='Em Separação'?(sd.scan_log?.ts||sd.ts_sep||''):(sd.sep_log?.ts||sd.ts_sepd||'');
         const sepClr=st==='Em Separação'?'var(--orange)':st==='Separado'?'#9333ea':st==='Conferido'?'var(--teal)':'var(--muted)';
         if(!sepU)return'<span style="color:var(--muted)">—</span>';
-        return'<span style="font-size:10px;color:'+sepClr+';font-weight:700" title="'+esc(sepU+' '+sepTs)+'">'+esc(sepU)+(sepTs?'<br><span style="font-size:9px;font-weight:400;opacity:.75">'+esc(sepTs)+'</span>':'')+'</span>';
+        return'<span style="font-size:10px;color:'+sepClr+';font-weight:700" title="'+esc(sepU+' '+sepTs)+'">'+(sepTs?'<span style="font-weight:400;opacity:.85">'+esc(sepTs)+'</span><br>':'')+esc(sepU)+'</span>';
       })()}</td>
       <td>${origemBadge(r.origem)}</td>
       <td>${r.xconf?`<span class="conf-yes">✔</span>`:`<span class="conf-no">—</span>`}</td>
@@ -1793,7 +1801,7 @@ function updateDashboard(list){
     {label:'Expedido',value:exp,color:'#3fb950'},{label:'Pendente',value:pend,color:'#f85149'},
   ]);
   drawBars('cOrigem',Object.entries(origC).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([l,v])=>({label:l,value:v,vol:origV[l]||0,color:l==='GRU'?'#2dd4bf':'#58a6ff'})));
-  drawBars('cTransp',Object.entries(transpC).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([l,v])=>({label:l,value:v,vol:transpV[l]||0,color:'#58a6ff'})));
+  drawBars('cTransp',Object.entries(transpC).sort((a,b)=>(transpV[b[0]]||0)-(transpV[a[0]]||0)).slice(0,5).map(([l,v])=>({label:l,value:v,vol:transpV[l]||0,color:'#58a6ff'})));
   // Separadores ranking
   const sepRankC={},sepRankVol={};
   list.forEach(r=>{
@@ -1802,7 +1810,7 @@ function updateDashboard(list){
     const vol=parseInt((r.volume||'').toString().replace(/\D/g,''))||0;
     sepRankC[u]=(sepRankC[u]||0)+1;sepRankVol[u]=(sepRankVol[u]||0)+vol;
   });
-  drawBars('cSepRank',Object.entries(sepRankC).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([l,v],i)=>({label:l,value:v,vol:sepRankVol[l]||0,color:i===0?'#059669':i===1?'#16a34a':'#4ade80'})));
+  drawBars('cSepRank',Object.entries(sepRankC).sort((a,b)=>(sepRankVol[b[0]]||0)-(sepRankVol[a[0]]||0)).slice(0,8).map(([l,v],i)=>({label:l,value:v,vol:sepRankVol[l]||0,color:i===0?'#059669':i===1?'#16a34a':'#4ade80'})));
 }
 function drawDonut(id,data){
   const canvas=document.getElementById(id);if(!canvas)return;
