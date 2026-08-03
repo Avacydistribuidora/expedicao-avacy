@@ -399,7 +399,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v4.0 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v4.1 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -407,7 +407,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v4.0</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v4.1</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -473,6 +473,10 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
         <button onclick="exportTransp()" title="Exportar todas as transportadoras" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--blue);padding:0;font-weight:600">↓ Excel</button>
       </div>
       <div id="cTransp"></div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-ttl"><span>👷</span> Top Separadores</div>
+      <div id="cSepRank"></div>
     </div>
   </aside>
 
@@ -556,14 +560,14 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
             <th class="sortable" id="th-nota" onclick="toggleSort('nota')">NOTA <span class="si" id="si-nota">⇅</span></th>
             <th class="sortable" id="th-emissao" onclick="toggleSort('emissao')">EMISSÃO <span class="si" id="si-emissao">⇅</span></th>
             <th>NOME DO CLIENTE</th><th>VENDEDOR</th><th>TRANSPORTADORA</th><th style="text-align:right">VOL</th>
-            <th>STATUS</th><th>ORIG</th><th>CONF</th>
+            <th>STATUS</th><th>SEPARADOR</th><th>ORIG</th><th>CONF</th>
             <th style="min-width:150px">AÇÃO</th>
             <th style="min-width:145px">OBS</th>
             <th>ROMANEIO</th><th>MENSAGEM</th><th style="min-width:110px">CHAVE NFe</th>
           </tr>
         </thead>
         <tbody id="tbody">
-          <tr><td colspan="16"><div class="empty">
+          <tr><td colspan="17"><div class="empty">
             <div class="ico">📂</div>
             <p>Nenhum dado importado.</p>
             <button class="btn primary" onclick="openModal()">📥 Importar CSV do Protheus</button>
@@ -1617,7 +1621,7 @@ function clearFilters(){
 // RENDER TABELA
 // ═══════════════════════════════════════════════════════════
 function render(){
-  try{_render()}catch(e){console.error('render() error:',e);document.getElementById('tbody').innerHTML=`<tr><td colspan="16"><div class="empty"><div class="ico">⚠️</div><p style="color:var(--red)">Erro ao renderizar: ${e.message}</p></div></td></tr>`}
+  try{_render()}catch(e){console.error('render() error:',e);document.getElementById('tbody').innerHTML=`<tr><td colspan="17"><div class="empty"><div class="ico">⚠️</div><p style="color:var(--red)">Erro ao renderizar: ${e.message}</p></div></td></tr>`}
 }
 function _render(){
   const filters=getFilters();
@@ -1639,7 +1643,7 @@ function _render(){
     const msg=tot>0
       ?`<p>Nenhum registro com os filtros atuais.</p><p style="font-size:12px;color:var(--muted)">${tot} registros em memória — use "Limpar filtros" para ver todos</p><button class="btn" onclick="clearFilters()">Limpar filtros</button>`
       :`<p>Nenhum dado importado.</p><button class="btn primary" onclick="openModal()">📥 Importar CSV do Protheus</button>`;
-    body.innerHTML=`<tr><td colspan="16"><div class="empty"><div class="ico">${tot>0?'🔎':'📂'}</div>${msg}</div></td></tr>`;return}
+    body.innerHTML=`<tr><td colspan="17"><div class="empty"><div class="ico">${tot>0?'🔎':'📂'}</div>${msg}</div></td></tr>`;return}
   const tsMap={Faturado:'ts_fat','Em Separação':'ts_sep',Separado:'ts_sepd',Recebido:'ts_recebido',Conferido:'ts_conf',Expedido:'ts_exp',Pendente:'ts_pend'};
   const _isAdmin=getCurrentUser()?.role==='admin';
   body.innerHTML=list.map(r=>{
@@ -1669,6 +1673,7 @@ function _render(){
       <td><span class="clip-sm" title="${esc(r.transportadora)}">${r.transportadora||'—'}</span></td>
       <td style="text-align:right;font-size:11px;color:var(--muted);font-family:monospace">${r.volume||'—'}</td>
       <td><div class="has-tip"><span class="badge ${sc}"><span class="dot ${sc}"></span>${st}</span>${ts?`<span class="ts">${ts}</span>`:''}${tipHtml}</div></td>
+      <td><span class="clip-sm" style="font-size:10px;color:${sd.sep_log?.user?'#059669':'var(--muted)'}" title="${esc(sd.sep_log?.user||'')}">${sd.sep_log?.user||'—'}</span></td>
       <td>${origemBadge(r.origem)}</td>
       <td>${r.xconf?`<span class="conf-yes">✔</span>`:`<span class="conf-no">—</span>`}</td>
       <td>${acaoBtn}</td>
@@ -1711,6 +1716,15 @@ function updateDashboard(list){
   ]);
   drawBars('cOrigem',Object.entries(origC).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([l,v])=>({label:l,value:v,vol:origV[l]||0,color:l==='GRU'?'#2dd4bf':'#58a6ff'})));
   drawBars('cTransp',Object.entries(transpC).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([l,v])=>({label:l,value:v,vol:transpV[l]||0,color:'#58a6ff'})));
+  // Separadores ranking
+  const sepRankC={},sepRankVol={};
+  list.forEach(r=>{
+    const sd=stMap[r.nota]||{};
+    const u=sd.sep_log?.user||sd.separador||'';if(!u)return;
+    const vol=parseInt((r.volume||'').toString().replace(/\D/g,''))||0;
+    sepRankC[u]=(sepRankC[u]||0)+1;sepRankVol[u]=(sepRankVol[u]||0)+vol;
+  });
+  drawBars('cSepRank',Object.entries(sepRankC).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([l,v],i)=>({label:l,value:v,vol:sepRankVol[l]||0,color:i===0?'#059669':i===1?'#16a34a':'#4ade80'})));
 }
 function drawDonut(id,data){
   const canvas=document.getElementById(id);if(!canvas)return;
@@ -1781,13 +1795,15 @@ function exportConsolidado(){
       const sd=stMap[r.nota]||{};
       return{'FAT':r.fat,'LOJA':r.loja,'NOTA':r.nota,'EMISSÃO':r.data_emissao,
         'NOME DO CLIENTE':r.nome_cliente,'VENDEDOR':r.vendedor||'','TRANSPORTADORA':r.transportadora,
-        'STATUS':sd.status||'Faturado','ORIGEM':r.origem,
+        'VOL':r.volume||'','STATUS':sd.status||'Faturado','SEPARADOR':sd.sep_log?.user||'','ORIGEM':r.origem,
+        'DT FATURADO':sd.ts_fat||'','DT EM SEP':sd.ts_sep||'','DT SEPARADO':sd.ts_sepd||'',
+        'DT RECEBIDO':sd.ts_recebido||'','DT CONFERIDO':sd.ts_conf||'','DT EXPEDIDO':sd.ts_exp||'',
         'CONF':r.xconf?'Sim':'Não','PRIORIDADE':sd.priority?'Sim':'Não',
-        'ROMANEIO':r.romaneio||'','CHAVE NFe':r.chave_nfe||'','OBS':sd.obs||'','MENSAGEM':r.mensagem||'','CHAVE NFe':r.chave_nfe||''};
+        'ROMANEIO':r.romaneio||'','CHAVE NFe':r.chave_nfe||'','OBS':sd.obs||'','MENSAGEM':r.mensagem||''};
     });
     const ws=XLSX.utils.json_to_sheet(rows);
     // Largura colunas
-    ws['!cols']=[{wch:10},{wch:8},{wch:12},{wch:12},{wch:35},{wch:30},{wch:14},{wch:8},{wch:6},{wch:10},{wch:15},{wch:25},{wch:30}];
+    ws['!cols']=[{wch:10},{wch:8},{wch:12},{wch:12},{wch:35},{wch:28},{wch:22},{wch:7},{wch:14},{wch:14},{wch:8},{wch:18},{wch:18},{wch:18},{wch:18},{wch:18},{wch:18},{wch:8},{wch:8},{wch:14},{wch:44},{wch:20},{wch:35}];
     const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Consolidado');
     XLSX.writeFile(wb,`Consolidado_AVACY_${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.xlsx`);
   });
@@ -1801,15 +1817,16 @@ function exportAnalitico(){
       const tFat=sd.ts_fat||'',tSep=sd.ts_sep||'',tSepd=sd.ts_sepd||'',tConf=sd.ts_conf||'',tExp=sd.ts_exp||'',tPend=sd.ts_pend||'';
       return{
         'NOTA':r.nota,'FAT':r.fat,'LOJA':r.loja,'CLIENTE':r.nome_cliente,
-        'VENDEDOR':r.vendedor||'','TRANSPORTADORA':r.transportadora,'ORIGEM':r.origem,'STATUS':sd.status||'Faturado',
-        'PRIORIDADE':sd.priority?'Sim':'Não','EMISSÃO':r.data_emissao,
+        'VENDEDOR':r.vendedor||'','TRANSPORTADORA':r.transportadora,'ORIGEM':r.origem,'VOL':r.volume||'',
+        'STATUS':sd.status||'Faturado','SEPARADOR':sd.sep_log?.user||'','PRIORIDADE':sd.priority?'Sim':'Não','EMISSÃO':r.data_emissao,
         'DT FATURADO':tFat,'DT EM SEPARAÇÃO':tSep,'USUÁRIO SEPARAÇÃO':sd.scan_log?.user||'',
-        'DT SEPARADO':tSepd,'USUÁRIO SEPARADO':sd.sep_log?.user||'',
+        'DT SEPARADO':tSepd,'SEPARADOR':sd.sep_log?.user||'',
+        'DT RECEBIDO':sd.ts_recebido||'','USUÁRIO RECEBIDO':sd.rec_log?.user||'',
         'DT CONFERIDO':tConf,'DT EXPEDIDO':tExp,
         'DT PENDENTE':tPend,'USUÁRIO PENDENTE':sd.pend_log?.user||'',
         'SLA FAT→SEP':diffHuman(tFat,tSep),'SLA SEP→SEPD':diffHuman(tSep,tSepd),
         'SLA SEPD→CONF':diffHuman(tSepd,tConf),'SLA TOTAL':diffHuman(tFat,tConf||tSepd||tSep),
-        'ROMANEIO':r.romaneio||'','CHAVE NFe':r.chave_nfe||'','OBS':sd.obs||''
+        'ROMANEIO':r.romaneio||'','CHAVE NFe':r.chave_nfe||'','OBS':sd.obs||'','MENSAGEM':r.mensagem||''
       };
     });
     // Sheet 2: Produtividade
@@ -1843,7 +1860,7 @@ function exportBipados(){
     const rows=[];
     Object.entries(stMap).forEach(([key,sd])=>{
       const st=sd.status||'Faturado';
-      if(st!=='Em Separação'&&st!=='Separado')return;
+      if(st!=='Em Separação'&&st!=='Separado'&&st!=='Recebido')return;
       const rec=recMap.get(key)||{};
       const isPreBipe=!!sd.pre_scan&&!recMap.has(key);
       rows.push({
@@ -1862,6 +1879,8 @@ function exportBipados(){
         'DT/HR EM SEPARAÇÃO':sd.ts_sep||'—',
         'USUÁRIO SEPARADO':sd.sep_log?.user||'—',
         'DT/HR SEPARADO':sd.ts_sepd||'—',
+        'DT/HR RECEBIDO':sd.ts_recebido||'—',
+        'USUÁRIO RECEBIDO':sd.rec_log?.user||'—',
         'OBS':sd.obs||''
       });
     });
