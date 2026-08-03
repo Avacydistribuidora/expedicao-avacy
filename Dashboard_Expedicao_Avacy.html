@@ -81,11 +81,11 @@ header{background:#0d2167;border-bottom:2px solid #8b1111;
 .kpi{background:var(--card);border:1px solid var(--border);border-radius:8px;
   padding:10px 13px;position:relative;overflow:hidden}
 .kpi::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;border-radius:8px 0 0 8px}
-.kpi.c-all::before{background:var(--muted)}.kpi.c-fat::before{background:#8b97a8}
-.kpi.c-sep::before{background:#d97706}       .kpi.c-sepd::before{background:#9333ea}
-.kpi.c-conf::before{background:#2463cc}     .kpi.c-exp::before{background:#16a34a}
-.kpi.c-pend::before{background:#64748b}   .kpi.c-prio::before{background:#dc2626}
-.kpi.c-recebido::before{background:#ea580c}
+.kpi.c-all::before{background:var(--muted)}.kpi.c-fat::before{background:var(--blue)}
+.kpi.c-sep::before{background:var(--orange)}.kpi.c-sepd::before{background:var(--purple)}
+.kpi.c-conf::before{background:var(--teal)}.kpi.c-exp::before{background:var(--green)}
+.kpi.c-pend::before{background:var(--red)}.kpi.c-prio::before{background:#f97316}
+.kpi.c-recebido::before{background:#059669}
 .kpi .lbl{font-size:8.5px;color:#6b7a99;text-transform:uppercase;letter-spacing:.07em}
 .kpi .val{font-size:26px;font-weight:800;margin:3px 0 1px;line-height:1}
 
@@ -183,22 +183,22 @@ tbody tr{border-bottom:1px solid #eaeff8;transition:background .15s}
 tbody tr:last-child{border-bottom:none}
 tbody tr:hover{background:#f8faff}
 /* Status row tints */
-tbody tr.st-sep {background:rgba(217,119,6,.05)}
-tbody tr.st-sep:hover{background:rgba(217,119,6,.09)}
-tbody tr.st-sepd{background:rgba(147,51,234,.05)}
-tbody tr.st-sepd:hover{background:rgba(147,51,234,.09)}
-tbody tr.st-conf{background:rgba(36,99,204,.04)}
-tbody tr.st-conf:hover{background:rgba(36,99,204,.08)}
+tbody tr.st-sep {background:rgba(249,115,22,.05)}
+tbody tr.st-sep:hover{background:rgba(249,115,22,.09)}
+tbody tr.st-sepd{background:rgba(163,113,247,.05)}
+tbody tr.st-sepd:hover{background:rgba(163,113,247,.09)}
+tbody tr.st-conf{background:rgba(45,212,191,.04)}
+tbody tr.st-conf:hover{background:rgba(45,212,191,.08)}
 tbody tr.st-exp {background:rgba(63,185,80,.04)}
 tbody tr.st-exp:hover{background:rgba(63,185,80,.08)}
-tbody tr.st-pend{background:rgba(100,116,139,.06)}
-tbody tr.st-pend:hover{background:rgba(100,116,139,.10)}
+tbody tr.st-pend{background:rgba(248,81,73,.07)}
+tbody tr.st-pend:hover{background:rgba(248,81,73,.12)}
 /* Priority row – high visibility */
 tbody tr.prio-row{
-  background:linear-gradient(90deg,rgba(220,38,38,.18) 0%,rgba(220,38,38,.07) 6%,rgba(220,38,38,.02) 100%) !important;
-  outline:1px solid rgba(220,38,38,.35);outline-offset:-1px}
-tbody tr.prio-row td:first-child{box-shadow:inset 4px 0 0 #dc2626}
-tbody tr.prio-row:hover{background:linear-gradient(90deg,rgba(220,38,38,.25) 0%,rgba(220,38,38,.11) 6%,rgba(220,38,38,.04) 100%) !important}
+  background:linear-gradient(90deg,rgba(249,115,22,.22) 0%,rgba(249,115,22,.09) 6%,rgba(249,115,22,.03) 100%) !important;
+  outline:1px solid rgba(249,115,22,.35);outline-offset:-1px}
+tbody tr.prio-row td:first-child{box-shadow:inset 4px 0 0 var(--orange)}
+tbody tr.prio-row:hover{background:linear-gradient(90deg,rgba(249,115,22,.30) 0%,rgba(249,115,22,.14) 6%,rgba(249,115,22,.06) 100%) !important}
 @keyframes prioFlash{0%,100%{opacity:1}50%{opacity:.55}}
 tbody tr.prio-row .prio-btn.on{animation:prioFlash 1.6s ease-in-out infinite}
 td{padding:7px 10px;vertical-align:middle}
@@ -206,18 +206,18 @@ td{padding:7px 10px;vertical-align:middle}
 /* Status badges */
 .badge{display:inline-flex;align-items:center;gap:4px;
   padding:3px 8px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap}
-.badge.fat {background:rgba(139,151,168,.13);color:#6b7a99;     border:1px solid rgba(139,151,168,.35)}
-.badge.sep {background:rgba(217,119,6,.13); color:#d97706;      border:1px solid rgba(217,119,6,.4)}
-.badge.sepd{background:rgba(147,51,234,.11); color:#9333ea;      border:1px solid rgba(147,51,234,.35)}
-.badge.conf{background:rgba(36,99,204,.11);  color:#2463cc;      border:1px solid rgba(36,99,204,.35)}
-.badge.exp {background:rgba(22,163,74,.11);  color:#16a34a;      border:1px solid rgba(22,163,74,.35)}
+.badge.fat {background:rgba(88,166,255,.12);color:var(--blue);  border:1px solid rgba(88,166,255,.3)}
+.badge.sep {background:rgba(249,115,22,.12);color:var(--orange);border:1px solid rgba(249,115,22,.3)}
+.badge.sepd{background:rgba(163,113,247,.12);color:var(--purple);border:1px solid rgba(163,113,247,.3)}
+.badge.conf{background:rgba(45,212,191,.12);color:var(--teal);  border:1px solid rgba(45,212,191,.3)}
+.badge.exp {background:rgba(63,185,80,.12); color:var(--green); border:1px solid rgba(63,185,80,.3)}
 .badge.pend{background:rgba(248,81,73,.14); color:var(--red);   border:1px solid rgba(248,81,73,.35)}
-.badge.recebido{background:rgba(234,88,12,.12);color:#ea580c;border:1px solid rgba(234,88,12,.35)}
+.badge.recebido{background:rgba(5,150,105,.12);color:#059669;border:1px solid rgba(5,150,105,.3)}
 .dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0}
-.dot.fat {background:#8b97a8}    .dot.sep{background:#d97706;animation:pulse 1.2s infinite}
-.dot.sepd{background:#9333ea}     .dot.conf{background:#2463cc}     .dot.exp{background:#16a34a}
+.dot.fat {background:var(--blue)}.dot.sep{background:var(--orange);animation:pulse 1.2s infinite}
+.dot.sepd{background:var(--purple)}.dot.conf{background:var(--teal)}.dot.exp{background:var(--green)}
 .dot.pend{background:var(--red);animation:pulse .8s infinite}
-.dot.recebido{background:#ea580c}
+.dot.recebido{background:#059669}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
 .ts{font-size:8.5px;color:var(--muted);display:block;margin-top:2px}
 
@@ -255,11 +255,12 @@ td{padding:7px 10px;vertical-align:middle}
   font-weight:600;color:#1a2035;cursor:pointer;transition:.1s;border-bottom:1px solid #eaeff8}
 .row-popover a:last-child{border-bottom:none}
 .row-popover a:hover{background:#f4f6fa}
-.row-popover a.rp-sep {color:#d97706}
-.row-popover a.rp-sepd{color:#9333ea}
+.row-popover a.rp-sep {color:var(--orange)}
+.row-popover a.rp-sepd{color:var(--purple)}
+.row-popover a.rp-sep-edit{color:#7c3aed}
 .row-popover a.rp-pend{color:var(--red)}
 .row-popover a.rp-resume{color:var(--green)}
-.row-popover a.rp-recebido{color:#ea580c}
+.row-popover a.rp-recebido{color:#059669}
 .row-popover a.rp-del{color:var(--red);border-top:1px solid var(--border)!important;margin-top:2px}
 
 /* Priority star */
@@ -345,8 +346,8 @@ td{padding:7px 10px;vertical-align:middle}
 .bipe-field input{width:100%;background:#f8fafd;border:2px solid #c8d0e0;
   color:#1a2035;border-radius:10px;padding:12px 16px;font-size:16px;font-family:monospace;
   outline:none;text-align:center;transition:.2s;letter-spacing:.08em}
-.bipe-field input.mode-sep :focus,.bipe-field input:focus{border-color:#d97706}
-.bipe-field input.mode-sepd:focus{border-color:#9333ea}
+.bipe-field input.mode-sep :focus,.bipe-field input:focus{border-color:var(--yellow)}
+.bipe-field input.mode-sepd:focus{border-color:var(--purple)}
 .bipe-feedback{min-height:22px;font-size:12px;font-weight:600;margin-bottom:10px}
 .bipe-feedback.ok {color:var(--green)}
 .bipe-feedback.err{color:var(--red)}
@@ -359,9 +360,9 @@ td{padding:7px 10px;vertical-align:middle}
 .bipe-log-row:last-child{border-bottom:none}
 .bipe-log-nota{font-family:monospace;font-weight:700;color:#2463cc;flex:0 0 85px;font-size:10.5px}
 .bipe-log-status{font-size:10px;font-weight:700}
-.bipe-log-ok-sep {color:#d97706}
-.bipe-log-ok-sepd{color:#9333ea}
-.bipe-log-ok-rec{color:#ea580c}
+.bipe-log-ok-sep {color:var(--orange)}
+.bipe-log-ok-sepd{color:var(--purple)}
+.bipe-log-ok-rec{color:#059669}
 .bipe-log-warn{color:var(--muted)}
 .bipe-log-user{color:var(--muted);font-size:9.5px}
 .bipe-log-ts{color:var(--muted);font-size:9.5px;margin-left:auto}
@@ -400,7 +401,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v4.5 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v4.6 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -408,7 +409,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v4.5</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v4.6</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -446,14 +447,14 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 
 <!-- KPI ROW -->
 <div class="kpi-row">
-  <div class="kpi c-fat"><div class="lbl">Faturado</div><div class="val" id="k-fat" style="color:#8b97a8">0</div></div>
-  <div class="kpi c-recebido" style="cursor:pointer" onclick="document.getElementById('sfStatus').value='Recebido';onStatusChange()" title="Ver recebidos"><div class="lbl">Recebido</div><div class="val" id="k-rec" style="color:#ea580c">0</div></div>
-  <div class="kpi c-sep"><div class="lbl">Em Separação</div><div class="val" id="k-sep" style="color:#d97706">0</div></div>
-  <div class="kpi c-sepd"><div class="lbl">Separado</div><div class="val" id="k-sepd" style="color:#9333ea">0</div></div>
-  <div class="kpi c-conf"><div class="lbl">Conferido</div><div class="val" id="k-conf" style="color:#2463cc">0</div></div>
-  <div class="kpi c-exp"><div class="lbl">Expedido</div><div class="val" id="k-exp" style="color:#16a34a">0</div></div>
-  <div class="kpi c-pend" style="cursor:pointer" onclick="document.getElementById('sfStatus').value='Pendente';onStatusChange()" title="Ver pendentes"><div class="lbl">Pendente</div><div class="val" id="k-pend" style="color:#64748b">0</div></div>
-  <div class="kpi c-prio" style="cursor:pointer" onclick="document.getElementById('sfStatus').value='__PRIO__';onStatusChange()" title="Ver priorizados"><div class="lbl">⭐ Priorizados</div><div class="val" id="k-prio" style="color:#dc2626">0</div></div>
+  <div class="kpi c-fat"><div class="lbl">Faturado</div><div class="val" id="k-fat" style="color:var(--blue)">0</div></div>
+  <div class="kpi c-recebido" style="cursor:pointer" onclick="document.getElementById('sfStatus').value='Recebido';onStatusChange()" title="Ver recebidos"><div class="lbl">Recebido</div><div class="val" id="k-rec" style="color:#059669">0</div></div>
+  <div class="kpi c-sep"><div class="lbl">Em Separação</div><div class="val" id="k-sep" style="color:var(--orange)">0</div></div>
+  <div class="kpi c-sepd"><div class="lbl">Separado</div><div class="val" id="k-sepd" style="color:var(--purple)">0</div></div>
+  <div class="kpi c-conf"><div class="lbl">Conferido</div><div class="val" id="k-conf" style="color:var(--teal)">0</div></div>
+  <div class="kpi c-exp"><div class="lbl">Expedido</div><div class="val" id="k-exp" style="color:var(--green)">0</div></div>
+  <div class="kpi c-pend" style="cursor:pointer" onclick="document.getElementById('sfStatus').value='Pendente';onStatusChange()" title="Ver pendentes"><div class="lbl">Pendente</div><div class="val" id="k-pend" style="color:var(--red)">0</div></div>
+  <div class="kpi c-prio" style="cursor:pointer" onclick="document.getElementById('sfStatus').value='__PRIO__';onStatusChange()" title="Ver priorizados"><div class="lbl">⭐ Priorizados</div><div class="val" id="k-prio" style="color:var(--orange)">0</div></div>
 </div>
 
 <!-- APP BODY -->
@@ -509,7 +510,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
         Separado
       </button>
       <button class="btn" onclick="openBipeModal('recebido')" title="Bipar → Recebido"
-              style="border-color:rgba(234,88,12,.45);color:#ea580c;font-weight:700">
+              style="border-color:rgba(5,150,105,.45);color:#059669;font-weight:700">
         <svg width="20" height="14" viewBox="0 0 44 28" fill="currentColor">
           <rect x="0" y="0" width="3" height="28"/><rect x="5" y="0" width="2" height="28"/>
           <rect x="9" y="0" width="5" height="28"/><rect x="16" y="0" width="1.5" height="28"/>
@@ -1060,14 +1061,6 @@ function parseNFSerie(raw){
   if(sl<0)return{nf:s,serie:''};
   return{nf:s.slice(0,sl).trim(),serie:s.slice(sl+1).trim()};
 }
-function fmtDateTimeVDK(raw){
-  if(!raw)return'';
-  const s=raw.toString().trim();
-  if(/^\d{2}\/\d{2}\/\d{4}/.test(s))return s;
-  const m2=s.match(/^(\d{4})-(\d{2})-(\d{2})(?:\s(\d{2}:\d{2}))?/);
-  if(m2)return`${m2[3]}/${m2[2]}/${m2[1]}`+(m2[4]?' '+m2[4]:'');
-  return s;
-}
 function cleanTranspVDK(t){
   // "2 - RAJLOG" → "RAJLOG"  |  "352 - PATRUS" → "PATRUS"
   const m=(t||'').match(/^\d+\s*-\s*(.+)$/);
@@ -1075,10 +1068,20 @@ function cleanTranspVDK(t){
 }
 function fmtDateVDK(raw){
   if(!raw)return'';
-  const s=raw.toString().trim().split(' ')[0]; // pega só a data, sem hora
-  // formato dd/mm/yyyy ou yyyy-mm-dd
+  const s=raw.toString().trim().split(' ')[0]; // apenas data
   if(/^\d{2}\/\d{2}\/\d{4}$/.test(s))return s;
   if(/^\d{4}-\d{2}-\d{2}$/.test(s)){const[y,m,d]=s.split('-');return`${d}/${m}/${y}`;}
+  return s;
+}
+function fmtDateTimeVDK(raw){
+  // Retorna data + hora completa: "05/06/2026 12:52"
+  if(!raw)return'';
+  const s=raw.toString().trim();
+  // já no formato dd/mm/yyyy HH:mm
+  if(/^\d{2}\/\d{2}\/\d{4}(\s\d{2}:\d{2})?$/.test(s))return s;
+  // yyyy-mm-dd HH:mm ou yyyy-mm-dd
+  const m2=s.match(/^(\d{4})-(\d{2})-(\d{2})(?:\s(\d{2}:\d{2}))?/);
+  if(m2)return`${m2[3]}/${m2[2]}/${m2[1]}`+(m2[4]?' '+m2[4]:'');
   return s;
 }
 function importVDK(arrayBuffer){
@@ -1101,31 +1104,22 @@ function importVDK(arrayBuffer){
       }
       const headers=raw[hdrIdx].map(v=>String(v).trim());
       const cI=(k)=>headers.findIndex(h=>h.toLowerCase().includes(k.toLowerCase()));
-      // norm: ignora acentos para detectar colunas corretamente em qualquer locale
-      const norm=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-      const cINorm=(k)=>headers.findIndex(h=>norm(h).includes(norm(k)));
-      const iPed=cI('pedido'),iNF=cINorm('nf'),iDtExp=cINorm('dt. expedi'),iDtEnt=cI('dt. entrega');
-      const iCli=cI('cliente'),iTrasp=cI('transportadora'),iSit=cINorm('situa'),iVol=cI('volume'),iEmb=cI('embarcador');
+      const iPed=cI('pedido'),iNF=cI('nf/serie'),iDtExp=cI('dt. expedi'),iDtEnt=cI('dt. entrega');
+      const iCli=cI('cliente'),iTrasp=cI('transportadora'),iSit=cI('situa'),iVol=cI('volume'),iEmb=cI('embarcador');
       if(iNF<0&&iPed<0){alert('Formato VDK não reconhecido — colunas Pedido / NF/Serie não encontradas.');pw.classList.remove('show');return;}
       pf.style.width='50%';pt.textContent='Processando VDK…';
       const existMap=new Map([...activeRecs,...expedidoRecs].map(r=>[r.nota,r]));
-      // Lookup tolerante: tenta exato, sem zeros, com 9 zeros
-      function vdkFindNota(k){
-        if(existMap.has(k))return k;
-        const s=k.replace(/^0+/,'')||'0';if(existMap.has(s))return s;
-        const p=k.padStart(9,'0');if(existMap.has(p))return p;
-        return null;
-      }
       let add=0,upd=0,skip=0;const n=nowStr();
       for(let i=hdrIdx+1;i<raw.length;i++){
         const c=raw[i];if(!c||c.every(v=>!v))continue;
         const nfRaw=iNF>=0?c[iNF]:'';
         const{nf,serie}=parseNFSerie(nfRaw);
-        // SEMPRE usa NF — nunca o número do Pedido
-        if(!nf)continue;
-        // Ignorar linhas que não são AVACY
+        const nota=nf||String(c[iPed]||'').trim();
+        if(!nota)continue;
+        // Filtrar apenas pedidos AVACY — ignora linhas FRAN e outras
         if(iEmb>=0){const emb=String(c[iEmb]||'').trim().toUpperCase();if(emb&&emb!=='AVACY')continue;}
-        const nota=nf;
+        // Apenas série /0 — nossa série; outras séries são sujeira
+        if(serie.trim()!=='0')continue;
         const fat=iPed>=0?String(c[iPed]||'').trim():'';
         const dtRaw=iDtExp>=0&&c[iDtExp]?c[iDtExp]:(iDtEnt>=0?c[iDtEnt]:'');
         const fd={
@@ -1139,33 +1133,33 @@ function importVDK(arrayBuffer){
         };
         const situacao=iSit>=0?String(c[iSit]||'').trim():'';
         const mappedSt=mapSituacao(situacao);
-        const foundNota=vdkFindNota(nota);
-        if(foundNota){
-          const rec=existMap.get(foundNota);Object.assign(rec,fd);upd++;
-          const sKey=foundNota;
-          if(!stMap[sKey])stMap[sKey]={obs:''};
-          // Preenche ts_fat com data/hora real do VDK se ainda vazio
+        if(existMap.has(nota)){
+          const rec=existMap.get(nota);Object.assign(rec,fd);upd++;
+          if(!stMap[nota])stMap[nota]={obs:''};
+          // Preenche ts_fat com a data/hora real do VDK (se ainda não tiver)
           const dtTs=fmtDateTimeVDK(dtRaw);
-          if(dtTs&&!stMap[sKey].ts_fat)stMap[sKey].ts_fat=dtTs;
+          if(dtTs&&!stMap[nota].ts_fat)stMap[nota].ts_fat=dtTs;
           // Só avança o status se o novo for "mais adiantado"
-          const curSt=stMap[sKey].status||'Faturado';
+          const curSt=stMap[nota].status||'Faturado';
           const ord={Faturado:1,Recebido:1.5,'Em Separação':2,Separado:3,Conferido:4,Expedido:5,Pendente:0.5};
           if((ord[mappedSt]||0)>(ord[curSt]||0)){
-            stMap[sKey].status=mappedSt;
+            stMap[nota].status=mappedSt;
             const tsMap2={Expedido:'ts_exp','Em Separação':'ts_sep',Separado:'ts_sepd',Conferido:'ts_conf',Pendente:'ts_pend',Faturado:'ts_fat'};
             const tsVal=fmtDateTimeVDK(dtRaw)||n;
-            if(!stMap[sKey][tsMap2[mappedSt]])stMap[sKey][tsMap2[mappedSt]]=tsVal;
+            if(!stMap[nota][tsMap2[mappedSt]])stMap[nota][tsMap2[mappedSt]]=tsVal;
           }
         }else{
-          // Nota não existe localmente — cria stub GRU
+          // Nota não existe localmente — cria stub GRU para exibir no dashboard
           add++;
-          existMap.set(nota,{nota,fat,loja:fd.loja,...fd});
+          const stubRec={nota,fat,loja:fd.loja,...fd};
+          existMap.set(nota,stubRec);
           if(!stMap[nota])stMap[nota]={obs:''};
           const dtTs2=fmtDateTimeVDK(dtRaw);
           stMap[nota].status=mappedSt;
           stMap[nota].ts_fat=dtTs2||n;
           const tsMap3={Expedido:'ts_exp','Em Separação':'ts_sep',Separado:'ts_sepd',Conferido:'ts_conf',Pendente:'ts_pend',Faturado:'ts_fat'};
           if(tsMap3[mappedSt]&&!stMap[nota][tsMap3[mappedSt]])stMap[nota][tsMap3[mappedSt]]=dtTs2||n;
+          skip--;  // descontar do skip pois agora é criação
         }
       }
       pf.style.width='85%';pt.textContent='Salvando…';
@@ -1181,7 +1175,7 @@ function importVDK(arrayBuffer){
           const autoStatus=Object.entries(stMap).filter(([,sd])=>['Expedido','Conferido','Em Separação'].includes(sd.status));
           for(const[nota]of autoStatus)await sbSyncStatus(nota);
         }
-        alert(`✓ VDK GRU — status atualizados!\n${upd} atualizado(s) · ${add} novo(s) GRU · ${Math.max(0,skip)} ignorados`);
+        alert(`✓ VDK GRU — status atualizados!\n${upd} atualizado(s) · ${add} novo(s) GRU · ${skip<0?0:skip} ignorados (FRAN/outros)`);
       },300);
     }catch(e){alert('Erro ao ler XLS: '+e.message);pw.classList.remove('show');}
   });
@@ -1416,7 +1410,7 @@ async function importCSV(){
 // BIPE MODAL
 // ═══════════════════════════════════════════════════════════
 let bipeMode='sep',bipeLogEntries=[];
-const BIPE_COLOR={sep:'#d97706',sepd:'#9333ea',recebido:'#ea580c'};
+const BIPE_COLOR={sep:'#f97316',sepd:'#a371f7',recebido:'#059669'};
 
 function openBipeModal(mode){
   bipeMode=mode||'sep';bipeLogEntries=[];
@@ -1586,13 +1580,30 @@ function toggleRowMenu(nota,btn){
   else if(st==='Em Separação'){items.push({cls:'rp-sepd',icon:'✓',label:'Separado',fn:`advance('${nota}')`})}
   else if(st==='Separado'){}
   else if(st==='Pendente'){items.push({cls:'rp-resume',icon:'↩',label:'Retomar',fn:`retomar('${nota}')`})}
-  if(isAdmin)items.push({cls:'rp-del',icon:'🗑',label:'Excluir registro',fn:`deleteRecord('${nota}')`});
+  if(isAdmin){
+    items.push({cls:'rp-sep-edit',icon:'👷',label:'Editar Separador',fn:`editSeparador('${nota}')`});
+    items.push({cls:'rp-del',icon:'🗑',label:'Excluir registro',fn:`deleteRecord('${nota}')`});
+  }
   if(!items.length)return;
   pop.innerHTML=items.map(i=>`<a class="${i.cls}" onclick="${i.fn};closeRowMenu()">${i.icon} ${i.label}</a>`).join('');
   const rect=btn.getBoundingClientRect();
   pop.style.left=Math.min(rect.left,window.innerWidth-200)+'px';
   pop.style.top=(rect.bottom+4)+'px';
   pop.classList.add('open');_openPopNota=nota;
+}
+function editSeparador(nota){
+  const sd=stMap[nota]||{};
+  const cur=sd.sep_log?.user||sd.separador||'';
+  const novo=prompt('Separador para nota '+nota+':\n(atual: "'+(cur||'—')+'")',cur);
+  if(novo===null)return;
+  if(!stMap[nota])stMap[nota]={obs:''};
+  const val=novo.trim();
+  stMap[nota].separador=val;
+  if(!stMap[nota].sep_log)stMap[nota].sep_log={};
+  stMap[nota].sep_log.user=val;
+  stMap[nota]._ts=new Date().toISOString();
+  saveLS();sbSyncStatus(nota);onFilterChange();
+  toast('✔ Separador atualizado: '+(val||'(limpo)'));
 }
 function closeRowMenu(){document.getElementById('rowPopover').classList.remove('open');_openPopNota=null}
 document.addEventListener('click',e=>{if(!e.target.closest('.act-trigger')&&!e.target.closest('#rowPopover'))closeRowMenu()});
@@ -1718,7 +1729,7 @@ function _render(){
       <td><span class="clip-sm" title="${esc(r.transportadora)}">${r.transportadora||'—'}</span></td>
       <td style="text-align:right;font-size:11px;color:var(--muted);font-family:monospace">${r.volume||'—'}</td>
       <td><div class="has-tip"><span class="badge ${sc}"><span class="dot ${sc}"></span>${st}</span>${ts?`<span class="ts">${ts}</span>`:''}${tipHtml}</div></td>
-      <td><span class="clip-sm" style="font-size:10px;color:${sd.sep_log?.user?'#9333ea':'var(--muted)'}" title="${esc(sd.sep_log?.user||'')}">${sd.sep_log?.user||'—'}</span></td>
+      <td><span class="clip-sm" style="font-size:10px;color:${sd.sep_log?.user?'#059669':'var(--muted)'}" title="${esc(sd.sep_log?.user||'')}">${sd.sep_log?.user||'—'}</span></td>
       <td>${origemBadge(r.origem)}</td>
       <td>${r.xconf?`<span class="conf-yes">✔</span>`:`<span class="conf-no">—</span>`}</td>
       <td>${acaoBtn}</td>
@@ -1755,9 +1766,9 @@ function updateDashboard(list){
   document.getElementById('k-pend').textContent=pend;
   document.getElementById('k-prio').textContent=prio;
   drawDonut('cStatus',[
-    {label:'Faturado',value:fat,color:'#8b97a8'},{label:'Recebido',value:rec,color:'#ea580c'},{label:'Em Separação',value:sep,color:'#d97706'},
-    {label:'Separado',value:sepd,color:'#9333ea'},{label:'Conferido',value:conf,color:'#2463cc'},
-    {label:'Expedido',value:exp,color:'#16a34a'},{label:'Pendente',value:pend,color:'#64748b'},
+    {label:'Faturado',value:fat,color:'#58a6ff'},{label:'Recebido',value:rec,color:'#059669'},{label:'Em Separação',value:sep,color:'#f97316'},
+    {label:'Separado',value:sepd,color:'#a371f7'},{label:'Conferido',value:conf,color:'#2dd4bf'},
+    {label:'Expedido',value:exp,color:'#3fb950'},{label:'Pendente',value:pend,color:'#f85149'},
   ]);
   drawBars('cOrigem',Object.entries(origC).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([l,v])=>({label:l,value:v,vol:origV[l]||0,color:l==='GRU'?'#2dd4bf':'#58a6ff'})));
   drawBars('cTransp',Object.entries(transpC).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([l,v])=>({label:l,value:v,vol:transpV[l]||0,color:'#58a6ff'})));
@@ -1769,7 +1780,7 @@ function updateDashboard(list){
     const vol=parseInt((r.volume||'').toString().replace(/\D/g,''))||0;
     sepRankC[u]=(sepRankC[u]||0)+1;sepRankVol[u]=(sepRankVol[u]||0)+vol;
   });
-  drawBars('cSepRank',Object.entries(sepRankC).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([l,v],i)=>({label:l,value:v,vol:sepRankVol[l]||0,color:i===0?'#ea580c':i===1?'#f97316':'#fdba74'})));
+  drawBars('cSepRank',Object.entries(sepRankC).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([l,v],i)=>({label:l,value:v,vol:sepRankVol[l]||0,color:i===0?'#059669':i===1?'#16a34a':'#4ade80'})));
 }
 function drawDonut(id,data){
   const canvas=document.getElementById(id);if(!canvas)return;
