@@ -401,7 +401,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v4.6 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v4.7 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -409,7 +409,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v4.6</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v4.7</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1109,13 +1109,21 @@ function importVDK(arrayBuffer){
       if(iNF<0&&iPed<0){alert('Formato VDK não reconhecido — colunas Pedido / NF/Serie não encontradas.');pw.classList.remove('show');return;}
       pf.style.width='50%';pt.textContent='Processando VDK…';
       const existMap=new Map([...activeRecs,...expedidoRecs].map(r=>[r.nota,r]));
+      // Lookup tolerante: exato → sem zeros → 9 dígitos
+      function vdkFindNota(k){
+        if(existMap.has(k))return k;
+        const s=k.replace(/^0+/,'')||'0';if(existMap.has(s))return s;
+        const p=k.padStart(9,'0');if(existMap.has(p))return p;
+        return null;
+      }
       let add=0,upd=0,skip=0;const n=nowStr();
       for(let i=hdrIdx+1;i<raw.length;i++){
         const c=raw[i];if(!c||c.every(v=>!v))continue;
         const nfRaw=iNF>=0?c[iNF]:'';
         const{nf,serie}=parseNFSerie(nfRaw);
-        const nota=nf||String(c[iPed]||'').trim();
-        if(!nota)continue;
+        // SEMPRE usa NF — nunca o número do Pedido
+        if(!nf)continue;
+        const nota=nf;
         // Filtrar apenas pedidos AVACY — ignora linhas FRAN e outras
         if(iEmb>=0){const emb=String(c[iEmb]||'').trim().toUpperCase();if(emb&&emb!=='AVACY')continue;}
         // Apenas série /0 — nossa série; outras séries são sujeira
@@ -1133,20 +1141,22 @@ function importVDK(arrayBuffer){
         };
         const situacao=iSit>=0?String(c[iSit]||'').trim():'';
         const mappedSt=mapSituacao(situacao);
-        if(existMap.has(nota)){
-          const rec=existMap.get(nota);Object.assign(rec,fd);upd++;
-          if(!stMap[nota])stMap[nota]={obs:''};
+        const foundNota=vdkFindNota(nota);
+        if(foundNota){
+          const rec=existMap.get(foundNota);Object.assign(rec,fd);upd++;
+          const sKey=foundNota;
+          if(!stMap[sKey])stMap[sKey]={obs:''};
           // Preenche ts_fat com a data/hora real do VDK (se ainda não tiver)
           const dtTs=fmtDateTimeVDK(dtRaw);
-          if(dtTs&&!stMap[nota].ts_fat)stMap[nota].ts_fat=dtTs;
+          if(dtTs&&!stMap[sKey].ts_fat)stMap[sKey].ts_fat=dtTs;
           // Só avança o status se o novo for "mais adiantado"
-          const curSt=stMap[nota].status||'Faturado';
+          const curSt=stMap[sKey].status||'Faturado';
           const ord={Faturado:1,Recebido:1.5,'Em Separação':2,Separado:3,Conferido:4,Expedido:5,Pendente:0.5};
           if((ord[mappedSt]||0)>(ord[curSt]||0)){
-            stMap[nota].status=mappedSt;
+            stMap[sKey].status=mappedSt;
             const tsMap2={Expedido:'ts_exp','Em Separação':'ts_sep',Separado:'ts_sepd',Conferido:'ts_conf',Pendente:'ts_pend',Faturado:'ts_fat'};
             const tsVal=fmtDateTimeVDK(dtRaw)||n;
-            if(!stMap[nota][tsMap2[mappedSt]])stMap[nota][tsMap2[mappedSt]]=tsVal;
+            if(!stMap[sKey][tsMap2[mappedSt]])stMap[sKey][tsMap2[mappedSt]]=tsVal;
           }
         }else{
           // Nota não existe localmente — cria stub GRU para exibir no dashboard
