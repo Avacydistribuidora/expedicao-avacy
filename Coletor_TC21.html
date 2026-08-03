@@ -207,7 +207,7 @@ tbody tr:last-child td{border-bottom:none}
 <header>
   <div class="logo">Avacy</div>
   <div style="width:1px;height:30px;background:rgba(255,255,255,.15);margin:0 6px;flex-shrink:0"></div>
-  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v3.2</span></div>
+  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v3.3</span></div>
   <div class="header-center">
     <div class="admin-tabs" id="admin-tabs">
       <button class="atab active" onclick="adminShowTab('sep')" id="atab-sep">📋 Separações</button>
@@ -604,7 +604,7 @@ async function executarScan() {
     const cu          = usuario;
 
     // 3. Valida transição
-    if (modoAtual === 'sep' && statusAtual !== 'Faturado') {
+    if (modoAtual === 'sep' && statusAtual !== 'Faturado' && statusAtual !== 'Recebido' && statusAtual !== 'Pendente') {
       showFb('warn', nota, '⚠', `Já está como "${statusAtual}"`);
       syncDot('ok'); inp.focus(); return;
     }
@@ -620,9 +620,7 @@ async function executarScan() {
         scan_log: { user: cu.nome, ts: n, code: codigo },
         updated_at: new Date().toISOString()
       });
-      await db.from('separacoes').insert({
-        pedido: nota, status: 'em_separacao', separador_id: cu.id, separador: cu.nome
-      });
+      // (separacoes table removed — status tracked in avacy_status)
       const clienteLabel = rec.nome_cliente && rec.nome_cliente !== '(aguardando importação CSV)'
         ? rec.nome_cliente.split(' ')[0]
         : (novoPedido ? '⚠ novo — importar CSV depois' : '');
@@ -636,9 +634,7 @@ async function executarScan() {
         sep_log: { user: cu.nome, ts: n, code: codigo },
         updated_at: new Date().toISOString()
       });
-      await db.from('separacoes')
-        .update({ status: 'separado', fim: new Date().toISOString() })
-        .eq('pedido', nota).eq('separador_id', cu.id).eq('status', 'em_separacao');
+      // (separacoes table removed — status tracked in avacy_status)
       const clienteLabel = rec.nome_cliente && rec.nome_cliente !== '(aguardando importação CSV)'
         ? rec.nome_cliente.split(' ')[0]
         : '';
@@ -681,24 +677,33 @@ async function carregarHistorico() {
   try {
     const hoje   = new Date();
     const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).toISOString();
-    const { data, error } = await db.from('separacoes')
-      .select('pedido, status, inicio, fim')
-      .eq('separador_id', usuario.id)
-      .gte('inicio', inicio)
-      .order('inicio', { ascending: false })
-      .limit(60);
+    const { data, error } = await db
+      .from('avacy_status')
+      .select('nota, status, scan_log, sep_log, ts_sep, ts_sepd, updated_at')
+      .gte('updated_at', inicio)
+      .order('updated_at', { ascending: false })
+      .limit(200);
     if (error) throw error;
-    if (!data || data.length === 0) {
+    // Filter by current user (scan_log = Em Separação, sep_log = Separado)
+    const myRecs = (data || []).filter(r =>
+      r.scan_log?.user === usuario.nome || r.sep_log?.user === usuario.nome
+    );
+    if (!myRecs.length) {
       tbody.innerHTML = '<tr><td colspan="3" style="color:#aaa;text-align:center;padding:14px">Nenhum registro hoje</td></tr>';
       return;
     }
-    tbody.innerHTML = data.map(r => {
-      const cls = r.status === 'separado' ? 'b-sepd' : 'b-sep';
-      const lbl = r.status === 'separado' ? 'Separado' : 'Em Sep.';
+    tbody.innerHTML = myRecs.map(r => {
+      const isSepd = r.sep_log?.user === usuario.nome;
+      const cls    = isSepd ? 'b-sepd' : 'b-sep';
+      const lbl    = isSepd ? 'Separado' : 'Em Sep.';
+      const ts     = isSepd
+        ? (r.sep_log?.ts || r.ts_sepd || '')
+        : (r.scan_log?.ts || r.ts_sep || '');
+      const hora   = ts.includes(' ') ? ts.split(' ')[1] : ts;
       return `<tr>
-        <td style="font-family:monospace;font-weight:700;font-size:13px">${esc(r.pedido)}</td>
+        <td style="font-family:monospace;font-weight:700;font-size:13px">${esc(r.nota)}</td>
         <td><span class="badge-sm ${cls}">${lbl}</span></td>
-        <td style="font-size:11px;color:#94a3b8">${hhmm(r.inicio)}</td>
+        <td style="font-size:11px;color:#94a3b8">${esc(hora || '—')}</td>
       </tr>`;
     }).join('');
   } catch (e) {
@@ -759,21 +764,31 @@ async function carregarMonitor() {
 
     const hoje   = new Date();
     const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).toISOString();
-    const { data: hist } = await db.from('separacoes')
-      .select('pedido,status,inicio,fim,separador')
-      .gte('inicio', inicio).order('inicio', { ascending: false }).limit(100);
+    const { data: hist } = await db
+      .from('avacy_status')
+      .select('nota, status, scan_log, sep_log, ts_sep, ts_sepd, updated_at')
+      .in('status', ['Em Separação', 'Separado'])
+      .gte('updated_at', inicio)
+      .order('updated_at', { ascending: false })
+      .limit(100);
 
     admHist.innerHTML = (!hist || !hist.length)
       ? '<tr><td colspan="5" style="color:rgba(255,255,255,.3);text-align:center;padding:14px">Nenhum registro hoje</td></tr>'
       : hist.map(r => {
-          const cls = r.status === 'separado' ? 'b-sepd' : 'b-sep';
-          const lbl = r.status === 'separado' ? 'Separado' : 'Em Sep.';
+          const isSepd = r.status === 'Separado';
+          const cls  = isSepd ? 'b-sepd' : 'b-sep';
+          const lbl  = isSepd ? 'Separado' : 'Em Sep.';
+          const sep  = r.sep_log?.user || r.scan_log?.user || '—';
+          const tsSep  = r.scan_log?.ts || r.ts_sep || '';
+          const tsSepd = r.sep_log?.ts  || r.ts_sepd || '';
+          const hrSep  = tsSep.includes(' ')  ? tsSep.split(' ')[1]  : tsSep;
+          const hrSepd = tsSepd.includes(' ') ? tsSepd.split(' ')[1] : tsSepd;
           return `<tr>
-            <td style="font-family:monospace;font-weight:700;color:white;font-size:12px">${esc(r.pedido)}</td>
+            <td style="font-family:monospace;font-weight:700;color:white;font-size:12px">${esc(r.nota)}</td>
             <td><span class="badge-sm ${cls}">${lbl}</span></td>
-            <td style="font-size:11px;color:rgba(255,255,255,.5)">${esc(r.separador || '—')}</td>
-            <td style="font-size:11px;color:rgba(255,255,255,.4)">${hhmm(r.inicio)}</td>
-            <td style="font-size:11px;color:rgba(255,255,255,.4)">${hhmm(r.fim)}</td>
+            <td style="font-size:11px;color:rgba(255,255,255,.5)">${esc(sep)}</td>
+            <td style="font-size:11px;color:rgba(255,255,255,.4)">${esc(hrSep || '—')}</td>
+            <td style="font-size:11px;color:rgba(255,255,255,.4)">${esc(hrSepd || '—')}</td>
           </tr>`;
         }).join('');
 
