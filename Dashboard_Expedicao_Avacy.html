@@ -416,7 +416,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v6.1 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v6.2 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -424,7 +424,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v6.1</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v6.2</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -444,6 +444,8 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
         <a onclick="exportBipados();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px">📋 Relatório de Bipados (Sep/Separado)</a>
           <a onclick="openSbConfig();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px">🔗 Configurar Sincronização</a>
           <a onclick="openColetorQR();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px">📱 Coletor TC21 — QR Code</a>
+          <a id="menuRestoreLink" onclick="restoreStMapFromFile();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px;color:#d97706">🔄 Restaurar Backup (JSON)</a>
+          <input type="file" id="restoreFileInput" accept=".json" style="display:none" onchange="handleRestoreFile(this)">
         </div>
     </div>
     <div class="user-badge" onclick="toggleUserMenu()" id="userBadge">
@@ -1371,11 +1373,7 @@ async function importCSV(){
             stMap[nota]=_mg;
             delete stMap[_preK];
             existMap.delete(_preK);
-            if(SB_URL&&SB_KEY){
-              const _b=SB_URL.replace(/\/+$/,''),_h={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
-              fetch(`${_b}/rest/v1/avacy_records?nota=eq.${encodeURIComponent(_preK)}`,{method:'DELETE',headers:_h}).catch(()=>{});
-              fetch(`${_b}/rest/v1/avacy_status?nota=eq.${encodeURIComponent(_preK)}`,{method:'DELETE',headers:_h}).catch(()=>{});
-            }
+            // NÃO faz DELETE no Supabase aqui — o sync posterior cuida disso com segurança
           }else if(_preK===nota){stMap[nota].pre_scan=false;}
         }
         // Atualiza ts_fat com hora real do QRY
@@ -1640,6 +1638,45 @@ function editSeparador(nota){
   stMap[nota]._ts=new Date().toISOString();
   saveLS();sbSyncStatus(nota);onFilterChange();
   toast('✔ Separador: '+val+' — '+tsVal);
+}
+function restoreStMapFromFile(){
+  if(getCurrentUser()?.role!=='admin'){alert('Apenas o administrador.');return}
+  document.getElementById('restoreFileInput').click();
+}
+function handleRestoreFile(inp){
+  const file=inp.files[0];if(!file)return;
+  const fr=new FileReader();
+  fr.onload=function(e){
+    try{
+      const data=JSON.parse(e.target.result);
+      const keys=Object.keys(data);
+      if(!keys.length||typeof data[keys[0]]!=='object')throw new Error('JSON inválido');
+      let merged=0,added=0;
+      keys.forEach(nota=>{
+        if(stMap[nota]){
+          // Merge: mantém dados do operador (scan_log, sep_log), atualiza campos em branco
+          const cur=stMap[nota];
+          const bkp=data[nota];
+          if(!cur.scan_log&&bkp.scan_log){cur.scan_log=bkp.scan_log;merged++;}
+          if(!cur.sep_log&&bkp.sep_log){cur.sep_log=bkp.sep_log;}
+          if(!cur.rec_log&&bkp.rec_log){cur.rec_log=bkp.rec_log;}
+          if(!cur.ts_fat&&bkp.ts_fat)cur.ts_fat=bkp.ts_fat;
+          if(!cur.ts_sep&&bkp.ts_sep)cur.ts_sep=bkp.ts_sep;
+          if(!cur.ts_sepd&&bkp.ts_sepd)cur.ts_sepd=bkp.ts_sepd;
+          if(!cur.ts_conf&&bkp.ts_conf)cur.ts_conf=bkp.ts_conf;
+          if(!cur.ts_exp&&bkp.ts_exp)cur.ts_exp=bkp.ts_exp;
+          if(!cur.ts_recebido&&bkp.ts_recebido)cur.ts_recebido=bkp.ts_recebido;
+          if(!cur.separador&&bkp.separador)cur.separador=bkp.separador;
+          if(!cur.romaneio_user&&bkp.romaneio_user)cur.romaneio_user=bkp.romaneio_user;
+        }else{stMap[nota]=data[nota];added++;}
+      });
+      saveLS();onFilterChange();
+      inp.value='';
+      toast('✔ Restauração concluída: '+merged+' notas mescladas, '+added+' adicionadas de '+keys.length+' total.');
+      setTimeout(()=>{if(confirm('Recarregar a página para aplicar tudo?'))location.reload();},500);
+    }catch(err){alert('Erro ao ler JSON: '+err.message);}
+  };
+  fr.readAsText(file);
 }
 function setAdminStatus(nota,novoSt){
   if(getCurrentUser()?.role!=='admin'){alert('Apenas o administrador.');return}
@@ -2308,6 +2345,7 @@ function initDashboard(){
   const isAdmin=cu.role==='admin';
   document.getElementById('menuAdminLink').style.display=isAdmin?'block':'none';
   document.getElementById('menuClearLink').style.display=isAdmin?'block':'none';
+  document.getElementById('menuRestoreLink').style.display=isAdmin?'flex':'none';
   loadLS();initSelectedDates();renderDateTree();updateSortUI();
   document.getElementById('sfOrigem').value='MATRIZ';
   document.getElementById('sfStatus').value='Faturado';
