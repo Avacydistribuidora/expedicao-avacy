@@ -246,7 +246,7 @@ tbody tr:last-child td{border-bottom:none}
 <header>
   <div class="logo">Avacy</div>
   <div style="width:1px;height:30px;background:rgba(255,255,255,.15);margin:0 6px;flex-shrink:0"></div>
-  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v3.8</span></div>
+  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v3.9</span></div>
   <div class="header-center">
     <div class="admin-tabs" id="admin-tabs">
       <button class="atab active" onclick="adminShowTab('sep')" id="atab-sep">📋 Separações</button>
@@ -983,14 +983,15 @@ async function consultarPedido(ctx){
   out.innerHTML=`<div style="font-size:12px;color:${lblClr};padding:4px 0">🔍 Buscando…</div>`;
   syncDot('sync');
   try{
-    // Busca registro
-    const{data:recs}=await db.from('avacy_records').select('nota,fat,loja,nome_cliente,transportadora,volume').or(`fat.eq.${codigo},loja.eq.${codigo},nota.eq.${codigo}`).limit(3);
-    const rec=recs&&recs.length?recs[0]:null;
+    // Busca registro via REST direto (evita bug do supabase client)
+    const recsData=await sbFetch(`/rest/v1/avacy_records?select=nota,fat,loja,nome_cliente,transportadora,volume&or=(fat.eq.${encodeURIComponent(codigo)},loja.eq.${encodeURIComponent(codigo)},nota.eq.${encodeURIComponent(codigo)})&limit=3`);
+    const rec=recsData&&recsData.length?recsData[0]:null;
     const nota=rec?rec.nota:codigo;
-    // Busca status (sem coluna separador — está em scan_log/sep_log)
-    const{data:st}=await db.from('avacy_status').select('status,ts_sep,ts_sepd,ts_recebido,ts_conf,ts_exp,scan_log,sep_log').eq('nota',nota).maybeSingle();
+    // Busca status via REST direto
+    const stArr=await sbFetch(`/rest/v1/avacy_status?select=status,ts_sep,ts_sepd,ts_recebido,ts_conf,ts_exp,scan_log,sep_log&nota=eq.${encodeURIComponent(nota)}&limit=1`);
+    const st=stArr&&stArr.length?stArr[0]:null;
     // Busca histórico separacoes
-    const{data:seps}=await db.from('separacoes').select('pedido,status,separador,inicio,fim').eq('pedido',nota).order('inicio',{ascending:false}).limit(10);
+    const seps=await sbFetch(`/rest/v1/separacoes?select=pedido,status,separador,inicio,fim&pedido=eq.${encodeURIComponent(nota)}&order=inicio.desc&limit=10`);
 
     const statusAtual=st?.status||'Faturado';
     const acColor={'Em Separação':'#d97706','Separado':'#9333ea','Conferido':'#2463cc','Expedido':'#16a34a','Recebido':'#ea580c','Pendente':'#ef4444','Faturado':'#6b7a99'};
@@ -1155,23 +1156,18 @@ async function exportRelatorio(tipo){
   toast('⏳ Gerando relatório…',5000);
   syncDot('sync');
   try{
-    // Histórico: todos com ts_sep preenchido, via sbFetch com paginação
-    let allSt=[];let from=0;const PAGE=1000;
+    // Histórico via REST direto (sem supabase client)
     const ini=encodeURIComponent(rng.ini);
     const fim=encodeURIComponent(rng.fim);
-    while(true){
-      const r=await sbFetch(`/rest/v1/avacy_status?select=nota,status,ts_sep,ts_sepd,scan_log,sep_log,updated_at&ts_sep=gt.&updated_at=gte.${ini}&updated_at=lte.${fim}&order=updated_at.desc&limit=${PAGE}&offset=${from}`);
-      if(r&&r.length)allSt=[...allSt,...r];
-      if(!r||r.length<PAGE)break;
-      from+=PAGE;
-    }
-    if(!allSt.length){toast('⚠ Nenhum dado no período');syncDot('ok');return;}
+    const allSt=await sbFetch(`/rest/v1/avacy_status?select=nota,status,ts_sep,ts_sepd,scan_log,sep_log,updated_at&ts_sep=gt.&updated_at=gte.${ini}&updated_at=lte.${fim}&order=updated_at.desc&limit=5000`);
+    if(!allSt||!allSt.length){toast('⚠ Nenhum dado no período');syncDot('ok');return;}
 
-    // Busca detalhes dos registros (nota, fat, loja, cliente, vol)
+    // Busca detalhes via REST (em blocos de 50 usando IN)
     const notas=allSt.map(r=>r.nota);
     const recMap={};
     for(let i=0;i<notas.length;i+=50){
-      const{data:ch}=await db.from('avacy_records').select('nota,fat,loja,nome_cliente,volume,transportadora').in('nota',notas.slice(i,i+50));
+      const chunk=notas.slice(i,i+50).map(n=>encodeURIComponent(n)).join(',');
+      const ch=await sbFetch(`/rest/v1/avacy_records?select=nota,fat,loja,nome_cliente,volume,transportadora&nota=in.(${chunk})`);
       (ch||[]).forEach(r=>recMap[r.nota]=r);
     }
 
