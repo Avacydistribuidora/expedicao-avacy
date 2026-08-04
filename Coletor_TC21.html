@@ -246,7 +246,7 @@ tbody tr:last-child td{border-bottom:none}
 <header>
   <div class="logo">Avacy</div>
   <div style="width:1px;height:30px;background:rgba(255,255,255,.15);margin:0 6px;flex-shrink:0"></div>
-  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v3.9</span></div>
+  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v4.0</span></div>
   <div class="header-center">
     <div class="admin-tabs" id="admin-tabs">
       <button class="atab active" onclick="adminShowTab('sep')" id="atab-sep">📋 Separações</button>
@@ -983,9 +983,11 @@ async function consultarPedido(ctx){
   out.innerHTML=`<div style="font-size:12px;color:${lblClr};padding:4px 0">🔍 Buscando…</div>`;
   syncDot('sync');
   try{
-    // Busca registro via REST direto (evita bug do supabase client)
-    const recsData=await sbFetch(`/rest/v1/avacy_records?select=nota,fat,loja,nome_cliente,transportadora,volume&or=(fat.eq.${encodeURIComponent(codigo)},loja.eq.${encodeURIComponent(codigo)},nota.eq.${encodeURIComponent(codigo)})&limit=3`);
-    const rec=recsData&&recsData.length?recsData[0]:null;
+    // Busca registro: tenta por nota, depois loja, depois fat
+    const _cod=encodeURIComponent(codigo);
+    let rec=null;
+    const _tryRec=async(col)=>{const d=await sbFetch(`/rest/v1/avacy_records?select=nota,fat,loja,nome_cliente,transportadora&${col}=eq.${_cod}&limit=1`);return d&&d.length?d[0]:null;};
+    rec=await _tryRec('nota')||await _tryRec('loja')||await _tryRec('fat');
     const nota=rec?rec.nota:codigo;
     // Busca status via REST direto
     const stArr=await sbFetch(`/rest/v1/avacy_status?select=status,ts_sep,ts_sepd,ts_recebido,ts_conf,ts_exp,scan_log,sep_log&nota=eq.${encodeURIComponent(nota)}&limit=1`);
@@ -1167,7 +1169,7 @@ async function exportRelatorio(tipo){
     const recMap={};
     for(let i=0;i<notas.length;i+=50){
       const chunk=notas.slice(i,i+50).map(n=>encodeURIComponent(n)).join(',');
-      const ch=await sbFetch(`/rest/v1/avacy_records?select=nota,fat,loja,nome_cliente,volume,transportadora&nota=in.(${chunk})`);
+      const ch=await sbFetch(`/rest/v1/avacy_records?select=nota,fat,loja,nome_cliente,transportadora&nota=in.(${chunk})`);
       (ch||[]).forEach(r=>recMap[r.nota]=r);
     }
 
@@ -1179,9 +1181,9 @@ async function exportRelatorio(tipo){
     if(tipo==='sep'){
       const rows=allSt.map((r,i)=>{
         const rec=recMap[r.nota]||{};
-        const sl=typeof r.scan_log==='object'?r.scan_log:(r.scan_log?JSON.parse(r.scan_log):{});
-        const sepl=typeof r.sep_log==='object'?r.sep_log:(r.sep_log?JSON.parse(r.sep_log):{});
-        const sep=sl?.user||sepl?.user||'—';
+        const sl=r.scan_log&&typeof r.scan_log==='object'?r.scan_log:{};
+        const sepl=r.sep_log&&typeof r.sep_log==='object'?r.sep_log:{};
+        const sep=String(sl.user||sepl.user||'—');
         // Tenta calcular duração a partir de ts_sep e ts_sepd (formato DD/MM/YYYY HH:MM)
         let durFmt='—',durMin='';
         if(r.ts_sep&&r.ts_sepd){
@@ -1191,31 +1193,30 @@ async function exportRelatorio(tipo){
         }
         return{
           '#':i+1,
-          'DATA':r.ts_sep?r.ts_sep.substring(0,10):(r.updated_at?new Date(r.updated_at).toLocaleDateString('pt-BR'):'—'),
-          'NOTA':r.nota||'',
-          'FAT':rec.fat||'',
-          'LOJA':rec.loja||'',
-          'CLIENTE':(rec.nome_cliente||'').substring(0,35),
-          'TRANSPORTADORA':rec.transportadora||'',
-          'VOL':rec.volume||'',
-          'SEPARADOR':sep,
-          'STATUS':r.status,
-          'INÍCIO SEP':r.ts_sep||'—',
-          'FIM SEP':r.ts_sepd||'—',
-          'DURAÇÃO':durFmt,
-          'DURAÇÃO (min)':durMin
+          'DATA':String(r.ts_sep?r.ts_sep.substring(0,10):(r.updated_at?new Date(r.updated_at).toLocaleDateString('pt-BR'):'—')),
+          'NOTA':String(r.nota||''),
+          'FAT':String(rec.fat||''),
+          'LOJA':String(rec.loja||''),
+          'CLIENTE':String(rec.nome_cliente||'').substring(0,35),
+          'TRANSPORTADORA':String(rec.transportadora||''),
+          'SEPARADOR':String(sep),
+          'STATUS':String(r.status||''),
+          'INÍCIO SEP':String(r.ts_sep||'—'),
+          'FIM SEP':String(r.ts_sepd||'—'),
+          'DURAÇÃO':String(durFmt),
+          'DURAÇÃO (min)':durMin!==''?Number(durMin):''
         };
       });
       const ws=XLSX.utils.json_to_sheet(rows);
-      ws['!cols']=[{wch:4},{wch:12},{wch:14},{wch:8},{wch:8},{wch:30},{wch:22},{wch:5},{wch:16},{wch:14},{wch:16},{wch:16},{wch:10},{wch:14}];
+      ws['!cols']=[{wch:4},{wch:12},{wch:14},{wch:8},{wch:8},{wch:30},{wch:22},{wch:16},{wch:14},{wch:16},{wch:16},{wch:10},{wch:14}];
       XLSX.utils.book_append_sheet(wb,'Separação',ws);
     }else{
       // Ranking por separador
       const rank={};
       allSt.forEach(r=>{
-        const sl2=typeof r.scan_log==='object'?r.scan_log:(r.scan_log?JSON.parse(r.scan_log):{});
-        const sepl2=typeof r.sep_log==='object'?r.sep_log:(r.sep_log?JSON.parse(r.sep_log):{});
-        const sep=sl2?.user||sepl2?.user||'(sem nome)';
+        const sl2=r.scan_log&&typeof r.scan_log==='object'?r.scan_log:{};
+        const sepl2=r.sep_log&&typeof r.sep_log==='object'?r.sep_log:{};
+        const sep=String(sl2.user||sepl2.user||'(sem nome)');
         if(!rank[sep])rank[sep]={sep,total:0,separados:0,em_sep:0,durMin:0,duracoes:0};
         rank[sep].total++;
         if(r.status==='Separado')rank[sep].separados++;
