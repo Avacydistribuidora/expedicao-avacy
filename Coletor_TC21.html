@@ -246,7 +246,7 @@ tbody tr:last-child td{border-bottom:none}
 <header>
   <div class="logo">Avacy</div>
   <div style="width:1px;height:30px;background:rgba(255,255,255,.15);margin:0 6px;flex-shrink:0"></div>
-  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v4.0</span></div>
+  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v4.1</span></div>
   <div class="header-center">
     <div class="admin-tabs" id="admin-tabs">
       <button class="atab active" onclick="adminShowTab('sep')" id="atab-sep">📋 Separações</button>
@@ -983,11 +983,15 @@ async function consultarPedido(ctx){
   out.innerHTML=`<div style="font-size:12px;color:${lblClr};padding:4px 0">🔍 Buscando…</div>`;
   syncDot('sync');
   try{
-    // Busca registro: tenta por nota, depois loja, depois fat
-    const _cod=encodeURIComponent(codigo);
+    // Busca registro via supabase client (igual ao executarScan — funciona)
     let rec=null;
-    const _tryRec=async(col)=>{const d=await sbFetch(`/rest/v1/avacy_records?select=nota,fat,loja,nome_cliente,transportadora&${col}=eq.${_cod}&limit=1`);return d&&d.length?d[0]:null;};
-    rec=await _tryRec('nota')||await _tryRec('loja')||await _tryRec('fat');
+    try{
+      const{data:recs}=await db.from('avacy_records')
+        .select('nota,fat,loja,nome_cliente')
+        .or(`nota.eq.${codigo},loja.eq.${codigo},fat.eq.${codigo}`)
+        .limit(1);
+      rec=recs&&recs.length?recs[0]:null;
+    }catch(_){}
     const nota=rec?rec.nota:codigo;
     // Busca status via REST direto
     const stArr=await sbFetch(`/rest/v1/avacy_status?select=status,ts_sep,ts_sepd,ts_recebido,ts_conf,ts_exp,scan_log,sep_log&nota=eq.${encodeURIComponent(nota)}&limit=1`);
@@ -1164,13 +1168,16 @@ async function exportRelatorio(tipo){
     const allSt=await sbFetch(`/rest/v1/avacy_status?select=nota,status,ts_sep,ts_sepd,scan_log,sep_log,updated_at&ts_sep=gt.&updated_at=gte.${ini}&updated_at=lte.${fim}&order=updated_at.desc&limit=5000`);
     if(!allSt||!allSt.length){toast('⚠ Nenhum dado no período');syncDot('ok');return;}
 
-    // Busca detalhes via REST (em blocos de 50 usando IN)
+    // Busca detalhes via supabase client (mais compatível com RLS)
     const notas=allSt.map(r=>r.nota);
     const recMap={};
     for(let i=0;i<notas.length;i+=50){
-      const chunk=notas.slice(i,i+50).map(n=>encodeURIComponent(n)).join(',');
-      const ch=await sbFetch(`/rest/v1/avacy_records?select=nota,fat,loja,nome_cliente,transportadora&nota=in.(${chunk})`);
-      (ch||[]).forEach(r=>recMap[r.nota]=r);
+      try{
+        const{data:ch}=await db.from('avacy_records')
+          .select('nota,fat,loja,nome_cliente')
+          .in('nota',notas.slice(i,i+50));
+        (ch||[]).forEach(r=>recMap[r.nota]=r);
+      }catch(_){}
     }
 
     const wb=XLSX.utils.book_new();
@@ -1198,7 +1205,6 @@ async function exportRelatorio(tipo){
           'FAT':String(rec.fat||''),
           'LOJA':String(rec.loja||''),
           'CLIENTE':String(rec.nome_cliente||'').substring(0,35),
-          'TRANSPORTADORA':String(rec.transportadora||''),
           'SEPARADOR':String(sep),
           'STATUS':String(r.status||''),
           'INÍCIO SEP':String(r.ts_sep||'—'),
@@ -1208,7 +1214,7 @@ async function exportRelatorio(tipo){
         };
       });
       const ws=XLSX.utils.json_to_sheet(rows);
-      ws['!cols']=[{wch:4},{wch:12},{wch:14},{wch:8},{wch:8},{wch:30},{wch:22},{wch:16},{wch:14},{wch:16},{wch:16},{wch:10},{wch:14}];
+      ws['!cols']=[{wch:4},{wch:12},{wch:14},{wch:8},{wch:8},{wch:30},{wch:16},{wch:14},{wch:16},{wch:16},{wch:10},{wch:14}];
       XLSX.utils.book_append_sheet(wb,'Separação',ws);
     }else{
       // Ranking por separador
