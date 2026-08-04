@@ -416,7 +416,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v6.8 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v6.9 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -424,7 +424,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v6.8</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v6.9</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1322,8 +1322,9 @@ async function importCSV(){
              fetch(`${_b}/rest/v1/avacy_status?nota=eq.${encodeURIComponent(_sk)}`,{method:'DELETE',headers:_h}).catch(()=>{});}
          }}
         const curSt=stMap[nota].status||'Faturado';
-        // Sempre atualiza ts_fat com a hora real do DT_HR_AUTORIZACAO do QRY
+        // Atualiza ts_fat: usa auth se disponível, senão preserva — mas garante que sempre tenha horário
         if(auth)stMap[nota].ts_fat=auth;
+        else if(!/\d{2}:\d{2}/.test(stMap[nota].ts_fat||''))stMap[nota].ts_fat=n;
         if(rom){
           // Romaneio preenchido → sempre Expedido
           stMap[nota].status='Expedido';
@@ -1380,7 +1381,7 @@ async function importCSV(){
           }else if(_preK===nota){stMap[nota].pre_scan=false;}
         }
         // Atualiza ts_fat com hora real do QRY
-        if(auth)stMap[nota].ts_fat=auth;else if(!stMap[nota].ts_fat)stMap[nota].ts_fat=n;
+        if(auth)stMap[nota].ts_fat=auth;else if(!/\d{2}:\d{2}/.test(stMap[nota].ts_fat||''))stMap[nota].ts_fat=n;
         const _curStN=stMap[nota].status||'Faturado';
         if(rom){
           stMap[nota].status='Expedido';
