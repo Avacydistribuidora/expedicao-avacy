@@ -416,7 +416,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v6.3 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v6.4 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -424,7 +424,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v6.3</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v6.4</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -445,7 +445,9 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
           <a onclick="openSbConfig();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px">🔗 Configurar Sincronização</a>
           <a onclick="openColetorQR();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px">📱 Coletor TC21 — QR Code</a>
           <a id="menuRestoreLink" onclick="restoreStMapFromFile();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px;color:#d97706">🔄 Restaurar Backup (JSON)</a>
+          <a id="menuSepUpdateLink" onclick="restoreSepFromFile();closeActMenu()" style="color:#9333ea">📋 Atualizar Separações (JSON)</a>
           <input type="file" id="restoreFileInput" accept=".json" style="display:none" onchange="handleRestoreFile(this)">
+          <input type="file" id="sepUpdateFileInput" accept=".json" style="display:none" onchange="handleSepUpdateFile(this)">
         </div>
     </div>
     <div class="user-badge" onclick="toggleUserMenu()" id="userBadge">
@@ -1647,6 +1649,41 @@ function toast(msg){
   el.textContent=msg;el.style.opacity='1';
   clearTimeout(el._t);el._t=setTimeout(()=>{el.style.opacity='0';},3000);
 }
+function restoreSepFromFile(){
+  if(getCurrentUser()?.role!=='admin'){alert('Apenas o administrador.');return}
+  document.getElementById('sepUpdateFileInput').click();
+}
+function handleSepUpdateFile(inp){
+  const file=inp.files[0];if(!file)return;
+  const fr=new FileReader();
+  fr.onload=function(e){
+    try{
+      const data=JSON.parse(e.target.result);
+      const keys=Object.keys(data);
+      if(!keys.length)throw new Error('JSON vazio');
+      let upd=0,novo=0;
+      keys.forEach(nota=>{
+        const patch=data[nota];
+        if(!stMap[nota])stMap[nota]={obs:''};
+        const cur=stMap[nota];
+        // Sobrescreve campos de separação (dados manuais têm precedência)
+        const SEP_FIELDS=['ts_sep','ts_sepd','ts_fat','ts_conf','ts_exp','ts_recebido','ts_pend','separador','scan_log','sep_log','rec_log','status'];
+        SEP_FIELDS.forEach(f=>{if(patch[f]!==undefined)cur[f]=patch[f];});
+        // Aplica SLAs recalculados
+        if(patch._sla_fat_sep)cur._sla_fat_sep=patch._sla_fat_sep;
+        if(patch._sla_sep_sepd)cur._sla_sep_sepd=patch._sla_sep_sepd;
+        if(patch._sla_sepd_conf)cur._sla_sepd_conf=patch._sla_sepd_conf;
+        if(patch._sla_total)cur._sla_total=patch._sla_total;
+        upd++;
+      });
+      saveLS();onFilterChange();
+      inp.value='';
+      toast('✔ Separações atualizadas: '+upd+' notas com SLAs recalculados');
+      setTimeout(()=>{if(confirm('Recarregar página para aplicar?'))location.reload();},500);
+    }catch(err){alert('Erro: '+err.message);}
+  };
+  fr.readAsText(file);
+}
 function restoreStMapFromFile(){
   if(getCurrentUser()?.role!=='admin'){alert('Apenas o administrador.');return}
   document.getElementById('restoreFileInput').click();
@@ -1975,8 +2012,8 @@ function exportAnalitico(){
         'DT RECEBIDO':sd.ts_recebido||'','USUÁRIO RECEBIDO':sd.rec_log?.user||'',
         'DT CONFERIDO':tConf,'DT EXPEDIDO':tExp,
         'DT PENDENTE':tPend,'USUÁRIO PENDENTE':sd.pend_log?.user||'',
-        'SLA FAT→SEP':diffHuman(tFat,tSep),'SLA SEP→SEPD':diffHuman(tSep,tSepd),
-        'SLA SEPD→CONF':diffHuman(tSepd,tConf),'SLA TOTAL':diffHuman(tFat,tConf||tSepd||tSep),
+        'SLA FAT→SEP':sd._sla_fat_sep||diffHuman(tFat,tSep),'SLA SEP→SEPD':sd._sla_sep_sepd||diffHuman(tSep,tSepd),
+        'SLA SEPD→CONF':sd._sla_sepd_conf||diffHuman(tSepd,tConf),'SLA TOTAL':sd._sla_total||diffHuman(tFat,tConf||tSepd||tSep),
         'ROMANEIO':r.romaneio||'','CHAVE NFe':r.chave_nfe||'','OBS':sd.obs||'','MENSAGEM':r.mensagem||''
       };
     });
@@ -2354,6 +2391,7 @@ function initDashboard(){
   document.getElementById('menuAdminLink').style.display=isAdmin?'block':'none';
   document.getElementById('menuClearLink').style.display=isAdmin?'block':'none';
   document.getElementById('menuRestoreLink').style.display=isAdmin?'flex':'none';
+  document.getElementById('menuSepUpdateLink').style.display=isAdmin?'flex':'none';
   loadLS();initSelectedDates();renderDateTree();updateSortUI();
   document.getElementById('sfOrigem').value='MATRIZ';
   document.getElementById('sfStatus').value='Faturado';
