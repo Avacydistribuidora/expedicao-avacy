@@ -246,7 +246,7 @@ tbody tr:last-child td{border-bottom:none}
 <header>
   <div class="logo">Avacy</div>
   <div style="width:1px;height:30px;background:rgba(255,255,255,.15);margin:0 6px;flex-shrink:0"></div>
-  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v3.4</span></div>
+  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v3.5</span></div>
   <div class="header-center">
     <div class="admin-tabs" id="admin-tabs">
       <button class="atab active" onclick="adminShowTab('sep')" id="atab-sep">📋 Separações</button>
@@ -1089,12 +1089,12 @@ async function carregarRelPreview(){
   tbody.innerHTML='<tr><td colspan="6" style="color:rgba(255,255,255,.3);text-align:center;padding:12px">Carregando…</td></tr>';
   syncDot('sync');
   try{
-    // Usa avacy_status filtrado por updated_at (fonte principal de dados)
+    // Histórico: todos com ts_sep preenchido, filtrado por updated_at (proxy de data)
     const{data:st,error}=await db.from('avacy_status')
-      .select('nota,status,ts_sep,ts_sepd,separador,scan_log,sep_log,updated_at')
-      .in('status',['Em Separação','Separado'])
+      .select('nota,status,ts_sep,ts_sepd,scan_log,sep_log,updated_at')
+      .not('ts_sep','is',null)
       .gte('updated_at',rng.ini).lte('updated_at',rng.fim)
-      .order('updated_at',{ascending:false}).limit(100);
+      .order('updated_at',{ascending:false}).limit(200);
     if(error)throw error;
     const rows=st||[];
     document.getElementById('rk-sep').textContent=rows.filter(r=>r.status==='Em Separação').length;
@@ -1102,7 +1102,7 @@ async function carregarRelPreview(){
     document.getElementById('rk-tot').textContent=rows.length;
     if(!rows.length){tbody.innerHTML='<tr><td colspan="6" style="color:rgba(255,255,255,.3);text-align:center;padding:12px">Sem dados no período</td></tr>';syncDot('ok');return;}
     tbody.innerHTML=rows.map(r=>{
-      const sep=r.separador||r.scan_log?.user||r.sep_log?.user||'—';
+      const sep=r.scan_log?.user||r.sep_log?.user||'—';
       const tsSep=r.ts_sep||'—';
       const tsSepd=r.ts_sepd||'—';
       const cls=r.status==='Separado'?'b-sepd':'b-sep';
@@ -1127,12 +1127,12 @@ async function exportRelatorio(tipo){
   toast('⏳ Gerando relatório…',5000);
   syncDot('sync');
   try{
-    // Busca em avacy_status (fonte principal) filtrado por updated_at
+    // Histórico: todos com ts_sep preenchido, filtrado por updated_at
     let allSt=[];let from=0;const PAGE=1000;
     while(true){
       const{data,error}=await db.from('avacy_status')
-        .select('nota,status,ts_sep,ts_sepd,separador,scan_log,sep_log,updated_at')
-        .in('status',['Em Separação','Separado'])
+        .select('nota,status,ts_sep,ts_sepd,scan_log,sep_log,updated_at')
+        .not('ts_sep','is',null)
         .gte('updated_at',rng.ini).lte('updated_at',rng.fim)
         .order('updated_at',{ascending:false}).range(from,from+PAGE-1);
       if(error)throw error;
@@ -1158,7 +1158,7 @@ async function exportRelatorio(tipo){
     if(tipo==='sep'){
       const rows=allSt.map((r,i)=>{
         const rec=recMap[r.nota]||{};
-        const sep=r.separador||r.scan_log?.user||r.sep_log?.user||'—';
+        const sep=r.scan_log?.user||r.sep_log?.user||'—';
         // Tenta calcular duração a partir de ts_sep e ts_sepd (formato DD/MM/YYYY HH:MM)
         let durFmt='—',durMin='';
         if(r.ts_sep&&r.ts_sepd){
@@ -1190,7 +1190,7 @@ async function exportRelatorio(tipo){
       // Ranking por separador
       const rank={};
       allSt.forEach(r=>{
-        const sep=r.separador||r.scan_log?.user||r.sep_log?.user||'(sem nome)';
+        const sep=r.scan_log?.user||r.sep_log?.user||'(sem nome)';
         if(!rank[sep])rank[sep]={sep,total:0,separados:0,em_sep:0,durMin:0,duracoes:0};
         rank[sep].total++;
         if(r.status==='Separado')rank[sep].separados++;
