@@ -416,7 +416,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v6.6 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v6.7 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -424,7 +424,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v6.6</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v6.7</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1661,7 +1661,9 @@ function handleSepUpdateFile(inp){
       const data=JSON.parse(e.target.result);
       const keys=Object.keys(data);
       if(!keys.length)throw new Error('JSON vazio');
-      let upd=0,novo=0;
+      let upd=0;
+      const now=new Date().toISOString();
+      const updatedNotas=[];
       keys.forEach(nota=>{
         const patch=data[nota];
         if(!stMap[nota])stMap[nota]={obs:''};
@@ -1670,22 +1672,44 @@ function handleSepUpdateFile(inp){
         const SEP_FIELDS=['ts_sep','ts_sepd','ts_fat','ts_conf','ts_exp','ts_recebido','ts_pend','separador','scan_log','sep_log','rec_log','status'];
         SEP_FIELDS.forEach(f=>{
           const pv=patch[f];
-          // Só ignora se o patch não tem o campo ou está vazio
           if(pv===undefined||pv===null||pv==='')return;
-          if(typeof pv==='object'&&!pv.user&&!pv.ts)return; // log vazio
-          cur[f]=pv; // planilha preenchida → sobrescreve
+          if(typeof pv==='object'&&!pv.user&&!pv.ts)return;
+          cur[f]=pv;
         });
-        // Aplica SLAs recalculados
         if(patch._sla_fat_sep)cur._sla_fat_sep=patch._sla_fat_sep;
         if(patch._sla_sep_sepd)cur._sla_sep_sepd=patch._sla_sep_sepd;
         if(patch._sla_sepd_conf)cur._sla_sepd_conf=patch._sla_sepd_conf;
         if(patch._sla_total)cur._sla_total=patch._sla_total;
+        // Marca timestamp local AGORA para o sbPollStatus não sobrescrever
+        cur._ts=now;
+        updatedNotas.push(nota);
         upd++;
       });
       saveLS();onFilterChange();
       inp.value='';
-      toast('✔ Separações atualizadas: '+upd+' notas com SLAs recalculados');
-      setTimeout(()=>{if(confirm('Recarregar página para aplicar?'))location.reload();},500);
+      toast('✔ '+upd+' notas atualizadas — enviando ao Supabase...');
+      // Push em lote para o Supabase (evita sync sobrescrever)
+      if(SB_URL&&SB_KEY&&updatedNotas.length){
+        (async()=>{
+          try{
+            const CHUNK=100;
+            for(let i=0;i<updatedNotas.length;i+=CHUNK){
+              const rows=updatedNotas.slice(i,i+CHUNK).map(nota=>{
+                const sd=stMap[nota]||{};
+                return{nota,status:sd.status||'Faturado',obs:sd.obs||'',priority:!!sd.priority,
+                  ts_fat:sd.ts_fat||null,ts_sep:sd.ts_sep||null,ts_sepd:sd.ts_sepd||null,
+                  ts_conf:sd.ts_conf||null,ts_exp:sd.ts_exp||null,ts_pend:sd.ts_pend||null,
+                  pend_prev:sd.pend_prev||null,scan_log:sd.scan_log||null,sep_log:sd.sep_log||null,
+                  pend_log:sd.pend_log||null,updated_at:now};
+              });
+              await sbPost('/rest/v1/avacy_status',rows);
+            }
+            toast('✔ Supabase atualizado: '+upd+' notas com separação e SLAs');
+          }catch(e){toast('⚠ Erro ao salvar no Supabase: '+e.message);}
+        })();
+      }else{
+        setTimeout(()=>{if(confirm('Recarregar página para aplicar?'))location.reload();},500);
+      }
     }catch(err){alert('Erro: '+err.message);}
   };
   fr.readAsText(file);
