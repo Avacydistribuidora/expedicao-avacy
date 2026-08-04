@@ -416,7 +416,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v6.9 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v7.0 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -424,7 +424,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v6.9</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v7.0</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -569,6 +569,9 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
       </select>
       <select id="sfVend" onchange="render()">
         <option value="">Todos vendedores</option>
+      </select>
+      <select id="sfSep" onchange="render()">
+        <option value="">Todos separadores</option>
       </select>
       <div class="spacer"></div>
       <button class="btn-clear-filter" onclick="clearFilters()" title="Limpar todos os filtros">✕ Limpar filtros</button>
@@ -1812,9 +1815,9 @@ function clearFilters(){
   document.getElementById('srch').value='';
   onFilterChange();
 }
-function getFilters(){return{srch:document.getElementById('srch').value.toLowerCase(),sfSt:document.getElementById('sfStatus').value,sfOrig:document.getElementById('sfOrigem').value,sfTr:document.getElementById('sfTransp').value,sfVend:document.getElementById('sfVend').value,showExp:document.getElementById('showExp').checked}}
-function applyFilters(pool,filters,exclTr=false,exclVend=false){
-  const{srch,sfSt,sfOrig,sfTr,sfVend,showExp}=filters;
+function getFilters(){return{srch:document.getElementById('srch').value.toLowerCase(),sfSt:document.getElementById('sfStatus').value,sfOrig:document.getElementById('sfOrigem').value,sfTr:document.getElementById('sfTransp').value,sfVend:document.getElementById('sfVend').value,sfSep:document.getElementById('sfSep').value,showExp:document.getElementById('showExp').checked}}
+function applyFilters(pool,filters,exclTr=false,exclVend=false,exclSep=false){
+  const{srch,sfSt,sfOrig,sfTr,sfVend,sfSep,showExp}=filters;
   return pool.filter(r=>{
     const sd=stMap[r.nota]||{};const st=sd.status||'Faturado';
     if(st==='Expedido'&&!showExp)return false;
@@ -1823,6 +1826,7 @@ function applyFilters(pool,filters,exclTr=false,exclVend=false){
     if(sfOrig&&r.origem!==sfOrig)return false;
     if(!exclTr&&sfTr&&r.transportadora!==sfTr)return false;
     if(!exclVend&&sfVend&&r.vendedor!==sfVend)return false;
+    if(!exclSep&&sfSep&&(sd.separador||'')!==sfSep)return false;
     if(!isDateSelected(r.data_emissao))return false;
     if(srch){const hay=[r.nota,r.nome_cliente,r.transportadora,r.fat,r.loja,r.origem].join(' ').toLowerCase();if(!hay.includes(srch))return false}
     return true;
@@ -1853,6 +1857,13 @@ function fillTransp(){
   selV.innerHTML='<option value="">Todos vendedores</option>';
   [...setV].sort().forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;selV.appendChild(o)});
   if(curV&&setV.has(curV))selV.value=curV;else selV.value='';
+  // Separador
+  const selSep=document.getElementById('sfSep'),curSep=selSep.value;
+  const filteredSep=applyFilters([...activeRecs,...expedidoRecs],getFilters(),false,false,true);
+  const setSep=new Set(filteredSep.map(r=>stMap[r.nota]?.separador||'').filter(Boolean));
+  selSep.innerHTML='<option value="">Todos separadores</option>';
+  [...setSep].sort().forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;selSep.appendChild(o)});
+  if(curSep&&setSep.has(curSep))selSep.value=curSep;else selSep.value='';
 }
 function clearFilters(){
   document.getElementById('srch').value='';
@@ -1860,6 +1871,7 @@ function clearFilters(){
   document.getElementById('sfOrigem').value='';
   document.getElementById('sfTransp').value='';
   document.getElementById('sfVend').value='';
+  document.getElementById('sfSep').value='';
   document.getElementById('showExp').checked=true;
   selectedDates=null; // todos os meses
   renderDateTree();onFilterChange();
