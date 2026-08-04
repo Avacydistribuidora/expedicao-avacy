@@ -416,7 +416,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v7.2 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v7.3 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -424,7 +424,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v7.2</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v7.3</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -2564,21 +2564,125 @@ initUsers();
   if(_cu){document.getElementById('loginScreen').classList.add('hidden');initDashboard()}
 })();
 
-function openColetorQR(){document.getElementById('modalColetorQR').classList.add('open')}
+function openColetorQR(){
+  const isAdmin=getCurrentUser()?.role==='admin';
+  document.getElementById('tc21TabAdmin').style.display=isAdmin?'':'none';
+  document.getElementById('tc21TabDebipe').style.display='';
+  switchTC21Tab('qr');
+  document.getElementById('modalColetorQR').classList.add('open');
+}
 function closeColetorQR(){document.getElementById('modalColetorQR').classList.remove('open')}
+function switchTC21Tab(tab){
+  ['qr','debipe','admin'].forEach(t=>{
+    const btn=document.getElementById('tc21Btn_'+t);
+    const pnl=document.getElementById('tc21Pnl_'+t);
+    if(btn)btn.style.fontWeight=t===tab?'800':'400';
+    if(btn)btn.style.borderBottom=t===tab?'2px solid #0d2167':'2px solid transparent';
+    if(pnl)pnl.style.display=t===tab?'':'none';
+  });
+  if(tab==='debipe')document.getElementById('debipeNota').focus();
+}
+function debipeSearch(){
+  const q=(document.getElementById('debipeNota').value||'').trim();
+  const out=document.getElementById('debipeResult');
+  if(!q){out.innerHTML='';return;}
+  let log=[];try{log=JSON.parse(localStorage.getItem(LS_BIPE)||'[]');}catch(e){}
+  // Encontra nota real (aceita nota, FAT ou LOJA)
+  const recs=[...activeRecs,...expedidoRecs];
+  const found=recs.find(r=>r.nota===q||r.fat===q||r.loja===q);
+  const nota=found?found.nota:q;
+  const entries=log.filter(e=>e.nota===nota||e.code===q).sort((a,b)=>b.dt.localeCompare(a.dt));
+  const sd=stMap[nota]||{};
+  const st=sd.status||'Faturado';
+  // Mapa de cor por ação
+  const acColor={'Em Separação':'#d97706','Separado':'#9333ea','Conferido':'#2463cc','Expedido':'#16a34a','Recebido':'#ea580c','Pendente':'#ef4444'};
+  let html=`<div style="margin-bottom:8px;font-size:12px;color:#6b7a99"><b style="color:#0d2167">${nota}</b> — Status atual: <b style="color:${acColor[st]||'#6b7a99'}">${st}</b></div>`;
+  if(!entries.length){html+='<div style="font-size:12px;color:#94a3b8;text-align:center;padding:12px 0">Nenhum bipe encontrado para esta nota</div>';}
+  else{
+    html+='<div style="max-height:220px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px">';
+    entries.forEach((e,i)=>{
+      const clr=acColor[e.action]||'#6b7a99';
+      html+=`<div style="padding:7px 10px;${i?'border-top:1px solid #f1f5f9':''};display:flex;align-items:center;gap:8px">
+        <span style="background:${clr}22;color:${clr};border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700;white-space:nowrap">${e.action}</span>
+        <span style="font-size:11px;color:#334155;flex:1">${e.user||'?'}</span>
+        <span style="font-size:10px;color:#94a3b8;white-space:nowrap">${(e.dt||'').substring(0,16).replace('T',' ')}</span>
+      </div>`;
+    });
+    html+='</div>';
+  }
+  // Botão de debipe (reverter último status bipado) — admin only
+  const isAdmin=getCurrentUser()?.role==='admin';
+  const canDebipe=isAdmin&&['Em Separação','Separado','Recebido'].includes(st);
+  const prevSt=st==='Em Separação'?'Faturado':st==='Separado'?'Em Separação':st==='Recebido'?'Faturado':'';
+  if(canDebipe){
+    html+=`<button onclick="debipeConfirm('${nota}','${prevSt}')" style="margin-top:10px;width:100%;padding:9px;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">⚠️ Desfazer "${st}" → voltar para "${prevSt}"</button>`;
+  }else if(isAdmin&&nota&&!canDebipe&&st!=='Faturado'){
+    html+=`<div style="margin-top:8px;font-size:11px;color:#94a3b8;text-align:center">Status "${st}" não permite debipagem automática. Use o menu de ações na tabela.</div>`;
+  }
+  out.innerHTML=html;
+}
+function debipeConfirm(nota,prevSt){
+  if(!confirm(`Confirma desfazer a bipagem de ${nota}?\n\nStatus atual → "${prevSt}"`))return;
+  if(!stMap[nota])return;
+  const sd=stMap[nota];
+  const curSt=sd.status||'Faturado';
+  // Reverte campos conforme status desfeito
+  if(curSt==='Em Separação'){delete sd.ts_sep;delete sd.scan_log;if(sd.pre_scan)delete sd.pre_scan;}
+  if(curSt==='Separado'){delete sd.ts_sepd;delete sd.sep_log;}
+  if(curSt==='Recebido'){delete sd.ts_recebido;delete sd.rec_log;}
+  sd.status=prevSt;
+  sd._ts=new Date().toISOString();
+  saveLS();sbSyncStatus(nota);onFilterChange();
+  // Registra debipe no log
+  appendBipeLog(nota,'DEBIPE ('+curSt+' → '+prevSt+')',getCurrentUser()?.username||'?',nowStr(),nota);
+  toast('✔ Debipagem: '+nota+' → '+prevSt);
+  debipeSearch(); // atualiza resultado
+}
 </script>
 
 <!-- Modal QR Code Coletor TC21 -->
 <div class="ov" id="modalColetorQR" onclick="if(event.target===this)closeColetorQR()" style="align-items:center;justify-content:center">
-  <div style="background:white;border-radius:16px;padding:28px 24px;max-width:340px;width:90%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.18)">
-    <div style="font-size:18px;font-weight:800;color:#0d2167;margin-bottom:4px">📱 Coletor TC21</div>
-    <div style="font-size:12px;color:#6b7a99;margin-bottom:18px">Aponte a câmera do TC21 para abrir o coletor</div>
-    <img src="https://api.qrserver.com/v1/create-qr-code/?data=https://avacydistribuidora.github.io/expedicao-avacy/Coletor_TC21.html&size=280x280&margin=2"
-         alt="QR Code Coletor" style="width:220px;height:220px;border:3px solid #e2e8f0;border-radius:10px;display:block;margin:0 auto 16px">
-    <div style="font-size:10px;color:#94a3b8;word-break:break-all;margin-bottom:16px">
-      avacydistribuidora.github.io/expedicao-avacy/Coletor_TC21.html
+  <div style="background:white;border-radius:16px;padding:24px;max-width:420px;width:95%;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:17px;font-weight:800;color:#0d2167">📱 Coletor TC21</div>
+      <button onclick="closeColetorQR()" style="background:none;border:none;font-size:18px;color:#94a3b8;cursor:pointer">✕</button>
     </div>
-    <button onclick="closeColetorQR()" style="padding:10px 28px;background:#0d2167;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">Fechar</button>
+    <!-- Abas -->
+    <div style="display:flex;gap:0;border-bottom:1px solid #e2e8f0;margin-bottom:16px">
+      <button id="tc21Btn_qr" onclick="switchTC21Tab('qr')" style="flex:1;background:none;border:none;border-bottom:2px solid #0d2167;padding:7px 4px;font-size:12px;font-weight:800;color:#0d2167;cursor:pointer">QR Code</button>
+      <button id="tc21Btn_debipe" onclick="switchTC21Tab('debipe')" style="flex:1;background:none;border:none;border-bottom:2px solid transparent;padding:7px 4px;font-size:12px;font-weight:400;color:#6b7a99;cursor:pointer">🔍 Debipagem</button>
+      <button id="tc21Btn_admin" onclick="switchTC21Tab('admin')" style="flex:1;background:none;border:none;border-bottom:2px solid transparent;padding:7px 4px;font-size:12px;font-weight:400;color:#6b7a99;cursor:pointer">⚙️ Admin</button>
+    </div>
+    <!-- Painel QR -->
+    <div id="tc21Pnl_qr" style="text-align:center">
+      <div style="font-size:12px;color:#6b7a99;margin-bottom:12px">Aponte a câmera do TC21 para abrir o coletor</div>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?data=https://avacydistribuidora.github.io/expedicao-avacy/Coletor_TC21.html&size=280x280&margin=2"
+           alt="QR Code Coletor" style="width:200px;height:200px;border:3px solid #e2e8f0;border-radius:10px;display:block;margin:0 auto 12px">
+      <div style="font-size:10px;color:#94a3b8;word-break:break-all;margin-bottom:4px">avacydistribuidora.github.io/expedicao-avacy/Coletor_TC21.html</div>
+    </div>
+    <!-- Painel Debipe -->
+    <div id="tc21Pnl_debipe" style="display:none">
+      <div style="font-size:12px;color:#6b7a99;margin-bottom:10px">Digite ou bipe o código da nota para consultar o histórico e desfazer uma bipagem.</div>
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <input id="debipeNota" type="text" placeholder="Nota, FAT ou LOJA…" oninput="debipeSearch()" onkeydown="if(event.key==='Enter')debipeSearch()"
+          style="flex:1;padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:13px;outline:none">
+        <button onclick="debipeSearch()" style="padding:8px 12px;background:#0d2167;color:white;border:none;border-radius:7px;font-size:13px;cursor:pointer">🔍</button>
+      </div>
+      <div id="debipeResult"></div>
+    </div>
+    <!-- Painel Admin -->
+    <div id="tc21Pnl_admin" style="display:none">
+      <div style="font-size:12px;color:#6b7a99;margin-bottom:14px">Relatórios e ferramentas administrativas do coletor.</div>
+      <button onclick="exportBipeLog();closeColetorQR()" style="width:100%;margin-bottom:8px;padding:11px;background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;text-align:left">
+        📊 Exportar Log Completo de Bipes (.xlsx)<br><span style="font-size:10px;font-weight:400;color:#64748b">Todos os eventos de bipagem com data, operador e ação</span>
+      </button>
+      <button onclick="recoverSeparadoresFromBipeLog();closeColetorQR()" style="width:100%;margin-bottom:8px;padding:11px;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;text-align:left">
+        🔍 Recuperar Separadores do Log<br><span style="font-size:10px;font-weight:400;color:#64748b">Preenche separadores ausentes cruzando com o log de bipes</span>
+      </button>
+      <button onclick="exportBipados();closeColetorQR()" style="width:100%;padding:11px;background:#faf5ff;color:#7e22ce;border:1px solid #e9d5ff;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;text-align:left">
+        📋 Relatório de Bipados Sep/Separado (.xlsx)<br><span style="font-size:10px;font-weight:400;color:#64748b">Relatório consolidado de separação por pedido</span>
+      </button>
+    </div>
   </div>
 </div>
 
