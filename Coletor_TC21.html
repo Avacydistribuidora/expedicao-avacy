@@ -246,7 +246,7 @@ tbody tr:last-child td{border-bottom:none}
 <header>
   <div class="logo">Avacy</div>
   <div style="width:1px;height:30px;background:rgba(255,255,255,.15);margin:0 6px;flex-shrink:0"></div>
-  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v3.5</span></div>
+  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v3.6</span></div>
   <div class="header-center">
     <div class="admin-tabs" id="admin-tabs">
       <button class="atab active" onclick="adminShowTab('sep')" id="atab-sep">📋 Separações</button>
@@ -1092,7 +1092,7 @@ async function carregarRelPreview(){
     // Histórico: todos com ts_sep preenchido, filtrado por updated_at (proxy de data)
     const{data:st,error}=await db.from('avacy_status')
       .select('nota,status,ts_sep,ts_sepd,scan_log,sep_log,updated_at')
-      .not('ts_sep','is',null)
+      .gt('ts_sep','')
       .gte('updated_at',rng.ini).lte('updated_at',rng.fim)
       .order('updated_at',{ascending:false}).limit(200);
     if(error)throw error;
@@ -1132,7 +1132,7 @@ async function exportRelatorio(tipo){
     while(true){
       const{data,error}=await db.from('avacy_status')
         .select('nota,status,ts_sep,ts_sepd,scan_log,sep_log,updated_at')
-        .not('ts_sep','is',null)
+        .gt('ts_sep','')
         .gte('updated_at',rng.ini).lte('updated_at',rng.fim)
         .order('updated_at',{ascending:false}).range(from,from+PAGE-1);
       if(error)throw error;
