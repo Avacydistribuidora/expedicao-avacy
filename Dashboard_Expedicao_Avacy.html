@@ -416,7 +416,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v6.7 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v6.8 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -424,7 +424,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v6.7</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v6.8</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -442,6 +442,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
         <a onclick="exportConsolidado();closeActMenu()">📤 Exportar Consolidado (.xlsx)</a>
         <a onclick="exportAnalitico();closeActMenu()">📈 Exportar Analítico / SLA (.xlsx)</a>
         <a onclick="exportBipados();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px">📋 Relatório de Bipados (Sep/Separado)</a>
+        <a onclick="exportBipeLog();closeActMenu()">🗂 Log Histórico de Bipes</a>
           <a onclick="openSbConfig();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px">🔗 Configurar Sincronização</a>
           <a onclick="openColetorQR();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px">📱 Coletor TC21 — QR Code</a>
           <a id="menuRestoreLink" onclick="restoreStMapFromFile();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px;color:#d97706">🔄 Restaurar Backup (JSON)</a>
@@ -790,7 +791,7 @@ ALTER TABLE avacy_records ADD COLUMN IF NOT EXISTS chave_nfe TEXT;</pre>
 // ═══════════════════════════════════════════════════════════
 // CONSTANTES
 // ═══════════════════════════════════════════════════════════
-const LS_REC='avacy8_rec',LS_ST='avacy8_st',LS_USERS='avacy8_users',SS_USER='avacy8_session';
+const LS_REC='avacy8_rec',LS_ST='avacy8_st',LS_USERS='avacy8_users',SS_USER='avacy8_session',LS_BIPE='avacy8_bipe_log';
 const STATUS_ORDER={Faturado:1,Recebido:1.5,'Em Separação':2,Separado:3,Conferido:4,Expedido:5,Pendente:0.5};
 const SC_CLASS={Faturado:'fat','Em Separação':'sep',Separado:'sepd',Recebido:'recebido',Conferido:'conf',Expedido:'exp',Pendente:'pend',Cancelado:'canc',Devolução:'dev'};
 const MESES=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -1477,6 +1478,7 @@ function doBipe(){
       stMap[val]={...existing,status:newSt,pre_scan:true,[tsKey]:n,[logKey]:{user:cu?.username||'?',ts:n,code:val},_ts:new Date().toISOString()};
       saveLS();sbSyncStatus(val);
       bipeLogEntries.unshift({nota:val,user:cu?.username||'?',ts:n,ok:true,action:newSt+' (pré-bipe)',mode:bipeMode});
+      appendBipeLog(val,newSt+' (pré-bipe)',cu?.username||'?',n,val);
       if(bipeLogEntries.length>20)bipeLogEntries=bipeLogEntries.slice(0,20);
       showBipeFeedback('ok',`⏳ Pré-bipe "${val}" → ${newSt} (aguarda importação CSV)`);
       renderBipeLog();
@@ -1493,16 +1495,19 @@ function doBipe(){
       sd.scan_log={user:cu?.username||'?',ts:n,code:val};sd._ts=new Date().toISOString();
       stMap[r.nota]=sd;changed++;
       bipeLogEntries.unshift({nota:r.nota,user:cu?.username||'?',ts:n,ok:true,action:'Em Separação',mode:'sep'});
+      appendBipeLog(r.nota,'Em Separação',cu?.username||'?',n,val);
     }else if(bipeMode==='sepd'&&st==='Em Separação'){
       sd.status='Separado';sd.ts_sepd=n;
       sd.sep_log={user:cu?.username||'?',ts:n,code:val};sd._ts=new Date().toISOString();
       stMap[r.nota]=sd;changed++;
       bipeLogEntries.unshift({nota:r.nota,user:cu?.username||'?',ts:n,ok:true,action:'Separado',mode:'sepd'});
+      appendBipeLog(r.nota,'Separado',cu?.username||'?',n,val);
     }else if(bipeMode==='recebido'&&(st==='Faturado'||st==='Pendente')){
       sd.status='Recebido';sd.ts_recebido=n;
       sd.rec_log={user:cu?.username||'?',ts:n,code:val};sd._ts=new Date().toISOString();
       stMap[r.nota]=sd;changed++;
       bipeLogEntries.unshift({nota:r.nota,user:cu?.username||'?',ts:n,ok:true,action:'Recebido',mode:'recebido'});
+      appendBipeLog(r.nota,'Recebido',cu?.username||'?',n,val);
     }else{
       skip++;bipeLogEntries.unshift({nota:r.nota,user:cu?.username||'?',ts:n,ok:false,st});
     }
@@ -1640,6 +1645,36 @@ function editSeparador(nota){
   stMap[nota]._ts=new Date().toISOString();
   saveLS();sbSyncStatus(nota);onFilterChange();
   toast('✔ Separador: '+val+' — '+tsVal);
+}
+function appendBipeLog(nota,action,user,ts,code){
+  try{
+    const log=JSON.parse(localStorage.getItem(LS_BIPE)||'[]');
+    const r=[...activeRecs,...expedidoRecs].find(x=>x.nota===nota)||{};
+    log.push({dt:ts,nota,fat:r.fat||'',loja:r.loja||'',cliente:r.nome_cliente||'',
+      transportadora:r.transportadora||'',origem:r.origem||'',volume:r.volume||'',
+      action,user,code});
+    localStorage.setItem(LS_BIPE,JSON.stringify(log));
+  }catch(e){console.warn('appendBipeLog:',e);}
+}
+function exportBipeLog(){
+  loadXLSX(()=>{
+    let log=[];
+    try{log=JSON.parse(localStorage.getItem(LS_BIPE)||'[]');}catch(e){}
+    if(!log.length){alert('Nenhum bipe registrado ainda.');return;}
+    const rows=log.slice().reverse().map((e,i)=>({
+      '#':i+1,'DATA/HORA':e.dt,'NOTA':e.nota,'FAT':e.fat,'LOJA':e.loja,
+      'CLIENTE':e.cliente,'TRANSPORTADORA':e.transportadora,'ORIGEM':e.origem,
+      'VOLUME':e.volume,'AÇÃO':e.action,'OPERADOR':e.user,'CÓDIGO BIPADO':e.code
+    }));
+    const wb=XLSX.utils.book_new();
+    const ws=XLSX.utils.json_to_sheet(rows);
+    // Larguras
+    ws['!cols']=[{wch:4},{wch:18},{wch:14},{wch:10},{wch:10},{wch:30},{wch:28},{wch:8},{wch:7},{wch:18},{wch:14},{wch:14}];
+    XLSX.utils.book_append_sheet(wb,'Log Bipes',ws);
+    const d=new Date();const dd=String(d.getDate()).padStart(2,'0');const mm=String(d.getMonth()+1).padStart(2,'0');
+    XLSX.writeFile(wb,`Log_Bipes_AVACY_${dd}-${mm}-${d.getFullYear()}.xlsx`);
+    toast('✔ Log exportado: '+rows.length+' eventos');
+  });
 }
 function toast(msg){
   let el=document.getElementById('_toast');
