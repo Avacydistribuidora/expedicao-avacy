@@ -246,7 +246,7 @@ tbody tr:last-child td{border-bottom:none}
 <header>
   <div class="logo">Avacy</div>
   <div style="width:1px;height:30px;background:rgba(255,255,255,.15);margin:0 6px;flex-shrink:0"></div>
-  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v3.3</span></div>
+  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v3.4</span></div>
   <div class="header-center">
     <div class="admin-tabs" id="admin-tabs">
       <button class="atab active" onclick="adminShowTab('sep')" id="atab-sep">📋 Separações</button>
@@ -469,7 +469,7 @@ tbody tr:last-child td{border-bottom:none}
       <h3>Prévia — últimos registros <button onclick="carregarRelPreview()" style="border:1px solid rgba(255,255,255,.2);background:none;color:rgba(255,255,255,.45);border-radius:5px;padding:2px 9px;font-size:11px;cursor:pointer">↻</button></h3>
       <div class="tw">
         <table class="adm-tbl">
-          <thead><tr><th>PEDIDO</th><th>SEPARADOR</th><th>STATUS</th><th>INÍCIO</th><th>FIM</th><th>DURAÇÃO</th></tr></thead>
+          <thead><tr><th>NOTA</th><th>SEPARADOR</th><th>STATUS</th><th>INÍCIO SEP</th><th>FIM SEP</th><th>DURAÇÃO</th></tr></thead>
           <tbody id="rel-preview-tbody">
             <tr><td colspan="6" style="color:rgba(255,255,255,.3);text-align:center;padding:12px">—</td></tr>
           </tbody>
@@ -1089,25 +1089,30 @@ async function carregarRelPreview(){
   tbody.innerHTML='<tr><td colspan="6" style="color:rgba(255,255,255,.3);text-align:center;padding:12px">Carregando…</td></tr>';
   syncDot('sync');
   try{
-    const{data,error}=await db.from('separacoes').select('pedido,status,separador,inicio,fim').gte('inicio',rng.ini).lte('inicio',rng.fim).order('inicio',{ascending:false}).limit(100);
+    // Usa avacy_status filtrado por updated_at (fonte principal de dados)
+    const{data:st,error}=await db.from('avacy_status')
+      .select('nota,status,ts_sep,ts_sepd,separador,scan_log,sep_log,updated_at')
+      .in('status',['Em Separação','Separado'])
+      .gte('updated_at',rng.ini).lte('updated_at',rng.fim)
+      .order('updated_at',{ascending:false}).limit(100);
     if(error)throw error;
-    document.getElementById('rk-sep').textContent=(data||[]).filter(r=>r.status==='em_separacao').length;
-    document.getElementById('rk-sepd').textContent=(data||[]).filter(r=>r.status==='separado').length;
-    document.getElementById('rk-tot').textContent=(data||[]).length;
-    if(!data||!data.length){tbody.innerHTML='<tr><td colspan="6" style="color:rgba(255,255,255,.3);text-align:center;padding:12px">Sem dados no período</td></tr>';syncDot('ok');return;}
-    tbody.innerHTML=data.map(r=>{
-      const ini=r.inicio?new Date(r.inicio).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
-      const fim=r.fim?new Date(r.fim).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'—';
-      const dur=r.inicio&&r.fim?Math.round((new Date(r.fim)-new Date(r.inicio))/60000)+'min':'—';
-      const cls=r.status==='separado'?'b-sepd':'b-sep';
-      const lbl=r.status==='separado'?'Separado':'Em Sep.';
+    const rows=st||[];
+    document.getElementById('rk-sep').textContent=rows.filter(r=>r.status==='Em Separação').length;
+    document.getElementById('rk-sepd').textContent=rows.filter(r=>r.status==='Separado').length;
+    document.getElementById('rk-tot').textContent=rows.length;
+    if(!rows.length){tbody.innerHTML='<tr><td colspan="6" style="color:rgba(255,255,255,.3);text-align:center;padding:12px">Sem dados no período</td></tr>';syncDot('ok');return;}
+    tbody.innerHTML=rows.map(r=>{
+      const sep=r.separador||r.scan_log?.user||r.sep_log?.user||'—';
+      const tsSep=r.ts_sep||'—';
+      const tsSepd=r.ts_sepd||'—';
+      const cls=r.status==='Separado'?'b-sepd':'b-sep';
       return`<tr>
-        <td style="font-family:monospace;font-weight:700;color:white;font-size:12px">${esc(r.pedido)}</td>
-        <td style="font-size:11px;color:rgba(255,255,255,.6)">${esc(r.separador||'—')}</td>
-        <td><span class="badge-sm ${cls}">${lbl}</span></td>
-        <td style="font-size:11px;color:rgba(255,255,255,.4)">${ini}</td>
-        <td style="font-size:11px;color:rgba(255,255,255,.4)">${fim}</td>
-        <td style="font-size:11px;color:rgba(255,255,255,.4)">${dur}</td>
+        <td style="font-family:monospace;font-weight:700;color:white;font-size:12px">${esc(r.nota)}</td>
+        <td style="font-size:11px;color:rgba(255,255,255,.6)">${esc(sep)}</td>
+        <td><span class="badge-sm ${cls}">${esc(r.status)}</span></td>
+        <td style="font-size:11px;color:rgba(255,255,255,.4)">${esc(tsSep)}</td>
+        <td style="font-size:11px;color:rgba(255,255,255,.4)">${esc(tsSepd)}</td>
+        <td style="font-size:11px;color:rgba(255,255,255,.4)">—</td>
       </tr>`;
     }).join('');
     syncDot('ok');
@@ -1122,16 +1127,28 @@ async function exportRelatorio(tipo){
   toast('⏳ Gerando relatório…',5000);
   syncDot('sync');
   try{
-    // Busca todos os dados do período
-    let allData=[];let from=0;const PAGE=1000;
+    // Busca em avacy_status (fonte principal) filtrado por updated_at
+    let allSt=[];let from=0;const PAGE=1000;
     while(true){
-      const{data,error}=await db.from('separacoes').select('pedido,status,separador,inicio,fim').gte('inicio',rng.ini).lte('inicio',rng.fim).order('inicio',{ascending:false}).range(from,from+PAGE-1);
+      const{data,error}=await db.from('avacy_status')
+        .select('nota,status,ts_sep,ts_sepd,separador,scan_log,sep_log,updated_at')
+        .in('status',['Em Separação','Separado'])
+        .gte('updated_at',rng.ini).lte('updated_at',rng.fim)
+        .order('updated_at',{ascending:false}).range(from,from+PAGE-1);
       if(error)throw error;
-      if(data&&data.length)allData=[...allData,...data];
+      if(data&&data.length)allSt=[...allSt,...data];
       if(!data||data.length<PAGE)break;
       from+=PAGE;
     }
-    if(!allData.length){toast('⚠ Nenhum dado no período');syncDot('ok');return;}
+    if(!allSt.length){toast('⚠ Nenhum dado no período');syncDot('ok');return;}
+
+    // Busca detalhes dos registros (nota, fat, loja, cliente, vol)
+    const notas=allSt.map(r=>r.nota);
+    const recMap={};
+    for(let i=0;i<notas.length;i+=50){
+      const{data:ch}=await db.from('avacy_records').select('nota,fat,loja,nome_cliente,volume,transportadora').in('nota',notas.slice(i,i+50));
+      (ch||[]).forEach(r=>recMap[r.nota]=r);
+    }
 
     const wb=XLSX.utils.book_new();
     const d=new Date();
@@ -1139,44 +1156,57 @@ async function exportRelatorio(tipo){
     const fname=`Relatorio_Separacao_AVACY_${dd}-${mm}-${d.getFullYear()}.xlsx`;
 
     if(tipo==='sep'){
-      // Relatório por pedido
-      const rows=allData.map((r,i)=>{
-        const ini=r.inicio?new Date(r.inicio):null;
-        const fim=r.fim?new Date(r.fim):null;
-        const durMin=ini&&fim?Math.round((fim-ini)/60000):null;
-        const durFmt=durMin!=null?(durMin>=60?Math.floor(durMin/60)+'h'+String(durMin%60).padStart(2,'0')+'min':durMin+'min'):null;
+      const rows=allSt.map((r,i)=>{
+        const rec=recMap[r.nota]||{};
+        const sep=r.separador||r.scan_log?.user||r.sep_log?.user||'—';
+        // Tenta calcular duração a partir de ts_sep e ts_sepd (formato DD/MM/YYYY HH:MM)
+        let durFmt='—',durMin='';
+        if(r.ts_sep&&r.ts_sepd){
+          const parseTS=s=>{const m=s.match(/(\d{2})\/(\d{2})\/(\d{4})\s(\d{2}):(\d{2})/);return m?new Date(`${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:00`):null;};
+          const ini=parseTS(r.ts_sep),fim=parseTS(r.ts_sepd);
+          if(ini&&fim&&fim>ini){const mn=Math.round((fim-ini)/60000);durMin=mn;durFmt=mn>=60?Math.floor(mn/60)+'h'+String(mn%60).padStart(2,'0')+'min':mn+'min';}
+        }
         return{
           '#':i+1,
-          'DATA':ini?ini.toLocaleDateString('pt-BR'):'—',
-          'PEDIDO':r.pedido||'',
-          'SEPARADOR':r.separador||'',
-          'STATUS':r.status==='separado'?'Separado':'Em Separação',
-          'INÍCIO':ini?ini.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'—',
-          'FIM':fim?fim.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'—',
-          'DURAÇÃO':durFmt||'—',
-          'DURAÇÃO (min)':durMin||''
+          'DATA':r.ts_sep?r.ts_sep.substring(0,10):(r.updated_at?new Date(r.updated_at).toLocaleDateString('pt-BR'):'—'),
+          'NOTA':r.nota||'',
+          'FAT':rec.fat||'',
+          'LOJA':rec.loja||'',
+          'CLIENTE':(rec.nome_cliente||'').substring(0,35),
+          'TRANSPORTADORA':rec.transportadora||'',
+          'VOL':rec.volume||'',
+          'SEPARADOR':sep,
+          'STATUS':r.status,
+          'INÍCIO SEP':r.ts_sep||'—',
+          'FIM SEP':r.ts_sepd||'—',
+          'DURAÇÃO':durFmt,
+          'DURAÇÃO (min)':durMin
         };
       });
       const ws=XLSX.utils.json_to_sheet(rows);
-      ws['!cols']=[{wch:4},{wch:12},{wch:14},{wch:16},{wch:14},{wch:8},{wch:8},{wch:10},{wch:14}];
+      ws['!cols']=[{wch:4},{wch:12},{wch:14},{wch:8},{wch:8},{wch:30},{wch:22},{wch:5},{wch:16},{wch:14},{wch:16},{wch:16},{wch:10},{wch:14}];
       XLSX.utils.book_append_sheet(wb,'Separação',ws);
     }else{
       // Ranking por separador
       const rank={};
-      allData.forEach(r=>{
-        const sep=r.separador||'(sem nome)';
+      allSt.forEach(r=>{
+        const sep=r.separador||r.scan_log?.user||r.sep_log?.user||'(sem nome)';
         if(!rank[sep])rank[sep]={sep,total:0,separados:0,em_sep:0,durMin:0,duracoes:0};
         rank[sep].total++;
-        if(r.status==='separado')rank[sep].separados++;
+        if(r.status==='Separado')rank[sep].separados++;
         else rank[sep].em_sep++;
-        if(r.inicio&&r.fim){const dur=Math.round((new Date(r.fim)-new Date(r.inicio))/60000);rank[sep].durMin+=dur;rank[sep].duracoes++;}
+        if(r.ts_sep&&r.ts_sepd){
+          const parseTS=s=>{const m=s.match(/(\d{2})\/(\d{2})\/(\d{4})\s(\d{2}):(\d{2})/);return m?new Date(`${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:00`):null;};
+          const ini=parseTS(r.ts_sep),fim=parseTS(r.ts_sepd);
+          if(ini&&fim&&fim>ini){rank[sep].durMin+=Math.round((fim-ini)/60000);rank[sep].duracoes++;}
+        }
       });
       const rows=Object.values(rank).sort((a,b)=>b.total-a.total).map((r,i)=>{
         const med=r.duracoes?Math.round(r.durMin/r.duracoes):null;
         return{
           'RANK':i+1,
           'SEPARADOR':r.sep,
-          'TOTAL BIPES':r.total,
+          'TOTAL PEDIDOS':r.total,
           'SEPARADOS':r.separados,
           'EM SEPARAÇÃO':r.em_sep,
           'TEMPO MÉDIO (min)':med||'—',
@@ -1188,7 +1218,7 @@ async function exportRelatorio(tipo){
       XLSX.utils.book_append_sheet(wb,'Ranking',ws);
     }
     XLSX.writeFile(wb,fname);
-    toast('✔ Exportado: '+allData.length+' registros');
+    toast('✔ Exportado: '+allSt.length+' registros');
     syncDot('ok');
   }catch(e){
     toast('❌ '+e.message,4000);syncDot('err');
