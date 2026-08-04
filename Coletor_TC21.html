@@ -246,7 +246,7 @@ tbody tr:last-child td{border-bottom:none}
 <header>
   <div class="logo">Avacy</div>
   <div style="width:1px;height:30px;background:rgba(255,255,255,.15);margin:0 6px;flex-shrink:0"></div>
-  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v3.6</span></div>
+  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v3.8</span></div>
   <div class="header-center">
     <div class="admin-tabs" id="admin-tabs">
       <button class="atab active" onclick="adminShowTab('sep')" id="atab-sep">📋 Separações</button>
@@ -832,7 +832,7 @@ function adminShowTab(tab) {
   if(tab==='sep')carregarMonitor();
   if(tab==='usu')carregarUsuarios();
   if(tab==='cons'){setTimeout(()=>document.getElementById('cons-inp-adm').focus(),80);}
-  if(tab==='rel'){setRelPeriodo('hoje');carregarRelPreview();}
+  if(tab==='rel'){setRelPeriodo('hoje');}
 }
 
 async function carregarMonitor() {
@@ -987,8 +987,8 @@ async function consultarPedido(ctx){
     const{data:recs}=await db.from('avacy_records').select('nota,fat,loja,nome_cliente,transportadora,volume').or(`fat.eq.${codigo},loja.eq.${codigo},nota.eq.${codigo}`).limit(3);
     const rec=recs&&recs.length?recs[0]:null;
     const nota=rec?rec.nota:codigo;
-    // Busca status
-    const{data:st}=await db.from('avacy_status').select('status,ts_sep,ts_sepd,ts_recebido,ts_conf,ts_exp,scan_log,sep_log,separador').eq('nota',nota).maybeSingle();
+    // Busca status (sem coluna separador — está em scan_log/sep_log)
+    const{data:st}=await db.from('avacy_status').select('status,ts_sep,ts_sepd,ts_recebido,ts_conf,ts_exp,scan_log,sep_log').eq('nota',nota).maybeSingle();
     // Busca histórico separacoes
     const{data:seps}=await db.from('separacoes').select('pedido,status,separador,inicio,fim').eq('pedido',nota).order('inicio',{ascending:false}).limit(10);
 
@@ -1008,26 +1008,54 @@ async function consultarPedido(ctx){
     html+='</div>';
 
     // Timeline de bipes
+    // Extrai scan_log e sep_log com segurança (podem vir como string JSON ou objeto)
+    const sl=st?.scan_log?(typeof st.scan_log==='object'?st.scan_log:JSON.parse(st.scan_log)):null;
+    const sepl=st?.sep_log?(typeof st.sep_log==='object'?st.sep_log:JSON.parse(st.sep_log)):null;
     const steps=[
-      {key:'recebido',lbl:'Recebido',icon:'📥',ts:st?.ts_recebido,user:st?.scan_log?.user,clr:'#ea580c'},
-      {key:'sep',lbl:'Em Separação',icon:'▶',ts:st?.ts_sep,user:st?.scan_log?.user,clr:'#d97706'},
-      {key:'sepd',lbl:'Separado',icon:'✓',ts:st?.ts_sepd,user:st?.sep_log?.user||st?.separador,clr:'#9333ea'},
+      {key:'recebido',lbl:'Recebido',icon:'📥',ts:st?.ts_recebido,user:sl?.user,clr:'#ea580c'},
+      {key:'sep',lbl:'Em Separação',icon:'▶',ts:st?.ts_sep,user:sl?.user,clr:'#d97706'},
+      {key:'sepd',lbl:'Separado',icon:'✓',ts:st?.ts_sepd,user:sepl?.user||sl?.user,clr:'#9333ea'},
       {key:'conf',lbl:'Conferido',icon:'✔✔',ts:st?.ts_conf,user:null,clr:'#2463cc'},
       {key:'exp',lbl:'Expedido',icon:'🚚',ts:st?.ts_exp,user:null,clr:'#16a34a'},
     ];
     const activeSteps=steps.filter(s=>s.ts);
+
+    // Destaque de separação (quem + quando) — sempre visível se tiver dados
+    if(sl||sepl||st?.ts_sep||st?.ts_sepd){
+      const sepNome=sepl?.user||sl?.user||'—';
+      const sepIni=st?.ts_sep||sl?.ts||'—';
+      const sepFim=st?.ts_sepd||sepl?.ts||'—';
+      html+=`<div style="padding:10px 12px;background:rgba(147,51,234,.12);border:1px solid rgba(147,51,234,.3);border-radius:9px;margin-bottom:8px">
+        <div style="font-size:9.5px;font-weight:700;color:#a78bfa;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Separação</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div style="flex:1;min-width:80px">
+            <div style="font-size:10px;color:rgba(255,255,255,.45);margin-bottom:2px">Separador</div>
+            <div style="font-size:16px;font-weight:800;color:#c4b5fd">${esc(sepNome)}</div>
+          </div>
+          <div style="min-width:80px">
+            <div style="font-size:10px;color:rgba(255,255,255,.45);margin-bottom:2px">Início Sep.</div>
+            <div style="font-size:12px;font-weight:700;color:#e2e8f0">${esc(sepIni)}</div>
+          </div>
+          <div style="min-width:80px">
+            <div style="font-size:10px;color:rgba(255,255,255,.45);margin-bottom:2px">Finalizado</div>
+            <div style="font-size:12px;font-weight:700;color:#e2e8f0">${esc(sepFim)}</div>
+          </div>
+        </div>
+      </div>`;
+    }
+
     if(activeSteps.length){
-      html+=`<div style="font-size:10px;font-weight:700;color:${lblClr};text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Timeline de Bipes</div>`;
+      html+=`<div style="font-size:10px;font-weight:700;color:${lblClr};text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Timeline completa</div>`;
       activeSteps.forEach(s=>{
         html+=`<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:${bgCard};border:1px solid ${bdCard};border-radius:8px;margin-bottom:5px">
           <span style="width:26px;height:26px;border-radius:50%;background:${s.clr}22;color:${s.clr};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${s.icon}</span>
           <div style="flex:1">
-            <div style="font-size:12px;font-weight:700;color:${txtClr}">${s.lbl}</div>
-            <div style="font-size:10px;color:${lblClr}">${s.ts||'—'}${s.user?' · '+s.user:''}</div>
+            <div style="font-size:12px;font-weight:700;color:${txtClr}">${s.lbl}${s.user?` <span style="font-weight:400;font-size:11px">· ${esc(s.user)}</span>`:''}</div>
+            <div style="font-size:11px;color:${lblClr};margin-top:1px">${s.ts||'—'}</div>
           </div>
         </div>`;
       });
-    }else{
+    }else if(!sl&&!sepl&&!st?.ts_sep){
       html+=`<div style="font-size:12px;color:${lblClr};text-align:center;padding:10px 0">Nenhum bipe registrado para esta nota</div>`;
     }
 
@@ -1127,17 +1155,14 @@ async function exportRelatorio(tipo){
   toast('⏳ Gerando relatório…',5000);
   syncDot('sync');
   try{
-    // Histórico: todos com ts_sep preenchido, filtrado por updated_at
+    // Histórico: todos com ts_sep preenchido, via sbFetch com paginação
     let allSt=[];let from=0;const PAGE=1000;
+    const ini=encodeURIComponent(rng.ini);
+    const fim=encodeURIComponent(rng.fim);
     while(true){
-      const{data,error}=await db.from('avacy_status')
-        .select('nota,status,ts_sep,ts_sepd,scan_log,sep_log,updated_at')
-        .gt('ts_sep','')
-        .gte('updated_at',rng.ini).lte('updated_at',rng.fim)
-        .order('updated_at',{ascending:false}).range(from,from+PAGE-1);
-      if(error)throw error;
-      if(data&&data.length)allSt=[...allSt,...data];
-      if(!data||data.length<PAGE)break;
+      const r=await sbFetch(`/rest/v1/avacy_status?select=nota,status,ts_sep,ts_sepd,scan_log,sep_log,updated_at&ts_sep=gt.&updated_at=gte.${ini}&updated_at=lte.${fim}&order=updated_at.desc&limit=${PAGE}&offset=${from}`);
+      if(r&&r.length)allSt=[...allSt,...r];
+      if(!r||r.length<PAGE)break;
       from+=PAGE;
     }
     if(!allSt.length){toast('⚠ Nenhum dado no período');syncDot('ok');return;}
@@ -1158,13 +1183,15 @@ async function exportRelatorio(tipo){
     if(tipo==='sep'){
       const rows=allSt.map((r,i)=>{
         const rec=recMap[r.nota]||{};
-        const sep=r.scan_log?.user||r.sep_log?.user||'—';
+        const sl=typeof r.scan_log==='object'?r.scan_log:(r.scan_log?JSON.parse(r.scan_log):{});
+        const sepl=typeof r.sep_log==='object'?r.sep_log:(r.sep_log?JSON.parse(r.sep_log):{});
+        const sep=sl?.user||sepl?.user||'—';
         // Tenta calcular duração a partir de ts_sep e ts_sepd (formato DD/MM/YYYY HH:MM)
         let durFmt='—',durMin='';
         if(r.ts_sep&&r.ts_sepd){
-          const parseTS=s=>{const m=s.match(/(\d{2})\/(\d{2})\/(\d{4})\s(\d{2}):(\d{2})/);return m?new Date(`${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:00`):null;};
-          const ini=parseTS(r.ts_sep),fim=parseTS(r.ts_sepd);
-          if(ini&&fim&&fim>ini){const mn=Math.round((fim-ini)/60000);durMin=mn;durFmt=mn>=60?Math.floor(mn/60)+'h'+String(mn%60).padStart(2,'0')+'min':mn+'min';}
+          try{const parseTS=s=>{const m=String(s).match(/(\d{2})\/(\d{2})\/(\d{4})\s(\d{2}):(\d{2})/);return m?new Date(`${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:00`):null;};
+          const tsIni=parseTS(r.ts_sep),tsFim=parseTS(r.ts_sepd);
+          if(tsIni&&tsFim&&tsFim>tsIni){const mn=Math.round((tsFim-tsIni)/60000);durMin=mn;durFmt=mn>=60?Math.floor(mn/60)+'h'+String(mn%60).padStart(2,'0')+'min':mn+'min';}}catch(_){}
         }
         return{
           '#':i+1,
@@ -1190,15 +1217,17 @@ async function exportRelatorio(tipo){
       // Ranking por separador
       const rank={};
       allSt.forEach(r=>{
-        const sep=r.scan_log?.user||r.sep_log?.user||'(sem nome)';
+        const sl2=typeof r.scan_log==='object'?r.scan_log:(r.scan_log?JSON.parse(r.scan_log):{});
+        const sepl2=typeof r.sep_log==='object'?r.sep_log:(r.sep_log?JSON.parse(r.sep_log):{});
+        const sep=sl2?.user||sepl2?.user||'(sem nome)';
         if(!rank[sep])rank[sep]={sep,total:0,separados:0,em_sep:0,durMin:0,duracoes:0};
         rank[sep].total++;
         if(r.status==='Separado')rank[sep].separados++;
         else rank[sep].em_sep++;
         if(r.ts_sep&&r.ts_sepd){
-          const parseTS=s=>{const m=s.match(/(\d{2})\/(\d{2})\/(\d{4})\s(\d{2}):(\d{2})/);return m?new Date(`${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:00`):null;};
-          const ini=parseTS(r.ts_sep),fim=parseTS(r.ts_sepd);
-          if(ini&&fim&&fim>ini){rank[sep].durMin+=Math.round((fim-ini)/60000);rank[sep].duracoes++;}
+          try{const parseTS2=s=>{const m=String(s).match(/(\d{2})\/(\d{2})\/(\d{4})\s(\d{2}):(\d{2})/);return m?new Date(`${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:00`):null;};
+          const tIni=parseTS2(r.ts_sep),tFim=parseTS2(r.ts_sepd);
+          if(tIni&&tFim&&tFim>tIni){rank[sep].durMin+=Math.round((tFim-tIni)/60000);rank[sep].duracoes++;}}catch(_){}
         }
       });
       const rows=Object.values(rank).sort((a,b)=>b.total-a.total).map((r,i)=>{
