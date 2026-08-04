@@ -198,12 +198,12 @@ tbody tr.st-exp:hover{background:rgba(63,185,80,.08)}
 tbody tr.st-pend{background:rgba(248,81,73,.07)}
 tbody tr.st-pend:hover{background:rgba(248,81,73,.12)}
 /* Priority row – high visibility */
-tbody tr.st-canc{background:#1a1a2e !important;color:#fff}
-tbody tr.st-canc td{color:#fff !important;opacity:.9}
-tbody tr.st-canc:hover{background:#22223b !important}
-tbody tr.st-dev{background:#2d1b1b !important;color:#fff}
-tbody tr.st-dev td{color:#fff !important;opacity:.9}
-tbody tr.st-dev:hover{background:#3d2020 !important}
+tbody tr.st-canc{background:#6b7280 !important}
+tbody tr.st-canc td{color:#fff !important}
+tbody tr.st-canc:hover{background:#5a6270 !important}
+tbody tr.st-dev{background:#854d4d !important}
+tbody tr.st-dev td{color:#fff !important}
+tbody tr.st-dev:hover{background:#7a3f3f !important}
 tbody tr.prio-row{
   background:linear-gradient(90deg,rgba(249,115,22,.22) 0%,rgba(249,115,22,.09) 6%,rgba(249,115,22,.03) 100%) !important;
   outline:1px solid rgba(249,115,22,.35);outline-offset:-1px}
@@ -416,7 +416,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v6.0 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v6.1 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -424,7 +424,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v6.0</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v6.1</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1356,62 +1356,52 @@ async function importCSV(){
       }else{
         existMap.set(nota,{nota,...fd});add++;
         if(!stMap[nota])stMap[nota]={obs:''};
+        // SEMPRE primeiro: mesclar pré-bipe (scan antes do CSV) por nota, FAT ou LOJA
+        {
+          const _fatV=fd.fat,_lojaV=fd.loja;
+          const _SCAN=['Em Separação','Separado','Conferido'];
+          const _preK=_SCAN.includes(stMap[nota]?.status)?nota:(_fatV&&_SCAN.includes(stMap[_fatV]?.status))?_fatV:(_lojaV&&_SCAN.includes(stMap[_lojaV]?.status))?_lojaV:null;
+          if(_preK&&_preK!==nota){
+            const _ps=stMap[_preK];
+            const _mg={...stMap[nota],..._ps,pre_scan:false};
+            ['ts_fat','ts_sep','ts_sepd','ts_conf','ts_exp','ts_pend'].forEach(k=>{
+              const a=stMap[nota]?.[k],b=_ps?.[k];
+              if(a&&b)_mg[k]=a<b?a:b;else _mg[k]=b||a||_mg[k];
+            });
+            stMap[nota]=_mg;
+            delete stMap[_preK];
+            existMap.delete(_preK);
+            if(SB_URL&&SB_KEY){
+              const _b=SB_URL.replace(/\/+$/,''),_h={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+              fetch(`${_b}/rest/v1/avacy_records?nota=eq.${encodeURIComponent(_preK)}`,{method:'DELETE',headers:_h}).catch(()=>{});
+              fetch(`${_b}/rest/v1/avacy_status?nota=eq.${encodeURIComponent(_preK)}`,{method:'DELETE',headers:_h}).catch(()=>{});
+            }
+          }else if(_preK===nota){stMap[nota].pre_scan=false;}
+        }
+        // Atualiza ts_fat com hora real do QRY
+        if(auth)stMap[nota].ts_fat=auth;else if(!stMap[nota].ts_fat)stMap[nota].ts_fat=n;
+        const _curStN=stMap[nota].status||'Faturado';
         if(rom){
           stMap[nota].status='Expedido';
-          stMap[nota].ts_fat=auth||n;
           stMap[nota].ts_exp=stMap[nota].ts_exp||romTs||n;
           if(romUser)stMap[nota].romaneio_user=romUser;
-        } else if(csvSt&&!['Conferido','Expedido'].includes(stMap[nota].status||'')){
-          // Datas de separação do CSV em registro novo
+        } else if(csvSt&&(PROG[csvSt]||0)>(PROG[_curStN]||0)){
           stMap[nota].status=csvSt;
-          stMap[nota].ts_fat=auth||n;
           if(dtSep){const a=stMap[nota].ts_sep;stMap[nota].ts_sep=a&&a<dtSep?a:dtSep;}
           if(dtSepd){const a=stMap[nota].ts_sepd;stMap[nota].ts_sepd=a&&a<dtSepd?a:dtSepd;}
           if(userSep)stMap[nota].separador=userSep;
-        } else if(etiq&&!['Expedido'].includes(stMap[nota].status||'')){
-          // Etiqueta presente em registro novo
+        } else if(etiq&&(PROG['Conferido']||0)>(PROG[_curStN]||0)){
           stMap[nota].status='Conferido';
-          stMap[nota].ts_fat=auth||n;
           stMap[nota].ts_conf=etiqTs||stMap[nota].ts_conf||n;
           if(etiqUser)stMap[nota].conferente=etiqUser;
-        } else if(xconf==='S'){
+        } else if(xconf==='S'&&(PROG['Conferido']||0)>(PROG[_curStN]||0)){
           stMap[nota].status='Conferido';
-          stMap[nota].ts_fat=auth||n;
           stMap[nota].ts_conf=stMap[nota].ts_conf||n;
-        } else if(qrySt&&(PROG[qrySt]||0)>1){
+        } else if(qrySt&&(PROG[qrySt]||0)>(PROG[_curStN]||0)){
           stMap[nota].status=qrySt;
-          stMap[nota].ts_fat=auth||n;
-        } else {
-          // BUG FIX: Preservar pré-bipe por nota, FAT ou LOJA
-          const fatVal=fd.fat,lojaVal=fd.loja;
-          const SCAN_ST=['Em Separação','Separado','Conferido'];
-          const preKey=SCAN_ST.includes(stMap[nota]?.status)?nota:(fatVal&&SCAN_ST.includes(stMap[fatVal]?.status))?fatVal:(lojaVal&&SCAN_ST.includes(stMap[lojaVal]?.status))?lojaVal:null;
-          if(preKey&&preKey!==nota){
-            const ps=stMap[preKey];
-            // Merge mantendo o timestamp mais antigo em cada campo
-            const merged={...stMap[nota],...ps,pre_scan:false,ts_fat:auth||n};
-            ['ts_fat','ts_sep','ts_sepd','ts_conf','ts_exp','ts_pend'].forEach(k=>{
-              const a=stMap[nota]?.[k],b=ps?.[k];
-              if(a&&b)merged[k]=a<b?a:b;else merged[k]=b||a||merged[k];
-            });
-            stMap[nota]=merged;
-            delete stMap[preKey];
-            // Remove o stub do existMap para não gerar linha duplicada
-            existMap.delete(preKey);
-            // Apaga stub do Supabase
-            if(SB_URL&&SB_KEY){
-              const _b=SB_URL.replace(/\/+$/,''),_h={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
-              fetch(`${_b}/rest/v1/avacy_records?nota=eq.${encodeURIComponent(preKey)}`,{method:'DELETE',headers:_h}).catch(()=>{});
-              fetch(`${_b}/rest/v1/avacy_status?nota=eq.${encodeURIComponent(preKey)}`,{method:'DELETE',headers:_h}).catch(()=>{});
-            }
-          }else if(preKey===nota){
-            stMap[nota].pre_scan=false;
-            stMap[nota].ts_fat=auth||n;
-          }else{
-            stMap[nota].status='Faturado';
-            stMap[nota].pre_scan=false;
-            stMap[nota].ts_fat=auth||n;
-          }
+        } else if(!stMap[nota].status){
+          stMap[nota].status='Faturado';
+          stMap[nota].pre_scan=false;
         }
       }
     }
