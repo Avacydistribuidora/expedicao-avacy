@@ -416,7 +416,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v7.0 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v7.2 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -424,7 +424,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v7.0</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v7.2</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -443,6 +443,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
         <a onclick="exportAnalitico();closeActMenu()">📈 Exportar Analítico / SLA (.xlsx)</a>
         <a onclick="exportBipados();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px">📋 Relatório de Bipados (Sep/Separado)</a>
         <a onclick="exportBipeLog();closeActMenu()">🗂 Log Histórico de Bipes</a>
+          <a id="menuRecoverSepLink" onclick="recoverSeparadoresFromBipeLog();closeActMenu()" style="color:#16a34a">🔍 Recuperar Separadores do Log</a>
           <a onclick="openSbConfig();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px">🔗 Configurar Sincronização</a>
           <a onclick="openColetorQR();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px">📱 Coletor TC21 — QR Code</a>
           <a id="menuRestoreLink" onclick="restoreStMapFromFile();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px;color:#d97706">🔄 Restaurar Backup (JSON)</a>
@@ -1792,6 +1793,67 @@ function handleRestoreFile(inp){
   };
   fr.readAsText(file);
 }
+function recoverSeparadoresFromBipeLog(){
+  if(getCurrentUser()?.role!=='admin'){alert('Apenas o administrador.');return}
+  let bipeLog=[];
+  try{bipeLog=JSON.parse(localStorage.getItem(LS_BIPE)||'[]');}catch(e){alert('Erro ao ler log de bipes: '+e.message);return}
+  if(!bipeLog.length){alert('Log de bipes vazio.');return}
+  // Indexa por nota: pega o primeiro bipe de Em Separação (ts_sep/scan_log) e de Separado (ts_sepd/sep_log)
+  const sepMap={};// nota → {user_sep, ts_sep, user_sepd, ts_sepd}
+  bipeLog.forEach(e=>{
+    if(!e.nota||!e.user)return;
+    if(!sepMap[e.nota])sepMap[e.nota]={};
+    const m=sepMap[e.nota];
+    if(e.action==='Em Separação'||e.action==='Em Separação (pré-bipe)'){
+      if(!m.ts_sep||e.dt<m.ts_sep){m.user_sep=e.user;m.ts_sep=e.dt;}// mais antigo = início
+    }
+    if(e.action==='Separado'||e.action==='Separado (pré-bipe)'){
+      if(!m.ts_sepd||e.dt>m.ts_sepd){m.user_sepd=e.user;m.ts_sepd=e.dt;}// mais recente = conclusão
+    }
+  });
+  const now=new Date().toISOString();
+  let recovered=0,skipped=0;
+  const updatedNotas=[];
+  Object.entries(sepMap).forEach(([nota,m])=>{
+    if(!stMap[nota])return;
+    const cur=stMap[nota];
+    let changed=false;
+    // Preenche separador se ausente
+    if(!cur.separador&&(m.user_sep||m.user_sepd)){
+      cur.separador=m.user_sepd||m.user_sep;changed=true;
+    }
+    // Preenche ts_sep se ausente
+    if(!cur.ts_sep&&m.ts_sep){cur.ts_sep=m.ts_sep;changed=true;}
+    // Preenche scan_log se ausente
+    if(!cur.scan_log&&m.user_sep&&m.ts_sep){cur.scan_log={user:m.user_sep,ts:m.ts_sep};changed=true;}
+    // Preenche ts_sepd se ausente
+    if(!cur.ts_sepd&&m.ts_sepd){cur.ts_sepd=m.ts_sepd;changed=true;}
+    // Preenche sep_log se ausente
+    if(!cur.sep_log&&m.user_sepd&&m.ts_sepd){cur.sep_log={user:m.user_sepd,ts:m.ts_sepd};changed=true;}
+    if(changed){cur._ts=now;updatedNotas.push(nota);recovered++;}else{skipped++;}
+  });
+  if(!recovered){alert('Nenhuma nota precisou de recuperação ('+skipped+' já tinham dados).');return}
+  saveLS();onFilterChange();
+  // Push para Supabase
+  if(SB_URL&&SB_KEY&&updatedNotas.length){
+    (async()=>{
+      const CHUNK=100;
+      for(let i=0;i<updatedNotas.length;i+=CHUNK){
+        const rows=updatedNotas.slice(i,i+CHUNK).map(nota=>{
+          const s=stMap[nota]||{};
+          return{nota,status:s.status||'Faturado',ts_fat:s.ts_fat||null,ts_sep:s.ts_sep||null,
+            ts_sepd:s.ts_sepd||null,ts_recebido:s.ts_recebido||null,ts_conf:s.ts_conf||null,
+            ts_exp:s.ts_exp||null,ts_pend:s.ts_pend||null,separador:s.separador||null,
+            scan_log:s.scan_log||null,sep_log:s.sep_log||null,obs:s.obs||'',priority:s.priority||false,
+            updated_at:now};
+        });
+        await sbPost('/rest/v1/avacy_status',rows);
+      }
+      toast('✔ Supabase atualizado: '+recovered+' notas sincronizadas.');
+    })();
+  }
+  toast('✔ Recuperados: '+recovered+' separadores do log de bipes ('+skipped+' já tinham dados).');
+}
 function setAdminStatus(nota,novoSt){
   if(getCurrentUser()?.role!=='admin'){alert('Apenas o administrador.');return}
   if(!stMap[nota])stMap[nota]={obs:''};
@@ -1857,10 +1919,10 @@ function fillTransp(){
   selV.innerHTML='<option value="">Todos vendedores</option>';
   [...setV].sort().forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;selV.appendChild(o)});
   if(curV&&setV.has(curV))selV.value=curV;else selV.value='';
-  // Separador
+  // Separador — lista apenas quem tem pedidos Em Separação (ativos)
   const selSep=document.getElementById('sfSep'),curSep=selSep.value;
   const filteredSep=applyFilters([...activeRecs,...expedidoRecs],getFilters(),false,false,true);
-  const setSep=new Set(filteredSep.map(r=>stMap[r.nota]?.separador||'').filter(Boolean));
+  const setSep=new Set(filteredSep.filter(r=>(stMap[r.nota]?.status||'Faturado')==='Em Separação').map(r=>stMap[r.nota]?.separador||'').filter(Boolean));
   selSep.innerHTML='<option value="">Todos separadores</option>';
   [...setSep].sort().forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;selSep.appendChild(o)});
   if(curSep&&setSep.has(curSep))selSep.value=curSep;else selSep.value='';
