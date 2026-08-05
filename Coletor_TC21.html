@@ -207,7 +207,7 @@ tbody tr:last-child td{border-bottom:none}
 <header>
   <div class="logo">Avacy</div>
   <div style="width:1px;height:30px;background:rgba(255,255,255,.15);margin:0 6px;flex-shrink:0"></div>
-  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v4.2</span></div>
+  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v4.3</span></div>
   <div class="header-center">
     <div class="admin-tabs" id="admin-tabs">
       <button class="atab active" onclick="adminShowTab('sep')" id="atab-sep">📋 Separações</button>
@@ -215,6 +215,16 @@ tbody tr:last-child td{border-bottom:none}
     </div>
   </div>
   <div class="header-right">
+    <!-- Pesquisa admin (só aparece quando logado como admin) -->
+    <div id="admin-search-wrap" style="display:none">
+      <input id="admin-search-inp" type="text" placeholder="🔍 Nota / FAT / Separador…"
+        style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+               border-radius:20px;padding:6px 16px;font-size:13px;color:white;
+               outline:none;width:200px;transition:.2s"
+        onfocus="this.style.borderColor='rgba(255,255,255,.55)'"
+        onblur="this.style.borderColor='rgba(255,255,255,.2)'"
+        oninput="filtrarMonitor(this.value)">
+    </div>
     <div class="sync-dot" id="sync-dot"></div>
     <div class="badge-user" id="badge-user" onclick="sair()">
       <span id="badge-nome">—</span>
@@ -281,14 +291,14 @@ tbody tr:last-child td{border-bottom:none}
     <!-- 3. HISTÓRICO -->
     <div class="hist-card" id="hist-card" style="display:none">
       <h3>
-        Meu histórico de hoje
+        Meu histórico completo
         <button onclick="carregarHistorico()">↻</button>
       </h3>
       <div class="tw">
         <table>
-          <thead><tr><th>Pedido / Nota</th><th>Status</th><th>Hora</th></tr></thead>
+          <thead><tr><th>Pedido / Nota</th><th>Status</th><th>Data</th><th>Hora</th></tr></thead>
           <tbody id="hist-tbody">
-            <tr><td colspan="3" style="color:#aaa;text-align:center;padding:16px">—</td></tr>
+            <tr><td colspan="4" style="color:#aaa;text-align:center;padding:16px">—</td></tr>
           </tbody>
         </table>
       </div>
@@ -321,12 +331,23 @@ tbody tr:last-child td{border-bottom:none}
       </div>
     </div>
     <div class="adm-card">
-      <h3>Histórico Coletor — Hoje</h3>
+      <h3>Histórico Coletor — Completo
+        <button onclick="carregarHistoricoAdmin()">↻</button>
+        <span id="adm-hist-info" style="font-size:10px;font-weight:400;color:rgba(255,255,255,.35);margin-left:6px"></span>
+      </h3>
+      <div style="padding:0 0 8px 0;display:flex;align-items:center;gap:8px">
+        <input type="date" id="adm-hist-data" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:4px 10px;color:white;font-size:12px;outline:none"
+          onchange="carregarHistoricoAdmin()">
+        <button onclick="document.getElementById('adm-hist-data').value='';carregarHistoricoAdmin()"
+          style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:4px 10px;color:rgba(255,255,255,.6);font-size:11px;cursor:pointer">
+          Todos
+        </button>
+      </div>
       <div class="tw">
         <table class="adm-tbl">
-          <thead><tr><th>PEDIDO</th><th>STATUS</th><th>SEPARADOR</th><th>INÍCIO</th><th>FIM</th></tr></thead>
+          <thead><tr><th>PEDIDO</th><th>STATUS</th><th>SEPARADOR</th><th>DATA</th><th>INÍCIO</th><th>FIM</th></tr></thead>
           <tbody id="adm-hist-tbody">
-            <tr><td colspan="5" style="color:rgba(255,255,255,.3);text-align:center;padding:14px">—</td></tr>
+            <tr><td colspan="6" style="color:rgba(255,255,255,.3);text-align:center;padding:14px">—</td></tr>
           </tbody>
         </table>
       </div>
@@ -478,6 +499,7 @@ function entrar() {
 
   if (usuario.admin) {
     document.getElementById('admin-tabs').style.display = 'flex';
+    document.getElementById('admin-search-wrap').style.display = 'flex';
     mostrar('tela-admin');
     adminShowTab('sep');
   } else {
@@ -493,6 +515,7 @@ function sair() {
   clearInterval(refreshTm);
   usuario = null; modoAtual = null;
   document.getElementById('admin-tabs').style.display = 'none';
+  document.getElementById('admin-search-wrap').style.display = 'none';
   document.getElementById('badge-user').style.display = 'none';
   document.getElementById('login-erro').textContent = '';
   document.getElementById('lg-nome').value = '';
@@ -678,31 +701,32 @@ function showFb(type, nota, icon, msg) {
 // ══════════════════════════════════════════════════════
 async function carregarHistorico() {
   const tbody = document.getElementById('hist-tbody');
+  tbody.innerHTML = '<tr><td colspan="4" style="color:#aaa;text-align:center;padding:14px">Carregando…</td></tr>';
   try {
-    const hoje   = new Date();
-    const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).toISOString();
     const { data, error } = await db.from('separacoes')
       .select('pedido, status, inicio, fim')
       .eq('separador', usuario.nome)
-      .gte('inicio', inicio)
       .order('inicio', { ascending: false })
-      .limit(60);
+      .limit(500);
     if (error) throw error;
     if (!data || data.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3" style="color:#aaa;text-align:center;padding:14px">Nenhum registro hoje</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" style="color:#aaa;text-align:center;padding:14px">Nenhum registro encontrado</td></tr>';
       return;
     }
     tbody.innerHTML = data.map(r => {
       const cls = r.status === 'separado' ? 'b-sepd' : 'b-sep';
       const lbl = r.status === 'separado' ? 'Separado' : 'Em Sep.';
+      const dt  = r.inicio ? new Date(r.inicio) : null;
+      const data_fmt = dt ? dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '—';
       return `<tr>
         <td style="font-family:monospace;font-weight:700;font-size:13px">${esc(r.pedido)}</td>
         <td><span class="badge-sm ${cls}">${lbl}</span></td>
+        <td style="font-size:11px;color:#94a3b8">${data_fmt}</td>
         <td style="font-size:11px;color:#94a3b8">${hhmm(r.inicio)}</td>
       </tr>`;
     }).join('');
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="3" style="color:#f87171;font-size:12px">Erro: ${esc(e.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" style="color:#f87171;font-size:12px">Erro: ${esc(e.message)}</td></tr>`;
   }
 }
 
@@ -757,30 +781,50 @@ async function carregarMonitor() {
       }).join('');
     }
 
-    const hoje   = new Date();
-    const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).toISOString();
-    const { data: hist } = await db.from('separacoes')
-      .select('pedido,status,inicio,fim,separador')
-      .gte('inicio', inicio).order('inicio', { ascending: false }).limit(100);
+    syncDot('ok');
+    carregarHistoricoAdmin();
+  } catch (e) {
+    syncDot('err');
+    tbody.innerHTML = `<tr><td colspan="6" style="color:#f87171;font-size:12px">Erro: ${esc(e.message)}</td></tr>`;
+  }
+}
 
+// ══════════════════════════════════════════════════════
+// ADMIN — HISTÓRICO COMPLETO
+// ══════════════════════════════════════════════════════
+async function carregarHistoricoAdmin() {
+  const admHist = document.getElementById('adm-hist-tbody');
+  const info    = document.getElementById('adm-hist-info');
+  const dataSel = (document.getElementById('adm-hist-data')?.value || '').trim();
+  admHist.innerHTML = `<tr><td colspan="6" style="color:rgba(255,255,255,.3);text-align:center;padding:14px">Carregando…</td></tr>`;
+  try {
+    let q = db.from('separacoes').select('pedido,status,inicio,fim,separador').order('inicio', { ascending: false }).limit(500);
+    if (dataSel) {
+      const d0 = new Date(dataSel + 'T00:00:00');
+      const d1 = new Date(dataSel + 'T23:59:59');
+      q = q.gte('inicio', d0.toISOString()).lte('inicio', d1.toISOString());
+    }
+    const { data: hist, error } = await q;
+    if (error) throw error;
+    if (info) info.textContent = hist ? `${hist.length} registros` : '';
     admHist.innerHTML = (!hist || !hist.length)
-      ? '<tr><td colspan="5" style="color:rgba(255,255,255,.3);text-align:center;padding:14px">Nenhum registro hoje</td></tr>'
+      ? `<tr><td colspan="6" style="color:rgba(255,255,255,.3);text-align:center;padding:14px">Nenhum registro${dataSel ? ' nesta data' : ''}</td></tr>`
       : hist.map(r => {
           const cls = r.status === 'separado' ? 'b-sepd' : 'b-sep';
           const lbl = r.status === 'separado' ? 'Separado' : 'Em Sep.';
+          const dt  = r.inicio ? new Date(r.inicio) : null;
+          const data_fmt = dt ? dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '—';
           return `<tr>
             <td style="font-family:monospace;font-weight:700;color:white;font-size:12px">${esc(r.pedido)}</td>
             <td><span class="badge-sm ${cls}">${lbl}</span></td>
             <td style="font-size:11px;color:rgba(255,255,255,.5)">${esc(r.separador || '—')}</td>
+            <td style="font-size:11px;color:rgba(255,255,255,.4)">${data_fmt}</td>
             <td style="font-size:11px;color:rgba(255,255,255,.4)">${hhmm(r.inicio)}</td>
             <td style="font-size:11px;color:rgba(255,255,255,.4)">${hhmm(r.fim)}</td>
           </tr>`;
         }).join('');
-
-    syncDot('ok');
   } catch (e) {
-    syncDot('err');
-    tbody.innerHTML = `<tr><td colspan="6" style="color:#f87171;font-size:12px">Erro: ${esc(e.message)}</td></tr>`;
+    admHist.innerHTML = `<tr><td colspan="6" style="color:#f87171;font-size:12px">Erro: ${esc(e.message)}</td></tr>`;
   }
 }
 
@@ -837,6 +881,25 @@ async function trocarSenha(id, nome) {
 async function deletarUsuario(id, nome) {
   if (!confirm(`Excluir ${nome}?`)) return;
   try { await db.from('separadores').delete().eq('id', id); toast(`🗑 ${nome} excluído`); carregarUsuarios(); } catch (e) { toast('❌ ' + e.message); }
+}
+
+// ══════════════════════════════════════════════════════
+// PESQUISA ADMIN (filtra tabela do monitor em tempo real)
+// ══════════════════════════════════════════════════════
+function filtrarMonitor(q) {
+  const term = (q || '').trim().toLowerCase();
+  // Filtra linhas do monitor principal
+  document.querySelectorAll('#monitor-tbody tr').forEach(tr => {
+    if (!term) { tr.style.display = ''; return; }
+    const txt = tr.textContent.toLowerCase();
+    tr.style.display = txt.includes(term) ? '' : 'none';
+  });
+  // Filtra também a tabela de histórico admin se existir
+  document.querySelectorAll('#adm-hist-tbody tr').forEach(tr => {
+    if (!term) { tr.style.display = ''; return; }
+    const txt = tr.textContent.toLowerCase();
+    tr.style.display = txt.includes(term) ? '' : 'none';
+  });
 }
 
 // ══════════════════════════════════════════════════════
