@@ -198,8 +198,12 @@ tbody tr.st-exp:hover{background:rgba(63,185,80,.08)}
 tbody tr.st-pend{background:rgba(248,81,73,.07)}
 tbody tr.st-pend:hover{background:rgba(248,81,73,.12)}
 /* Priority row – high visibility */
-tbody tr.st-canc td{opacity:.5}
-tbody tr.st-dev td{opacity:.5;text-decoration-line:line-through;text-decoration-color:rgba(156,163,175,.5)}
+tbody tr.st-canc{background:#6b7280 !important}
+tbody tr.st-canc td{color:#fff !important}
+tbody tr.st-canc:hover{background:#5a6270 !important}
+tbody tr.st-dev{background:#854d4d !important}
+tbody tr.st-dev td{color:#fff !important}
+tbody tr.st-dev:hover{background:#7a3f3f !important}
 tbody tr.prio-row{
   background:linear-gradient(90deg,rgba(249,115,22,.22) 0%,rgba(249,115,22,.09) 6%,rgba(249,115,22,.03) 100%) !important;
   outline:1px solid rgba(249,115,22,.35);outline-offset:-1px}
@@ -219,8 +223,8 @@ td{padding:7px 10px;vertical-align:middle}
 .badge.conf    {background:rgba(36,99,204,.11); color:#2463cc;     border:1px solid rgba(36,99,204,.3)}
 .badge.exp     {background:rgba(22,163,74,.11); color:#16a34a;     border:1px solid rgba(22,163,74,.3)}
 .badge.pend    {background:rgba(248,81,73,.14); color:var(--red);  border:1px solid rgba(248,81,73,.35)}
-.badge.canc    {background:#9ca3af;color:#fff;border:1px solid #9ca3af}
-.badge.dev     {background:#9ca3af;color:#fff;border:1px solid #9ca3af}
+.badge.canc    {background:#1a1a2e;            color:#a0a8c0;     border:1px solid #333}
+.badge.dev     {background:#2d1b1b;            color:#e07070;     border:1px solid #5a2e2e}
 .dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0}
 .dot.fat     {background:#6b7a99}
 .dot.recebido{background:#ea580c}
@@ -273,8 +277,6 @@ td{padding:7px 10px;vertical-align:middle}
 .row-popover a.rp-resume{color:var(--green)}
 .row-popover a.rp-recebido{color:#059669}
 .row-popover a.rp-del{color:var(--red);border-top:1px solid var(--border)!important;margin-top:2px}
-.row-popover a.rp-dev{color:#9ca3af}
-.row-popover a.rp-can{color:#6b7280}
 
 /* Priority star */
 .prio-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:0 2px;
@@ -414,7 +416,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v7.4 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v7.3 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -422,7 +424,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v7.4</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v7.3</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -555,7 +557,8 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
         <option value="">Todos os status</option>
         <option>Faturado</option><option>Recebido</option><option>Em Separação</option>
         <option>Separado</option><option>Conferido</option>
-        <option>Expedido</option><option>Pendente</option><option>Devolvido</option><option>Cancelado</option>
+        <option>Expedido</option><option>Pendente</option>
+        <option>Cancelado</option><option>Devolução</option>
         <option value="__PRIO__">⭐ Priorizados</option>
       </select>
       <select id="sfOrigem" onchange="onFilterChange()">
@@ -794,7 +797,7 @@ ALTER TABLE avacy_records ADD COLUMN IF NOT EXISTS chave_nfe TEXT;</pre>
 // ═══════════════════════════════════════════════════════════
 const LS_REC='avacy8_rec',LS_ST='avacy8_st',LS_USERS='avacy8_users',SS_USER='avacy8_session',LS_BIPE='avacy8_bipe_log';
 const STATUS_ORDER={Faturado:1,Recebido:1.5,'Em Separação':2,Separado:3,Conferido:4,Expedido:5,Pendente:0.5};
-const SC_CLASS={Faturado:'fat','Em Separação':'sep',Separado:'sepd',Recebido:'recebido',Conferido:'conf',Expedido:'exp',Pendente:'pend',Cancelado:'canc',Devolvido:'dev'};
+const SC_CLASS={Faturado:'fat','Em Separação':'sep',Separado:'sepd',Recebido:'recebido',Conferido:'conf',Expedido:'exp',Pendente:'pend',Cancelado:'canc',Devolução:'dev'};
 const MESES=['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
 // ═══════════════════════════════════════════════════════════
@@ -812,25 +815,10 @@ function doLogin(){
   const err=document.getElementById('lgErr');
   if(!user||!pass){err.textContent='Preencha usuário e senha.';return}
   const found=getUsers().find(u=>u.username===user&&u.password===pass);
-  if(!found){
-    err.innerHTML='Usuário ou senha incorretos. <a href="#" style="color:var(--blue);font-size:10px" onclick="resetAdminPass(event)">Redefinir senha do admin?</a>';
-    return;
-  }
+  if(!found){err.textContent='Usuário ou senha incorretos.';return}
   setCurrentUser({username:found.username,role:found.role});
   document.getElementById('loginScreen').classList.add('hidden');
   initDashboard();
-}
-function resetAdminPass(e){
-  e.preventDefault();
-  const nova=prompt('Nova senha para o admin (mín. 4 caracteres):');
-  if(!nova||nova.length<4){alert('Senha muito curta.');return}
-  const users=getUsers();
-  const idx=users.findIndex(u=>u.username==='admin');
-  if(idx>=0)users[idx].password=nova;
-  else users.push({username:'admin',password:nova,role:'admin'});
-  saveUsers(users);
-  sbSyncUsers(users);
-  document.getElementById('lgErr').textContent='Senha redefinida. Faça login com a nova senha.';
 }
 function doLogout(){sessionStorage.removeItem(SS_USER);location.reload()}
 function toggleUserMenu(){document.getElementById('userMenu').classList.toggle('open')}
@@ -1248,7 +1236,7 @@ async function importCSV(){
   const pw=document.getElementById('progWrap'),pf=document.getElementById('progFill'),pt=document.getElementById('progTxt');
   pw.classList.add('show');pf.style.width='10%';pt.textContent='Sincronizando status…';
   // PRÉ-SYNC: busca status do Supabase para capturar pré-bipes antes de processar
-  const PROG={Faturado:1,Recebido:1.5,'Em Separação':2,Separado:3,Conferido:4,Expedido:5,Pendente:0.5,Cancelado:6,Devolvido:6};
+  const PROG={Faturado:1,Recebido:1.5,'Em Separação':2,Separado:3,Conferido:4,Expedido:5,Pendente:0.5,Cancelado:6,Devolução:6};
   if(SB_URL&&SB_KEY){
     try{
       const _sb=await fetch(`${SB_URL.replace(/\/+$/,'')}/rest/v1/avacy_status?select=*`,
@@ -1256,7 +1244,7 @@ async function importCSV(){
       if(_sb.ok){(await _sb.json()).forEach(s=>{
         if(!s.nota)return;
         const cur=stMap[s.nota]?.status||'Faturado';
-        if(!['Devolvido','Cancelado'].includes(cur)&&(PROG[s.status]||0)>(PROG[cur]||0)){
+        if((PROG[s.status]||0)>(PROG[cur]||0)){
           stMap[s.nota]={obs:'',...stMap[s.nota],...s};
         }
       });}
@@ -1374,7 +1362,6 @@ async function importCSV(){
           else if(!stMap[nota].ts_conf)stMap[nota].ts_conf=n;
           if(etiqUser)stMap[nota].conferente=etiqUser;
         }
-        }} // fim proteção
         // Demais status: mantém o que o operador definiu manualmente
       }else{
         existMap.set(nota,{nota,...fd});add++;
@@ -1632,7 +1619,7 @@ function toggleRowMenu(nota,btn){
   if(isAdmin){
     items.push({cls:'rp-sep-edit',icon:'👷',label:'Editar Separador',fn:`editSeparador('${nota}')`});
     items.push({cls:'rp-canc',icon:'✕',label:'Cancelado',fn:`setAdminStatus('${nota}','Cancelado')`});
-    items.push({cls:'rp-dev',icon:'↩',label:'Devolvido',fn:`setAdminStatus('${nota}','Devolvido')`});
+    items.push({cls:'rp-dev',icon:'↩',label:'Devolução',fn:`setAdminStatus('${nota}','Devolução')`});
     items.push({cls:'rp-del',icon:'🗑',label:'Excluir registro',fn:`deleteRecord('${nota}')`});
   }
   if(!items.length)return;
@@ -1876,21 +1863,6 @@ function setAdminStatus(nota,novoSt){
   toast('✔ Status definido: '+novoSt+' — '+nota);
 }
 function closeRowMenu(){document.getElementById('rowPopover').classList.remove('open');_openPopNota=null}
-async function setDevolvido(nota){
-  const sd=stMap[nota]||{};
-  sd.status='Devolvido';sd.ts_dev=new Date().toLocaleString('pt-BR',{hour12:false}).replace(',','');sd._ts=new Date().toISOString();
-  stMap[nota]=sd;await sbSyncStatus(nota);render();
-}
-async function setCancelado(nota){
-  const sd=stMap[nota]||{};
-  sd.status='Cancelado';sd.ts_can=new Date().toLocaleString('pt-BR',{hour12:false}).replace(',','');sd._ts=new Date().toISOString();
-  stMap[nota]=sd;await sbSyncStatus(nota);render();
-}
-async function reativarPedido(nota){
-  const sd=stMap[nota]||{};
-  sd.status='Faturado';sd._ts=new Date().toISOString();
-  stMap[nota]=sd;await sbSyncStatus(nota);render();
-}
 document.addEventListener('click',e=>{if(!e.target.closest('.act-trigger')&&!e.target.closest('#rowPopover'))closeRowMenu()});
 
 // ═══════════════════════════════════════════════════════════
@@ -1994,7 +1966,7 @@ function _render(){
       ?`<p>Nenhum registro com os filtros atuais.</p><p style="font-size:12px;color:var(--muted)">${tot} registros em memória — use "Limpar filtros" para ver todos</p><button class="btn" onclick="clearFilters()">Limpar filtros</button>`
       :`<p>Nenhum dado importado.</p><button class="btn primary" onclick="openModal()">📥 Importar CSV do Protheus</button>`;
     body.innerHTML=`<tr><td colspan="17"><div class="empty"><div class="ico">${tot>0?'🔎':'📂'}</div>${msg}</div></td></tr>`;return}
-  const tsMap={Faturado:'ts_fat','Em Separação':'ts_sep',Separado:'ts_sepd',Recebido:'ts_recebido',Conferido:'ts_conf',Expedido:'ts_exp',Pendente:'ts_pend',Devolvido:'ts_dev',Cancelado:'ts_can'};
+  const tsMap={Faturado:'ts_fat','Em Separação':'ts_sep',Separado:'ts_sepd',Recebido:'ts_recebido',Conferido:'ts_conf',Expedido:'ts_exp',Pendente:'ts_pend'};
   const _isAdmin=getCurrentUser()?.role==='admin';
   body.innerHTML=list.map(r=>{
     const sd=stMap[r.nota]||{status:'Faturado',obs:''};const st=sd.status||'Faturado';const sc=SC_CLASS[st]||'fat';
@@ -2007,7 +1979,7 @@ function _render(){
     if(sd.pend_log)logEntries.push({label:'⚠ Pendente',data:sd.pend_log});
     if(logEntries.length)tipHtml=`<div class="tip">${logEntries.map(e=>`<div class="tip-row"><span class="tip-key">${e.label}:</span><span class="tip-val">${esc(e.data.user)} · ${esc(e.data.ts)}</span></div>`).join('')}</div>`;
     // Ação – botão único ⋮ → popover
-    const hasAct=_isAdmin||['Faturado','Em Separação','Separado','Pendente','Devolvido','Cancelado'].includes(st);
+    const hasAct=_isAdmin||['Faturado','Em Separação','Separado','Pendente'].includes(st);
     const acaoBtn=`<button class="act-trigger ${hasAct?'has-actions':''}" onclick="toggleRowMenu('${esc(r.nota)}',this)" title="Ações do pedido">⋮</button>`;
     // Classes de linha: prioridade > status tint
     const stTint={'Em Separação':'st-sep',Separado:'st-sepd',Conferido:'st-conf',Expedido:'st-exp',Pendente:'st-pend',Cancelado:'st-canc',Devolução:'st-dev'};
@@ -2450,14 +2422,8 @@ async function sbLoadUsers(){
     const sbUsers=await sbGetAll('avacy_users','username');
     if(!Array.isArray(sbUsers)||sbUsers.length===0)return;
     const local=getUsers();
-    // Mescla: Supabase traz novos usuários; senha local é preservada (não sobrescrita pelo Supabase)
-    const merged=sbUsers.map(su=>{
-      const loc=local.find(l=>l.username===su.username);
-      return{username:su.username,password:loc?loc.password:su.password,role:su.role};
-    });
-    // Adiciona usuários locais que não existem no Supabase
-    local.forEach(lu=>{if(!merged.find(m=>m.username===lu.username))merged.push(lu);});
-    // Garante admin padrão
+    const merged=[...sbUsers.map(u=>({username:u.username,password:u.password,role:u.role}))];
+    // Garante que o admin local existe sempre
     if(!merged.find(u=>u.username==='admin'))merged.push({username:'admin',password:'235241',role:'admin'});
     saveUsers(merged);
   }catch(e){console.warn('sbLoadUsers:',e)}
