@@ -948,7 +948,7 @@ function saveLS(){
 function nowStr(){const d=new Date();return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
 function fmtDate(raw){if(!raw)return'';const s=raw.toString().trim().replace(/[-\/]/g,'');if(s.length===8)return`${s.slice(6)}/${s.slice(4,6)}/${s.slice(0,4)}`;return raw}
 function dateKey(f){if(!f)return'00000000';const p=f.split('/');return p.length===3?p[2]+p[1]+p[0]:f.replace(/[-\/]/g,'')}
-function clean(s){return(s||'').replace(/ /g,' ').trim()}
+function clean(s){return(s||'').replace(/\xa0/g,'').replace(/\s+/g,' ').trim()}
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;')}
 function cIdx(h,...k){for(const x of k){const i=h.findIndex(v=>v.toUpperCase()===x.toUpperCase());if(i>=0)return i}for(const x of k){const i=h.findIndex(v=>v.toUpperCase().includes(x.toUpperCase()));if(i>=0)return i}return-1}
 function origemFromRaj(val){const v=clean(val);if(v==='1')return'GRU';if(v==='2')return'MATRIZ';return''}
@@ -1022,7 +1022,7 @@ function toggleDateTree(e){e.stopPropagation();const p=document.getElementById('
 // CSV PARSER
 // ═══════════════════════════════════════════════════════════
 function parseCSV(text){
-  text=text.replace(/^﻿/,'').replace(/ /g,' ');
+  text=text.replace(/^﻿/,'').replace(/\xa0/g,' ');
   const fl=text.split(/\r?\n/)[0];const sep=fl.split(';').length>fl.split(',').length?';':',';
   const rows=[];const lines=text.split(/\r?\n/);
   for(let i=0;i<lines.length;i++){
@@ -1274,6 +1274,7 @@ async function importCSV(){
     for(let i=1;i<rows.length;i++){
       const c=rows[i];if(!c||c.length<2)continue;
       const nota=clean(c[iNota]||'');if(!nota)continue;
+      const _locked=['Devolvido','Cancelado'].includes(stMap[nota]?.status||'');
       const xconf=clean(iXCon>=0?c[iXCon]||'':''),rom=clean(iRom>=0?c[iRom]||'':'');
       const _authRaw=clean(iAuth>=0?c[iAuth]||'':'');
       // Converte formato banco YYYYMMDD HH:MM → DD/MM/YYYY HH:MM
