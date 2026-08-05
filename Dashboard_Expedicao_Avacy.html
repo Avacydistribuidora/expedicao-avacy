@@ -411,7 +411,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v7.5 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v7.6 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -419,7 +419,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v7.5</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v7.6</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1290,7 +1290,7 @@ async function importCSV(){
       const romUser=_rm?_rm[2].trim():'';
       // Campos de separação do CSV
       const dtSep=clean(iDtSep>=0?c[iDtSep]||'':'');
-      const userSep=clean(iUserSep>=0?c[iUserSep]||'':'');
+      const userSep=clean(iUserSep>=0?c[iUserSep]||'':'').toUpperCase();
       const dtSepd=clean(iDtSepd>=0?c[iDtSepd]||'':'');
       const csvSt=dtSepd?'Separado':dtSep?'Em Separação':null;
       const qrySt=iStatusQRY>=0?mapQRYStatus(clean(c[iStatusQRY]||'')):null;
@@ -1636,7 +1636,7 @@ function editSeparador(nota){
   const raw=novo.trim();
   // Parse: NOME DD/MM/YYYY HH:MM
   const mParsed=raw.match(/^(.+?)\s+(\d{2}\/\d{2}\/\d{4}(?:\s+\d{2}:\d{2})?)$/);
-  const val=mParsed?mParsed[1].trim():raw;
+  const val=(mParsed?mParsed[1].trim():raw).toUpperCase();
   const tsVal=mParsed?mParsed[2].trim():(()=>{const d=new Date();const dd=String(d.getDate()).padStart(2,'0');const mm=String(d.getMonth()+1).padStart(2,'0');const yy=d.getFullYear();const hh=String(d.getHours()).padStart(2,'0');const mi=String(d.getMinutes()).padStart(2,'0');return dd+'/'+mm+'/'+yy+' '+hh+':'+mi;})();
   stMap[nota].separador=val;
   if(!stMap[nota].sep_log)stMap[nota].sep_log={};
@@ -2044,7 +2044,7 @@ function updateDashboard(list){
   const sepRankC={},sepRankVol={};
   list.forEach(r=>{
     const sd=stMap[r.nota]||{};
-    const u=sd.sep_log?.user||sd.separador||'';if(!u)return;
+    const u=(sd.sep_log?.user||sd.separador||'').toUpperCase().trim();if(!u)return;
     const vol=parseInt((r.volume||'').toString().replace(/\D/g,''))||0;
     sepRankC[u]=(sepRankC[u]||0)+1;sepRankVol[u]=(sepRankVol[u]||0)+vol;
   });
