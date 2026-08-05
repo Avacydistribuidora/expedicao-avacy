@@ -7,7 +7,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Coletor AVACY</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -200,44 +199,6 @@ tbody tr:last-child td{border-bottom:none}
   font-size:13px;font-weight:700;z-index:999;display:none;
   box-shadow:0 4px 20px rgba(0,0,0,.4);max-width:90vw;text-align:center}
 #toast.show{display:block;animation:fi .25s}
-
-/* ── CONSULTA ── */
-.cons-section{padding:12px 14px 0;display:flex;flex-direction:column;gap:12px}
-.cons-card{background:var(--card);border-radius:12px;padding:14px 16px;border:1px solid var(--border);color:var(--text)}
-.cons-card h3{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px}
-.cons-inp-row{display:flex;gap:8px;margin-bottom:10px}
-.cons-inp{flex:1;padding:13px;border:2px solid var(--border);border-radius:9px;font-size:20px;font-weight:700;letter-spacing:.05em;outline:none;color:var(--text);background:white;font-family:monospace;transition:.2s;min-width:0}
-.cons-inp:focus{border-color:var(--blue)}
-.btn-cons{padding:13px 16px;background:var(--blue);color:white;border:none;border-radius:9px;font-size:15px;font-weight:700;cursor:pointer;flex-shrink:0}
-.cons-result{font-size:13px}
-.cons-status-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:10px 12px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0}
-.cons-field{display:flex;flex-direction:column;gap:2px;margin-bottom:8px}
-.cons-lbl{font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
-.cons-val{font-size:13px;font-weight:700;color:var(--text)}
-.cons-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
-.step-row{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;margin-bottom:6px}
-.step-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;font-weight:700}
-.step-info{flex:1;min-width:0}
-.step-title{font-size:12px;font-weight:700;color:var(--text)}
-.step-sub{font-size:11px;color:var(--muted);margin-top:2px}
-/* ── RELATÓRIO ── */
-.rel-section{padding:12px 14px 0;display:flex;flex-direction:column;gap:12px}
-.rel-card{background:rgba(255,255,255,.05);border-radius:12px;padding:14px 16px;border:1px solid rgba(255,255,255,.09)}
-.rel-card h3{font-size:11px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px}
-.rel-date-row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
-.rel-date-btn{padding:7px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:none;color:rgba(255,255,255,.6);font-size:12px;font-weight:700;cursor:pointer;transition:.15s}
-.rel-date-btn.active{background:rgba(255,255,255,.15);color:white;border-color:rgba(255,255,255,.5)}
-.rel-date-custom{display:none;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
-.rel-date-custom input{padding:7px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:white;font-size:12px;outline:none}
-.btn-export{width:100%;padding:13px;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px;transition:.15s}
-.btn-export.green{background:#16a34a;color:white}
-.btn-export.green:hover{background:#15803d}
-.btn-export.purple{background:#7c3aed;color:white}
-.btn-export.purple:hover{background:#6d28d9}
-.rel-kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
-.rel-kpi-box{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 8px;text-align:center}
-.rel-kpi-box .rv{font-size:24px;font-weight:800;line-height:1}
-.rel-kpi-box .rl{font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.07em;margin-top:3px}
 </style>
 </head>
 <body>
@@ -246,13 +207,11 @@ tbody tr:last-child td{border-bottom:none}
 <header>
   <div class="logo">Avacy</div>
   <div style="width:1px;height:30px;background:rgba(255,255,255,.15);margin:0 6px;flex-shrink:0"></div>
-  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v4.1</span></div>
+  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v4.2</span></div>
   <div class="header-center">
     <div class="admin-tabs" id="admin-tabs">
       <button class="atab active" onclick="adminShowTab('sep')" id="atab-sep">📋 Separações</button>
       <button class="atab" onclick="adminShowTab('usu')" id="atab-usu">👥 Usuários</button>
-      <button class="atab" onclick="adminShowTab('cons')" id="atab-cons">🔍 Consulta</button>
-      <button class="atab" onclick="adminShowTab('rel')" id="atab-rel">📊 Excel</button>
     </div>
   </div>
   <div class="header-right">
@@ -290,7 +249,7 @@ tbody tr:last-child td{border-bottom:none}
 
     <!-- 1. ESCOLHA O MODO -->
     <div class="modo-card">
-      <div style="display:flex;align-items:center;justify-content:space-between"><div class="modo-label">O que você vai fazer?</div><button onclick="toggleConsSep()" style="background:none;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.6);border-radius:7px;padding:4px 10px;font-size:11px;cursor:pointer;flex-shrink:0" id="btn-cons-sep">🔍 Consultar</button></div>
+      <div class="modo-label">O que você vai fazer?</div>
       <div class="modo-btns">
         <button class="mbtn" id="mbtn-sep" onclick="setModo('sep')">
           <span class="mbtn-icon">▶</span>
@@ -317,19 +276,6 @@ tbody tr:last-child td{border-bottom:none}
         <button class="btn-scan" id="btn-scan-ok" onclick="executarScan()">✓</button>
       </div>
       <div id="scan-feedback"></div>
-    </div>
-
-
-    <!-- 4. CONSULTA PEDIDO (separador) -->
-    <div class="cons-card" id="cons-sep-card" style="display:none">
-      <h3>🔍 Consultar Pedido</h3>
-      <div class="cons-inp-row">
-        <input type="text" class="cons-inp" id="cons-inp-sep" placeholder="FAT / LOJA / NOTA"
-               autocomplete="off" autocorrect="off" spellcheck="false"
-               onkeydown="if(event.key==='Enter')consultarPedido('sep')">
-        <button class="btn-cons" onclick="consultarPedido('sep')">🔍</button>
-      </div>
-      <div id="cons-result-sep" class="cons-result"></div>
     </div>
 
     <!-- 3. HISTÓRICO -->
@@ -414,67 +360,6 @@ tbody tr:last-child td{border-bottom:none}
           <tr><td colspan="4" style="color:rgba(255,255,255,.3);text-align:center;padding:12px">Carregando…</td></tr>
         </tbody>
       </table>
-    </div>
-  </div>
-
-  <!-- Painel Consulta -->
-  <div id="adm-cons" style="display:none;padding:12px 14px 0">
-    <div class="cons-card" style="background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.09);color:white">
-      <h3 style="color:rgba(255,255,255,.45)">🔍 Consultar Bipagem por Pedido</h3>
-      <div class="cons-inp-row">
-        <input type="text" class="cons-inp" id="cons-inp-adm" placeholder="FAT / LOJA / NOTA"
-               autocomplete="off" autocorrect="off" spellcheck="false"
-               style="background:rgba(255,255,255,.9);color:#1a2035"
-               onkeydown="if(event.key==='Enter')consultarPedido('adm')">
-        <button class="btn-cons" onclick="consultarPedido('adm')">🔍</button>
-      </div>
-      <div id="cons-result-adm" class="cons-result"></div>
-    </div>
-  </div>
-
-  <!-- Painel Relatório Excel -->
-  <div id="adm-rel" style="display:none" class="rel-section">
-    <div class="rel-card">
-      <h3>Período do Relatório</h3>
-      <div class="rel-date-row">
-        <button class="rel-date-btn active" id="rdb-hoje" onclick="setRelPeriodo('hoje')">Hoje</button>
-        <button class="rel-date-btn" id="rdb-7d" onclick="setRelPeriodo('7d')">7 dias</button>
-        <button class="rel-date-btn" id="rdb-mes" onclick="setRelPeriodo('mes')">Este mês</button>
-        <button class="rel-date-btn" id="rdb-custom" onclick="setRelPeriodo('custom')">Personalizado</button>
-      </div>
-      <div class="rel-date-custom" id="rel-custom-row">
-        <span style="font-size:11px;color:rgba(255,255,255,.5)">De:</span>
-        <input type="date" id="rel-dt-ini">
-        <span style="font-size:11px;color:rgba(255,255,255,.5)">Até:</span>
-        <input type="date" id="rel-dt-fim">
-      </div>
-      <div class="rel-kpi" id="rel-kpi-strip">
-        <div class="rel-kpi-box"><div class="rv c-sep" id="rk-sep" style="color:#fb923c">—</div><div class="rl">Em Separação</div></div>
-        <div class="rel-kpi-box"><div class="rv c-sepd" id="rk-sepd" style="color:#a78bfa">—</div><div class="rl">Separado</div></div>
-        <div class="rel-kpi-box"><div class="rv" id="rk-tot" style="color:#60a5fa">—</div><div class="rl">Total Bipes</div></div>
-      </div>
-    </div>
-    <div class="rel-card">
-      <h3>Exportar</h3>
-      <button class="btn-export green" onclick="exportRelatorio('sep')">
-        📊 Relatório de Separação (.xlsx)
-        <span style="font-size:10px;font-weight:400;opacity:.8">Por pedido: separador, início, fim, duração</span>
-      </button>
-      <button class="btn-export purple" onclick="exportRelatorio('sep_rank')">
-        🏆 Ranking por Separador (.xlsx)
-        <span style="font-size:10px;font-weight:400;opacity:.8">Qtd e volumes separados por operador</span>
-      </button>
-    </div>
-    <div class="rel-card" id="rel-preview-card" style="display:none">
-      <h3>Prévia — últimos registros <button onclick="carregarRelPreview()" style="border:1px solid rgba(255,255,255,.2);background:none;color:rgba(255,255,255,.45);border-radius:5px;padding:2px 9px;font-size:11px;cursor:pointer">↻</button></h3>
-      <div class="tw">
-        <table class="adm-tbl">
-          <thead><tr><th>NOTA</th><th>SEPARADOR</th><th>STATUS</th><th>INÍCIO SEP</th><th>FIM SEP</th><th>DURAÇÃO</th></tr></thead>
-          <tbody id="rel-preview-tbody">
-            <tr><td colspan="6" style="color:rgba(255,255,255,.3);text-align:center;padding:12px">—</td></tr>
-          </tbody>
-        </table>
-      </div>
     </div>
   </div>
 
@@ -719,7 +604,7 @@ async function executarScan() {
     const cu          = usuario;
 
     // 3. Valida transição
-    if (modoAtual === 'sep' && statusAtual !== 'Faturado') {
+    if (modoAtual === 'sep' && !['Faturado','Recebido'].includes(statusAtual)) {
       showFb('warn', nota, '⚠', `Já está como "${statusAtual}"`);
       syncDot('ok'); inp.focus(); return;
     }
@@ -736,7 +621,7 @@ async function executarScan() {
         updated_at: new Date().toISOString()
       });
       await db.from('separacoes').insert({
-        pedido: nota, status: 'em_separacao', separador_id: cu.id, separador: cu.nome
+        pedido: nota, status: 'em_separacao', separador: cu.nome, inicio: new Date().toISOString()
       });
       const clienteLabel = rec.nome_cliente && rec.nome_cliente !== '(aguardando importação CSV)'
         ? rec.nome_cliente.split(' ')[0]
@@ -753,7 +638,7 @@ async function executarScan() {
       });
       await db.from('separacoes')
         .update({ status: 'separado', fim: new Date().toISOString() })
-        .eq('pedido', nota).eq('separador_id', cu.id).eq('status', 'em_separacao');
+        .eq('pedido', nota).eq('separador', cu.nome).eq('status', 'em_separacao');
       const clienteLabel = rec.nome_cliente && rec.nome_cliente !== '(aguardando importação CSV)'
         ? rec.nome_cliente.split(' ')[0]
         : '';
@@ -798,7 +683,7 @@ async function carregarHistorico() {
     const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).toISOString();
     const { data, error } = await db.from('separacoes')
       .select('pedido, status, inicio, fim')
-      .eq('separador_id', usuario.id)
+      .eq('separador', usuario.nome)
       .gte('inicio', inicio)
       .order('inicio', { ascending: false })
       .limit(60);
@@ -825,14 +710,12 @@ async function carregarHistorico() {
 // ADMIN — abas
 // ══════════════════════════════════════════════════════
 function adminShowTab(tab) {
-  ['sep','usu','cons','rel'].forEach(t=>{
-    const el=document.getElementById('adm-'+t);if(el)el.style.display=t===tab?'':'none';
-    const btn=document.getElementById('atab-'+t);if(btn)btn.classList.toggle('active',t===tab);
-  });
-  if(tab==='sep')carregarMonitor();
-  if(tab==='usu')carregarUsuarios();
-  if(tab==='cons'){setTimeout(()=>document.getElementById('cons-inp-adm').focus(),80);}
-  if(tab==='rel'){setRelPeriodo('hoje');}
+  document.getElementById('adm-sep').style.display = tab === 'sep' ? '' : 'none';
+  document.getElementById('adm-usu').style.display = tab === 'usu' ? '' : 'none';
+  document.querySelectorAll('.atab').forEach(b => b.classList.remove('active'));
+  document.getElementById('atab-' + tab).classList.add('active');
+  if (tab === 'sep') carregarMonitor();
+  if (tab === 'usu') carregarUsuarios();
 }
 
 async function carregarMonitor() {
@@ -954,307 +837,6 @@ async function trocarSenha(id, nome) {
 async function deletarUsuario(id, nome) {
   if (!confirm(`Excluir ${nome}?`)) return;
   try { await db.from('separadores').delete().eq('id', id); toast(`🗑 ${nome} excluído`); carregarUsuarios(); } catch (e) { toast('❌ ' + e.message); }
-}
-
-
-// ══════════════════════════════════════════════════════
-// CONSULTA BIPAGEM
-// ══════════════════════════════════════════════════════
-let consSepVisible = false;
-function toggleConsSep(){
-  consSepVisible=!consSepVisible;
-  document.getElementById('cons-sep-card').style.display=consSepVisible?'':'none';
-  document.getElementById('btn-cons-sep').style.color=consSepVisible?'white':'rgba(255,255,255,.6)';
-  document.getElementById('btn-cons-sep').style.background=consSepVisible?'rgba(36,99,204,.4)':'none';
-  if(consSepVisible)setTimeout(()=>document.getElementById('cons-inp-sep').focus(),80);
-}
-
-async function consultarPedido(ctx){
-  const inputId=ctx==='adm'?'cons-inp-adm':'cons-inp-sep';
-  const resultId=ctx==='adm'?'cons-result-adm':'cons-result-sep';
-  const codigo=(document.getElementById(inputId).value||'').trim();
-  const out=document.getElementById(resultId);
-  if(!codigo){out.innerHTML='';return;}
-  const isDark=ctx==='adm';
-  const txtClr=isDark?'rgba(255,255,255,.8)':'#334155';
-  const lblClr=isDark?'rgba(255,255,255,.4)':'#6b7a99';
-  const bgCard=isDark?'rgba(255,255,255,.06)':'#f8fafc';
-  const bdCard=isDark?'rgba(255,255,255,.1)':'#e2e8f0';
-  out.innerHTML=`<div style="font-size:12px;color:${lblClr};padding:4px 0">🔍 Buscando…</div>`;
-  syncDot('sync');
-  try{
-    // Busca registro via supabase client (igual ao executarScan — funciona)
-    let rec=null;
-    try{
-      const{data:recs}=await db.from('avacy_records')
-        .select('nota,fat,loja,nome_cliente')
-        .or(`nota.eq.${codigo},loja.eq.${codigo},fat.eq.${codigo}`)
-        .limit(1);
-      rec=recs&&recs.length?recs[0]:null;
-    }catch(_){}
-    const nota=rec?rec.nota:codigo;
-    // Busca status via REST direto
-    const stArr=await sbFetch(`/rest/v1/avacy_status?select=status,ts_sep,ts_sepd,ts_recebido,ts_conf,ts_exp,scan_log,sep_log&nota=eq.${encodeURIComponent(nota)}&limit=1`);
-    const st=stArr&&stArr.length?stArr[0]:null;
-    // Busca histórico separacoes
-    const seps=await sbFetch(`/rest/v1/separacoes?select=pedido,status,separador,inicio,fim&pedido=eq.${encodeURIComponent(nota)}&order=inicio.desc&limit=10`);
-
-    const statusAtual=st?.status||'Faturado';
-    const acColor={'Em Separação':'#d97706','Separado':'#9333ea','Conferido':'#2463cc','Expedido':'#16a34a','Recebido':'#ea580c','Pendente':'#ef4444','Faturado':'#6b7a99'};
-    const clr=acColor[statusAtual]||'#6b7a99';
-
-    let html=`<div style="padding:10px 12px;background:${bgCard};border:1px solid ${bdCard};border-radius:9px;margin-bottom:8px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <span style="font-family:monospace;font-size:16px;font-weight:800;color:${txtClr}">${nota}</span>
-        <span style="background:${clr}22;color:${clr};border:1px solid ${clr}44;border-radius:7px;padding:3px 10px;font-size:11px;font-weight:700">${statusAtual}</span>
-      </div>`;
-    if(rec){
-      html+=`<div style="font-size:11px;color:${lblClr};margin-bottom:2px">${rec.nome_cliente||'—'}</div>`;
-      html+=`<div style="font-size:10px;color:${lblClr}">FAT: ${rec.fat||'—'} · LOJA: ${rec.loja||'—'} · Vol: ${rec.volume||'—'}</div>`;
-    }
-    html+='</div>';
-
-    // Timeline de bipes
-    // Extrai scan_log e sep_log com segurança (podem vir como string JSON ou objeto)
-    const sl=st?.scan_log?(typeof st.scan_log==='object'?st.scan_log:JSON.parse(st.scan_log)):null;
-    const sepl=st?.sep_log?(typeof st.sep_log==='object'?st.sep_log:JSON.parse(st.sep_log)):null;
-    const steps=[
-      {key:'recebido',lbl:'Recebido',icon:'📥',ts:st?.ts_recebido,user:sl?.user,clr:'#ea580c'},
-      {key:'sep',lbl:'Em Separação',icon:'▶',ts:st?.ts_sep,user:sl?.user,clr:'#d97706'},
-      {key:'sepd',lbl:'Separado',icon:'✓',ts:st?.ts_sepd,user:sepl?.user||sl?.user,clr:'#9333ea'},
-      {key:'conf',lbl:'Conferido',icon:'✔✔',ts:st?.ts_conf,user:null,clr:'#2463cc'},
-      {key:'exp',lbl:'Expedido',icon:'🚚',ts:st?.ts_exp,user:null,clr:'#16a34a'},
-    ];
-    const activeSteps=steps.filter(s=>s.ts);
-
-    // Destaque de separação (quem + quando) — sempre visível se tiver dados
-    if(sl||sepl||st?.ts_sep||st?.ts_sepd){
-      const sepNome=sepl?.user||sl?.user||'—';
-      const sepIni=st?.ts_sep||sl?.ts||'—';
-      const sepFim=st?.ts_sepd||sepl?.ts||'—';
-      html+=`<div style="padding:10px 12px;background:rgba(147,51,234,.12);border:1px solid rgba(147,51,234,.3);border-radius:9px;margin-bottom:8px">
-        <div style="font-size:9.5px;font-weight:700;color:#a78bfa;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Separação</div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <div style="flex:1;min-width:80px">
-            <div style="font-size:10px;color:rgba(255,255,255,.45);margin-bottom:2px">Separador</div>
-            <div style="font-size:16px;font-weight:800;color:#c4b5fd">${esc(sepNome)}</div>
-          </div>
-          <div style="min-width:80px">
-            <div style="font-size:10px;color:rgba(255,255,255,.45);margin-bottom:2px">Início Sep.</div>
-            <div style="font-size:12px;font-weight:700;color:#e2e8f0">${esc(sepIni)}</div>
-          </div>
-          <div style="min-width:80px">
-            <div style="font-size:10px;color:rgba(255,255,255,.45);margin-bottom:2px">Finalizado</div>
-            <div style="font-size:12px;font-weight:700;color:#e2e8f0">${esc(sepFim)}</div>
-          </div>
-        </div>
-      </div>`;
-    }
-
-    if(activeSteps.length){
-      html+=`<div style="font-size:10px;font-weight:700;color:${lblClr};text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Timeline completa</div>`;
-      activeSteps.forEach(s=>{
-        html+=`<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:${bgCard};border:1px solid ${bdCard};border-radius:8px;margin-bottom:5px">
-          <span style="width:26px;height:26px;border-radius:50%;background:${s.clr}22;color:${s.clr};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${s.icon}</span>
-          <div style="flex:1">
-            <div style="font-size:12px;font-weight:700;color:${txtClr}">${s.lbl}${s.user?` <span style="font-weight:400;font-size:11px">· ${esc(s.user)}</span>`:''}</div>
-            <div style="font-size:11px;color:${lblClr};margin-top:1px">${s.ts||'—'}</div>
-          </div>
-        </div>`;
-      });
-    }else if(!sl&&!sepl&&!st?.ts_sep){
-      html+=`<div style="font-size:12px;color:${lblClr};text-align:center;padding:10px 0">Nenhum bipe registrado para esta nota</div>`;
-    }
-
-    // Histórico separacoes (se tiver)
-    if(seps&&seps.length){
-      html+=`<div style="font-size:10px;font-weight:700;color:${lblClr};text-transform:uppercase;letter-spacing:.07em;margin:8px 0 6px">Histórico Coletor</div>`;
-      seps.forEach(s=>{
-        const ini=s.inicio?new Date(s.inicio).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
-        const fim=s.fim?new Date(s.fim).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'em andamento';
-        const cls=s.status==='separado'?'#9333ea':'#d97706';
-        const lbl=s.status==='separado'?'Separado':'Em Sep.';
-        html+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${bgCard};border:1px solid ${bdCard};border-radius:7px;margin-bottom:4px;font-size:11px">
-          <span style="background:${cls}22;color:${cls};border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700;white-space:nowrap">${lbl}</span>
-          <span style="color:${txtClr};font-weight:600">${s.separador||'—'}</span>
-          <span style="color:${lblClr};flex:1;text-align:right">${ini} → ${fim}</span>
-        </div>`;
-      });
-    }
-
-    out.innerHTML=html;
-    syncDot('ok');
-  }catch(e){
-    out.innerHTML=`<div style="color:#f87171;font-size:12px">❌ ${esc(e.message)}</div>`;
-    syncDot('err');
-  }
-}
-
-// ══════════════════════════════════════════════════════
-// RELATÓRIO EXCEL
-// ══════════════════════════════════════════════════════
-let relPeriodo='hoje';
-function setRelPeriodo(p){
-  relPeriodo=p;
-  ['hoje','7d','mes','custom'].forEach(k=>{
-    const btn=document.getElementById('rdb-'+k);
-    if(btn)btn.classList.toggle('active',k===p);
-  });
-  document.getElementById('rel-custom-row').style.display=p==='custom'?'flex':'none';
-  if(p!=='custom')carregarRelPreview();
-}
-function getRelDateRange(){
-  const hoje=new Date();
-  const fmt=d=>d.toISOString().slice(0,10);
-  if(relPeriodo==='hoje'){const s=fmt(hoje);return{ini:s+'T00:00:00',fim:s+'T23:59:59'};}
-  if(relPeriodo==='7d'){const s=new Date(hoje);s.setDate(s.getDate()-6);return{ini:fmt(s)+'T00:00:00',fim:fmt(hoje)+'T23:59:59'};}
-  if(relPeriodo==='mes'){const s=new Date(hoje.getFullYear(),hoje.getMonth(),1);return{ini:fmt(s)+'T00:00:00',fim:fmt(hoje)+'T23:59:59'};}
-  if(relPeriodo==='custom'){
-    const ini=document.getElementById('rel-dt-ini').value;
-    const fim=document.getElementById('rel-dt-fim').value;
-    if(!ini||!fim){toast('⚠ Preencha as datas');return null;}
-    return{ini:ini+'T00:00:00',fim:fim+'T23:59:59'};
-  }
-  return null;
-}
-async function carregarRelPreview(){
-  const rng=getRelDateRange();if(!rng)return;
-  const tbody=document.getElementById('rel-preview-tbody');
-  document.getElementById('rel-preview-card').style.display='';
-  tbody.innerHTML='<tr><td colspan="6" style="color:rgba(255,255,255,.3);text-align:center;padding:12px">Carregando…</td></tr>';
-  syncDot('sync');
-  try{
-    // Histórico: todos com ts_sep preenchido, filtrado por updated_at (proxy de data)
-    const{data:st,error}=await db.from('avacy_status')
-      .select('nota,status,ts_sep,ts_sepd,scan_log,sep_log,updated_at')
-      .gt('ts_sep','')
-      .gte('updated_at',rng.ini).lte('updated_at',rng.fim)
-      .order('updated_at',{ascending:false}).limit(200);
-    if(error)throw error;
-    const rows=st||[];
-    document.getElementById('rk-sep').textContent=rows.filter(r=>r.status==='Em Separação').length;
-    document.getElementById('rk-sepd').textContent=rows.filter(r=>r.status==='Separado').length;
-    document.getElementById('rk-tot').textContent=rows.length;
-    if(!rows.length){tbody.innerHTML='<tr><td colspan="6" style="color:rgba(255,255,255,.3);text-align:center;padding:12px">Sem dados no período</td></tr>';syncDot('ok');return;}
-    tbody.innerHTML=rows.map(r=>{
-      const sep=r.scan_log?.user||r.sep_log?.user||'—';
-      const tsSep=r.ts_sep||'—';
-      const tsSepd=r.ts_sepd||'—';
-      const cls=r.status==='Separado'?'b-sepd':'b-sep';
-      return`<tr>
-        <td style="font-family:monospace;font-weight:700;color:white;font-size:12px">${esc(r.nota)}</td>
-        <td style="font-size:11px;color:rgba(255,255,255,.6)">${esc(sep)}</td>
-        <td><span class="badge-sm ${cls}">${esc(r.status)}</span></td>
-        <td style="font-size:11px;color:rgba(255,255,255,.4)">${esc(tsSep)}</td>
-        <td style="font-size:11px;color:rgba(255,255,255,.4)">${esc(tsSepd)}</td>
-        <td style="font-size:11px;color:rgba(255,255,255,.4)">—</td>
-      </tr>`;
-    }).join('');
-    syncDot('ok');
-  }catch(e){
-    tbody.innerHTML=`<tr><td colspan="6" style="color:#f87171;font-size:12px">Erro: ${esc(e.message)}</td></tr>`;
-    syncDot('err');
-  }
-}
-async function exportRelatorio(tipo){
-  if(typeof XLSX==='undefined'){toast('⚠ SheetJS não carregado');return;}
-  const rng=getRelDateRange();if(!rng)return;
-  toast('⏳ Gerando relatório…',5000);
-  syncDot('sync');
-  try{
-    // Histórico via REST direto (sem supabase client)
-    const ini=encodeURIComponent(rng.ini);
-    const fim=encodeURIComponent(rng.fim);
-    const allSt=await sbFetch(`/rest/v1/avacy_status?select=nota,status,ts_sep,ts_sepd,scan_log,sep_log,updated_at&ts_sep=gt.&updated_at=gte.${ini}&updated_at=lte.${fim}&order=updated_at.desc&limit=5000`);
-    if(!allSt||!allSt.length){toast('⚠ Nenhum dado no período');syncDot('ok');return;}
-
-    // Busca detalhes via supabase client (mais compatível com RLS)
-    const notas=allSt.map(r=>r.nota);
-    const recMap={};
-    for(let i=0;i<notas.length;i+=50){
-      try{
-        const{data:ch}=await db.from('avacy_records')
-          .select('nota,fat,loja,nome_cliente')
-          .in('nota',notas.slice(i,i+50));
-        (ch||[]).forEach(r=>recMap[r.nota]=r);
-      }catch(_){}
-    }
-
-    const wb=XLSX.utils.book_new();
-    const d=new Date();
-    const dd=String(d.getDate()).padStart(2,'0'),mm=String(d.getMonth()+1).padStart(2,'0');
-    const fname=`Relatorio_Separacao_AVACY_${dd}-${mm}-${d.getFullYear()}.xlsx`;
-
-    if(tipo==='sep'){
-      const rows=allSt.map((r,i)=>{
-        const rec=recMap[r.nota]||{};
-        const sl=r.scan_log&&typeof r.scan_log==='object'?r.scan_log:{};
-        const sepl=r.sep_log&&typeof r.sep_log==='object'?r.sep_log:{};
-        const sep=String(sl.user||sepl.user||'—');
-        // Tenta calcular duração a partir de ts_sep e ts_sepd (formato DD/MM/YYYY HH:MM)
-        let durFmt='—',durMin='';
-        if(r.ts_sep&&r.ts_sepd){
-          try{const parseTS=s=>{const m=String(s).match(/(\d{2})\/(\d{2})\/(\d{4})\s(\d{2}):(\d{2})/);return m?new Date(`${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:00`):null;};
-          const tsIni=parseTS(r.ts_sep),tsFim=parseTS(r.ts_sepd);
-          if(tsIni&&tsFim&&tsFim>tsIni){const mn=Math.round((tsFim-tsIni)/60000);durMin=mn;durFmt=mn>=60?Math.floor(mn/60)+'h'+String(mn%60).padStart(2,'0')+'min':mn+'min';}}catch(_){}
-        }
-        return{
-          '#':i+1,
-          'DATA':String(r.ts_sep?r.ts_sep.substring(0,10):(r.updated_at?new Date(r.updated_at).toLocaleDateString('pt-BR'):'—')),
-          'NOTA':String(r.nota||''),
-          'FAT':String(rec.fat||''),
-          'LOJA':String(rec.loja||''),
-          'CLIENTE':String(rec.nome_cliente||'').substring(0,35),
-          'SEPARADOR':String(sep),
-          'STATUS':String(r.status||''),
-          'INÍCIO SEP':String(r.ts_sep||'—'),
-          'FIM SEP':String(r.ts_sepd||'—'),
-          'DURAÇÃO':String(durFmt),
-          'DURAÇÃO (min)':durMin!==''?Number(durMin):''
-        };
-      });
-      const ws=XLSX.utils.json_to_sheet(rows);
-      ws['!cols']=[{wch:4},{wch:12},{wch:14},{wch:8},{wch:8},{wch:30},{wch:16},{wch:14},{wch:16},{wch:16},{wch:10},{wch:14}];
-      XLSX.utils.book_append_sheet(wb,'Separação',ws);
-    }else{
-      // Ranking por separador
-      const rank={};
-      allSt.forEach(r=>{
-        const sl2=r.scan_log&&typeof r.scan_log==='object'?r.scan_log:{};
-        const sepl2=r.sep_log&&typeof r.sep_log==='object'?r.sep_log:{};
-        const sep=String(sl2.user||sepl2.user||'(sem nome)');
-        if(!rank[sep])rank[sep]={sep,total:0,separados:0,em_sep:0,durMin:0,duracoes:0};
-        rank[sep].total++;
-        if(r.status==='Separado')rank[sep].separados++;
-        else rank[sep].em_sep++;
-        if(r.ts_sep&&r.ts_sepd){
-          try{const parseTS2=s=>{const m=String(s).match(/(\d{2})\/(\d{2})\/(\d{4})\s(\d{2}):(\d{2})/);return m?new Date(`${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:00`):null;};
-          const tIni=parseTS2(r.ts_sep),tFim=parseTS2(r.ts_sepd);
-          if(tIni&&tFim&&tFim>tIni){rank[sep].durMin+=Math.round((tFim-tIni)/60000);rank[sep].duracoes++;}}catch(_){}
-        }
-      });
-      const rows=Object.values(rank).sort((a,b)=>b.total-a.total).map((r,i)=>{
-        const med=r.duracoes?Math.round(r.durMin/r.duracoes):null;
-        return{
-          'RANK':i+1,
-          'SEPARADOR':r.sep,
-          'TOTAL PEDIDOS':r.total,
-          'SEPARADOS':r.separados,
-          'EM SEPARAÇÃO':r.em_sep,
-          'TEMPO MÉDIO (min)':med||'—',
-          'TEMPO TOTAL (min)':r.durMin||0
-        };
-      });
-      const ws=XLSX.utils.json_to_sheet(rows);
-      ws['!cols']=[{wch:6},{wch:18},{wch:14},{wch:12},{wch:14},{wch:18},{wch:18}];
-      XLSX.utils.book_append_sheet(wb,'Ranking',ws);
-    }
-    XLSX.writeFile(wb,fname);
-    toast('✔ Exportado: '+allSt.length+' registros');
-    syncDot('ok');
-  }catch(e){
-    toast('❌ '+e.message,4000);syncDot('err');
-  }
 }
 
 // ══════════════════════════════════════════════════════
