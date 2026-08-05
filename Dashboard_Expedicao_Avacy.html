@@ -411,7 +411,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v7.6 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v7.7 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -419,7 +419,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v7.6</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v7.7</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -494,7 +494,21 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
       <div id="cTransp"></div>
     </div>
     <div class="chart-box">
-      <div class="chart-ttl"><span>👷</span> Top Separadores</div>
+      <div class="chart-ttl" style="display:flex;justify-content:space-between;align-items:center">
+        <span><span>👷</span> Top Separadores</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <select id="sfSepRank" onchange="onFilterChange()" title="Filtrar por status"
+            style="font-size:10px;padding:2px 5px;border-radius:6px;border:1px solid var(--border);color:var(--text);background:white;cursor:pointer">
+            <option value="">Todos</option>
+            <option value="Em Separação">Em Sep.</option>
+            <option value="Separado">Separado</option>
+            <option value="Conferido">Conferido</option>
+            <option value="Expedido">Expedido</option>
+          </select>
+          <button onclick="exportSepRank()" title="Exportar ranking de separadores"
+            style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--blue);padding:0;font-weight:600">↓ Excel</button>
+        </div>
+      </div>
       <div id="cSepRank"></div>
     </div>
   </aside>
@@ -2041,13 +2055,19 @@ function updateDashboard(list){
   drawBars('cOrigem',Object.entries(origC).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([l,v])=>({label:l,value:v,vol:origV[l]||0,color:l==='GRU'?'#2dd4bf':'#58a6ff'})));
   drawBars('cTransp',Object.entries(transpC).sort((a,b)=>(transpV[b[0]]||0)-(transpV[a[0]]||0)).slice(0,5).map(([l,v])=>({label:l,value:v,vol:transpV[l]||0,color:'#58a6ff'})));
   // Separadores ranking
+  const _sfSepRank=(document.getElementById('sfSepRank')?.value||'');
   const sepRankC={},sepRankVol={};
+  const _isDate=/^\d{2}\/\d{2}\/\d{4}/; // exclui timestamps que viraram nome
   list.forEach(r=>{
     const sd=stMap[r.nota]||{};
-    const u=(sd.sep_log?.user||sd.separador||'').toUpperCase().trim();if(!u)return;
+    const st=sd.status||'Faturado';
+    if(_sfSepRank&&st!==_sfSepRank)return;
+    const u=(sd.sep_log?.user||sd.separador||'').toUpperCase().trim();
+    if(!u||_isDate.test(u))return; // ignora timestamps como nome
     const vol=parseInt((r.volume||'').toString().replace(/\D/g,''))||0;
     sepRankC[u]=(sepRankC[u]||0)+1;sepRankVol[u]=(sepRankVol[u]||0)+vol;
   });
+  window._sepRankData={c:sepRankC,vol:sepRankVol}; // guarda para exportSepRank()
   drawBars('cSepRank',Object.entries(sepRankC).sort((a,b)=>(sepRankVol[b[0]]||0)-(sepRankVol[a[0]]||0)).slice(0,8).map(([l,v],i)=>({label:l,value:v,vol:sepRankVol[l]||0,color:i===0?'#059669':i===1?'#16a34a':'#4ade80'})));
 }
 function drawDonut(id,data){
@@ -2109,6 +2129,23 @@ function exportTransp(){
     ws['!cols']=[{wch:5},{wch:45},{wch:8},{wch:10}];
     const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Transportadoras');
     XLSX.writeFile(wb,`Transportadoras_${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.xlsx`);
+  });
+}
+function exportSepRank(){
+  loadXLSX(()=>{
+    const data=window._sepRankData||{c:{},vol:{}};
+    const rows=Object.entries(data.c)
+      .sort((a,b)=>(data.vol[b[0]]||0)-(data.vol[a[0]]||0))
+      .map(([sep,nf],i)=>({'#':i+1,'SEPARADOR':sep,'NF':nf,'VOLUME':data.vol[sep]||0}));
+    if(!rows.length){alert('Sem dados no ranking atual.');return}
+    const totNF=rows.reduce((s,r)=>s+r['NF'],0);
+    const totVol=rows.reduce((s,r)=>s+r['VOLUME'],0);
+    rows.push({'#':'','SEPARADOR':'TOTAL','NF':totNF,'VOLUME':totVol});
+    const sfSt=document.getElementById('sfSepRank')?.value||'Todos';
+    const ws=XLSX.utils.json_to_sheet(rows);
+    ws['!cols']=[{wch:5},{wch:25},{wch:8},{wch:10}];
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Separadores');
+    XLSX.writeFile(wb,`Separadores_${sfSt.replace(/ /g,'_')}_${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.xlsx`);
   });
 }
 function exportConsolidado(){
