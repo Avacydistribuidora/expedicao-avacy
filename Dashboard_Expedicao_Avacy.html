@@ -411,7 +411,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v7.8 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v7.9 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -419,7 +419,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v7.8</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v7.9</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -943,7 +943,7 @@ function closeActMenu(){document.getElementById('actMenu').classList.remove('ope
 // ═══════════════════════════════════════════════════════════
 // ESTADO
 // ═══════════════════════════════════════════════════════════
-let activeRecs=[],expedidoRecs=[],stMap={},csvContent=null;
+let activeRecs=[],expedidoRecs=[],stMap={},csvContent=null,csvFilename='';
 let sortField='emissao',sortDir='asc';
 let selectedDates=null; // null=todos; Set de "YYYY-MM"
 
@@ -1049,6 +1049,7 @@ function parseCSV(text){
 }
 function onFileSelect(input){
   const file=input.files[0];if(!file)return;
+  csvFilename=file.name;
   document.getElementById('fileName').textContent=file.name+' ('+Math.round(file.size/1024)+' KB)';
   document.getElementById('fileSel').classList.add('show');
   document.getElementById('btnImport').disabled=false;
@@ -1063,7 +1064,7 @@ function onFileSelect(input){
 const dz=document.getElementById('dropZone');
 dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag')});
 dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
-dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');const file=e.dataTransfer.files[0];if(!file)return;document.getElementById('fileName').textContent=file.name;document.getElementById('fileSel').classList.add('show');document.getElementById('btnImport').disabled=false;const r=new FileReader();const extD=file.name.split('.').pop().toLowerCase();
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');const file=e.dataTransfer.files[0];if(!file)return;csvFilename=file.name;document.getElementById('fileName').textContent=file.name;document.getElementById('fileSel').classList.add('show');document.getElementById('btnImport').disabled=false;const r=new FileReader();const extD=file.name.split('.').pop().toLowerCase();
     if(extD==='xls'||extD==='xlsx'){r.onload=ev=>{csvContent={type:'vdk',data:ev.target.result}};r.readAsArrayBuffer(file)}
     else{r.onload=ev=>{csvContent=ev.target.result};r.readAsText(file,'ISO-8859-1')}
   });
@@ -1183,27 +1184,18 @@ function importVDK(arrayBuffer){
           // Preenche ts_fat com a data/hora real do VDK (se ainda não tiver)
           const dtTs=fmtDateTimeVDK(dtRaw);
           if(dtTs&&!stMap[sKey].ts_fat)stMap[sKey].ts_fat=dtTs;
-          // Só avança o status se o novo for "mais adiantado"
+          // Só avança o status se o novo for "mais adiantado" E acima de Faturado
           const curSt=stMap[sKey].status||'Faturado';
           const ord={Faturado:1,Recebido:1.5,'Em Separação':2,Separado:3,Conferido:4,Expedido:5,Pendente:0.5};
-          if((ord[mappedSt]||0)>(ord[curSt]||0)){
+          if((ord[mappedSt]||0)>1&&(ord[mappedSt]||0)>(ord[curSt]||0)){
             stMap[sKey].status=mappedSt;
             const tsMap2={Expedido:'ts_exp','Em Separação':'ts_sep',Separado:'ts_sepd',Conferido:'ts_conf',Pendente:'ts_pend',Faturado:'ts_fat'};
             const tsVal=fmtDateTimeVDK(dtRaw)||n;
             if(!stMap[sKey][tsMap2[mappedSt]])stMap[sKey][tsMap2[mappedSt]]=tsVal;
           }
         }else{
-          // Nota não existe localmente — cria stub GRU para exibir no dashboard
-          add++;
-          const stubRec={nota,fat,loja:fd.loja,...fd};
-          existMap.set(nota,stubRec);
-          if(!stMap[nota])stMap[nota]={obs:''};
-          const dtTs2=fmtDateTimeVDK(dtRaw);
-          stMap[nota].status=mappedSt;
-          stMap[nota].ts_fat=dtTs2||n;
-          const tsMap3={Expedido:'ts_exp','Em Separação':'ts_sep',Separado:'ts_sepd',Conferido:'ts_conf',Pendente:'ts_pend',Faturado:'ts_fat'};
-          if(tsMap3[mappedSt]&&!stMap[nota][tsMap3[mappedSt]])stMap[nota][tsMap3[mappedSt]]=dtTs2||n;
-          skip--;  // descontar do skip pois agora é criação
+          // Nota não existe localmente — VDK não cria novos registros, apenas ignora
+          skip++;
         }
       }
       pf.style.width='85%';pt.textContent='Salvando…';
@@ -1219,7 +1211,7 @@ function importVDK(arrayBuffer){
           const autoStatus=Object.entries(stMap).filter(([,sd])=>['Expedido','Conferido','Em Separação'].includes(sd.status));
           for(const[nota]of autoStatus)await sbSyncStatus(nota);
         }
-        alert(`✓ VDK GRU — status atualizados!\n${upd} atualizado(s) · ${add} novo(s) GRU · ${skip<0?0:skip} ignorados (FRAN/outros)`);
+        alert(`✓ VDK GRU — status atualizados!\n${upd} atualizado(s) · ${skip} ignorados (não encontrados/FRAN/outros)`);
       },300);
     }catch(e){alert('Erro ao ler XLS: '+e.message);pw.classList.remove('show');}
   });
@@ -1241,6 +1233,8 @@ async function importCSV(){
   if(!csvContent){alert('Selecione um arquivo.');return}
   // Detecta formato VDK (XLS/XLSX)
   if(typeof csvContent==='object'&&csvContent.type==='vdk'){importVDK(csvContent.data);return}
+  // CSV com nome começando em "vdk" — apenas atualiza status acima de Faturado, sem criar registros
+  const _isVdkCsv=csvFilename.toLowerCase().startsWith('vdk');
   _lastSyncTs=Date.now(); // bloqueia o timer de sync enquanto importa
   const pw=document.getElementById('progWrap'),pf=document.getElementById('progFill'),pt=document.getElementById('progTxt');
   pw.classList.add('show');pf.style.width='10%';pt.textContent='Sincronizando status…';
@@ -1351,10 +1345,10 @@ async function importCSV(){
             if(!stMap[nota].ts_conf)stMap[nota].ts_conf=n;}
           }
         }
-        // Status QRY direto (sem datas explícitas)
-        if(!_locked&&qrySt&&!csvSt&&(PROG[qrySt]||0)>(PROG[stMap[nota].status||'Faturado']||0)){stMap[nota].status=qrySt;}
+        // Status QRY direto (sem datas explícitas) — VDK CSV: só aceita acima de Faturado
+        if(!_locked&&qrySt&&!csvSt&&(PROG[qrySt]||0)>(PROG[stMap[nota].status||'Faturado']||0)&&(!_isVdkCsv||(PROG[qrySt]||0)>1)){stMap[nota].status=qrySt;}
         // Status do CSV (datas reais de separação) — nunca regride status
-        if(!_locked&&csvSt&&(PROG[csvSt]||0)>(PROG[stMap[nota].status||'Faturado']||0)){
+        if(!_locked&&csvSt&&(PROG[csvSt]||0)>(PROG[stMap[nota].status||'Faturado']||0)&&(!_isVdkCsv||(PROG[csvSt]||0)>1)){
           stMap[nota].status=csvSt;
           if(dtSep){const a=stMap[nota].ts_sep;stMap[nota].ts_sep=a&&a<dtSep?a:dtSep;}
           if(dtSepd){const a=stMap[nota].ts_sepd;stMap[nota].ts_sepd=a&&a<dtSepd?a:dtSepd;}
@@ -1374,6 +1368,8 @@ async function importCSV(){
         }
         // Demais status: mantém o que o operador definiu manualmente
       }else{
+        // CSV VDK não cria novos registros — apenas atualiza existentes
+        if(_isVdkCsv){skip++;continue;}
         existMap.set(nota,{nota,...fd});add++;
         if(!stMap[nota])stMap[nota]={obs:''};
         // SEMPRE primeiro: mesclar pré-bipe (scan antes do CSV) por nota, FAT ou LOJA
