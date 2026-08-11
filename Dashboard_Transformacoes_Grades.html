@@ -6,6 +6,7 @@
 <title>Transformações de Grades — AVACY</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -293,8 +294,11 @@ td{padding:6px 8px;vertical-align:middle}
       <button class="btn primary" onclick="toggleActMenu()">⚙ Ações <span style="font-size:9px">▾</span></button>
       <div class="act-menu" id="actMenu">
         <a id="menuImport" onclick="openImport();closeActMenu()">📥 Importar CSV do Protheus (Z14/Z15)</a>
+        <a id="menuManualImport" onclick="openManualImport();closeActMenu()">📋 Importar Planilha Manual (.xlsx)</a>
         <a onclick="exportXLSX();closeActMenu()">📤 Exportar Planilha (.xlsx)</a>
         <a onclick="exportAudit();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px">🗂 Exportar Log de Auditoria</a>
+        <a id="menuClearHistorico" onclick="clearHistorico();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px;color:var(--orange)">🗑 Limpar Registros Históricos</a>
+        <a id="menuClearAll" onclick="clearAllRecords();closeActMenu()" style="color:var(--red)">⛔ Limpar Todos os Registros</a>
       </div>
     </div>
     <div class="user-badge" onclick="toggleUserMenu()" id="userBadge">
@@ -438,6 +442,29 @@ td{padding:6px 8px;vertical-align:middle}
     <div class="modal-act">
       <button class="btn" onclick="closeImport()">Cancelar</button>
       <button class="btn primary" id="btnImport" onclick="importCSV()" disabled>✓ Importar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: IMPORTAÇÃO MANUAL -->
+<div class="ov" id="modalManualImport" onclick="if(event.target===this)closeManualImport()">
+  <div class="modal" style="max-width:560px">
+    <h3>📋 Importar Planilha Manual (.xlsx)</h3>
+    <p>Selecione a planilha preenchida no modelo AVACY. Os campos manuais já existentes <strong>não serão sobrescritos</strong>.</p>
+    <div class="drop-area" id="manDropArea" onclick="document.getElementById('manFileIn').click()" ondragover="event.preventDefault();this.classList.add('drag-ov')" ondragleave="this.classList.remove('drag-ov')" ondrop="handleManDrop(event)">
+      <div class="ico" style="font-size:28px">📂</div>
+      <p id="manFileName">Clique ou arraste o arquivo .xlsx aqui</p>
+      <input type="file" id="manFileIn" accept=".xlsx,.xls" style="display:none" onchange="handleManFile(this.files[0])">
+    </div>
+    <div id="manMsg" style="font-size:11px;margin-top:8px;min-height:16px;color:var(--muted)"></div>
+    <div id="manProgress" style="display:none;margin-top:8px">
+      <div style="background:#e2e8f0;border-radius:4px;height:8px;overflow:hidden"><div id="manPf" style="background:var(--blue);height:100%;width:0%;transition:.2s"></div></div>
+      <div id="manPt" style="font-size:10px;color:var(--muted);margin-top:4px">Processando…</div>
+    </div>
+    <div class="protected-notice">🔒 <strong>Campos protegidos:</strong> OP · Feito · Status · OBS — preservados em reimportações.</div>
+    <div class="modal-act">
+      <button class="btn" onclick="closeManualImport()">Cancelar</button>
+      <button class="btn primary" id="btnManImport" onclick="importManualSheet()" disabled>✓ Importar</button>
     </div>
   </div>
 </div>
@@ -1393,6 +1420,209 @@ function exportAudit(){
 }
 
 // ═══════════════════════════════════════
+// LIMPAR REGISTROS
+// ═══════════════════════════════════════
+async function clearHistorico(){
+  if(getCurrentUser()?.role!=='admin'){alert('Apenas o administrador.');return;}
+  const histCount=records.filter(r=>r.id.startsWith('hist-')).length;
+  if(histCount===0){alert('Nenhum registro histórico encontrado.');return;}
+  if(!confirm(`⚠️ Excluir ${histCount} registros históricos (HIST-*)?\n\nEsta ação não pode ser desfeita.`))return;
+  const {error}=await sb.from('records').delete().like('id','hist-%');
+  if(error){alert('Erro ao limpar: '+error.message);return;}
+  records=records.filter(r=>!r.id.startsWith('hist-'));
+  _expandedIds.clear();populateFilters();render();renderKPIs();
+  alert(`✓ ${histCount} registros históricos removidos com sucesso.`);
+}
+
+async function clearAllRecords(){
+  if(getCurrentUser()?.role!=='admin'){alert('Apenas o administrador.');return;}
+  if(!confirm(`⛔ Excluir TODOS os ${records.length} registros?\n\nEsta ação NÃO pode ser desfeita!`))return;
+  const conf=prompt('Para confirmar, digite: APAGAR TUDO');
+  if(conf!=='APAGAR TUDO'){alert('Operação cancelada.');return;}
+  const {error}=await sb.from('records').delete().neq('id','__noop__');
+  if(error){alert('Erro ao limpar: '+error.message);return;}
+  records=[];_expandedIds.clear();
+  _emissaoSel.clear();updateMsLabel();
+  populateFilters();render();renderKPIs();
+  alert('✓ Todos os registros foram removidos.');
+}
+
+// ═══════════════════════════════════════
+// IMPORTAÇÃO MANUAL — Planilha AVACY
+// ═══════════════════════════════════════
+let _manFile=null;
+
+function openManualImport(){
+  if(getCurrentUser()?.role!=='admin'){alert('Apenas o administrador.');return;}
+  _manFile=null;
+  document.getElementById('manFileName').textContent='Clique ou arraste o arquivo .xlsx aqui';
+  document.getElementById('manMsg').textContent='';
+  document.getElementById('manProgress').style.display='none';
+  document.getElementById('btnManImport').disabled=true;
+  document.getElementById('modalManualImport').classList.add('open');
+}
+function closeManualImport(){document.getElementById('modalManualImport').classList.remove('open');}
+
+function handleManDrop(e){
+  e.preventDefault();
+  document.getElementById('manDropArea').classList.remove('drag-ov');
+  const f=e.dataTransfer.files[0];
+  if(f)handleManFile(f);
+}
+function handleManFile(f){
+  if(!f)return;
+  if(!/\.(xlsx|xls)$/i.test(f.name)){
+    document.getElementById('manMsg').textContent='⚠️ Selecione um arquivo .xlsx ou .xls';
+    return;
+  }
+  _manFile=f;
+  document.getElementById('manFileName').textContent='📎 '+f.name;
+  document.getElementById('manMsg').textContent='Arquivo pronto para importação.';
+  document.getElementById('btnManImport').disabled=false;
+}
+
+function parseDateBR(s){
+  // Accepts "dd/mm/yyyy" or "yyyy-mm-dd" or Excel serial number → returns "yyyymmdd"
+  if(!s)return'';
+  const str=String(s).trim();
+  // dd/mm/yyyy
+  if(/^\d{2}\/\d{2}\/\d{4}$/.test(str)){
+    const[d,m,y]=str.split('/');return y+m+d;
+  }
+  // yyyy-mm-dd
+  if(/^\d{4}-\d{2}-\d{2}/.test(str)){
+    return str.slice(0,10).replace(/-/g,'');
+  }
+  // Excel serial number
+  const n=parseInt(str);
+  if(!isNaN(n)&&n>40000&&n<100000){
+    const d=new Date((n-25569)*86400000);
+    const y=d.getUTCFullYear(),mo=String(d.getUTCMonth()+1).padStart(2,'0'),dy=String(d.getUTCDate()).padStart(2,'0');
+    return y+mo+dy;
+  }
+  return'';
+}
+
+async function importManualSheet(){
+  if(!_manFile){alert('Selecione um arquivo.');return;}
+  const pw=document.getElementById('manProgress');
+  const pf=document.getElementById('manPf');
+  const pt=document.getElementById('manPt');
+  pw.style.display='block';pf.style.width='10%';pt.textContent='Lendo planilha…';
+  document.getElementById('btnManImport').disabled=true;
+
+  const buf=await _manFile.arrayBuffer();
+  const wb=XLSX.read(buf,{type:'array',cellDates:false});
+  // Use first sheet
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+
+  // Find header row (first row with "DUN" or "SEMANA")
+  let hdrIdx=-1;
+  for(let i=0;i<Math.min(rows.length,10);i++){
+    const r=rows[i].map(c=>String(c||'').toUpperCase().trim());
+    if(r.some(c=>c.includes('DUN')||c.includes('SEMANA'))){hdrIdx=i;break;}
+  }
+  if(hdrIdx<0){
+    alert('Cabeçalho não encontrado. Verifique se o arquivo usa o modelo AVACY.');
+    pw.style.display='none';document.getElementById('btnManImport').disabled=false;return;
+  }
+
+  const hdr=rows[hdrIdx].map(c=>String(c||'').toUpperCase().trim());
+  const ci=k=>{
+    const aliases={
+      SEMANA:['SEMANA','MOVIMENTAÇÃO','MOVIMENTACAO','SEMANA MOVIMENTAÇÃO'],
+      SHIP:['SHIP','TIPO'],
+      DUN:['DUN','DUN MONTAGEM','LOTE','CÓDIGO DUN','CODIGO DUN'],
+      GRADE:['DESCRIÇÃO GRADE','DESCRICAO GRADE','DESCRIÇÃO','DESCRICAO','GRADE'],
+      CXMONT:['CX FAZER','CX. FAZER','CAIXAS NECESSÁRIAS','CAIXAS NECESSARIAS','FAZER','QT FAZER'],
+      FEITO:['CX FEITO','CX. FEITO','FEITO','QT FEITO'],
+      OP:['OP','ORDEM','NUMERO OP','NÚMERO OP'],
+      PEDIDO:['PEDIDO','NF','NOTA FISCAL'],
+      DTSOLC:['DT SOLICITAÇÃO','DT. SOLICITAÇÃO','DT SOLICITACAO','DT. SOLICITACAO','DATA SOLICITAÇÃO','DATA SOLICITACAO','DT SOL'],
+      DTFIN:['DT FINALIZAÇÃO','DT. FINALIZAÇÃO','DT FINALIZACAO','DT. FINALIZACAO','DATA FINALIZAÇÃO','DT SALDO','DT FIN'],
+      OBS:['OBS','OBSERVAÇÃO','OBSERVACAO'],
+      OPERADOR:['OPERADOR'],
+      STATUS:['STATUS'],
+      DEST:['DESTINO','DEST','CD DESTINO'],
+    };
+    const list=aliases[k]||[k];
+    for(const a of list){
+      const idx=hdr.findIndex(h=>h===a||h.startsWith(a)||a.startsWith(h));
+      if(idx>=0)return idx;
+    }
+    return-1;
+  };
+
+  const cols={
+    semana:ci('SEMANA'),ship:ci('SHIP'),dun:ci('DUN'),grade:ci('GRADE'),
+    cxmont:ci('CXMONT'),feito:ci('FEITO'),op:ci('OP'),pedido:ci('PEDIDO'),
+    dtsolc:ci('DTSOLC'),dtfin:ci('DTFIN'),obs:ci('OBS'),
+    operador:ci('OPERADOR'),status:ci('STATUS'),dest:ci('DEST'),
+  };
+
+  pf.style.width='30%';pt.textContent='Processando linhas…';
+  const dataRows=rows.slice(hdrIdx+1).filter(r=>r.some(c=>c!==''&&c!==null));
+  let added=0,updated=0,skipped=0;
+  const toUpsert=[];
+
+  for(const row of dataRows){
+    const get=k=>{const i=cols[k];return i>=0?String(row[i]||'').trim():''};
+    const dun=get('dun');
+    if(!dun||dun===''||dun.toUpperCase()==='DUN')continue; // skip empty/header rows
+    const dtsolc=parseDateBR(get('dtsolc'))||'20260101';
+    const ym=dtsolc.slice(0,6);
+    const id=`man-${ym}-${dun}`;
+    const ex=records.find(r=>r.id===id);
+    const destRaw=get('dest');
+    const destMap={'GRU':'05','MT':'01','05':'05','01':'01'};
+    const dest=destMap[destRaw.toUpperCase()]||destRaw||'05';
+    const dtfin=parseDateBR(get('dtfin'));
+    const statusRaw=get('status').toLowerCase();
+    const statusManual=statusRaw.includes('final')?'Finalizado':statusRaw.includes('and')?'Em Andamento':'Aguardando';
+    const cxmont=parseFloat(get('cxmont'))||0;
+    const ng={
+      id,z14id:id,filial:'GRU',usrid:'manual',origem:'planilha',
+      lote:dun,grade:get('grade'),cxmont,saldo:0,
+      dtsolc,dtfin,statusSys:'',dest,
+      semana:get('semana'),monthKey:ym,
+      items:[],feito:ex?.feito||get('feito')||'',
+      statusManual:ex?.statusManual||statusManual,
+      obs:ex?.obs||get('obs')||'',ship:get('ship')||'ESTOQUE',
+      op:ex?.op||get('op')||'',pedido:ex?.pedido||get('pedido')||'',
+      operador:get('operador')||'',auditLog:ex?.auditLog||[]
+    };
+    toUpsert.push(ng);
+    if(ex)updated++;else added++;
+  }
+
+  if(toUpsert.length===0){
+    alert('Nenhuma linha válida encontrada na planilha.');
+    pw.style.display='none';document.getElementById('btnManImport').disabled=false;return;
+  }
+
+  pf.style.width='70%';pt.textContent=`Salvando ${toUpsert.length} registros…`;
+  const batchSize=500;
+  for(let i=0;i<toUpsert.length;i+=batchSize){
+    const batch=toUpsert.slice(i,i+batchSize).map(toDbRow);
+    const {error}=await sb.from('records').upsert(batch,{onConflict:'id'});
+    if(error){alert('Erro ao salvar: '+error.message);pw.style.display='none';document.getElementById('btnManImport').disabled=false;return;}
+  }
+
+  // Update local records
+  const idSet=new Set(toUpsert.map(r=>r.id));
+  records=records.filter(r=>!idSet.has(r.id));
+  records=records.concat(toUpsert);
+  pf.style.width='100%';pt.textContent='Concluído!';
+  document.getElementById('lastUpd').textContent='Importado: '+nowStr();
+  populateFilters();render();renderKPIs();
+  setTimeout(()=>{
+    closeManualImport();
+    alert(`✓ Importação concluída!\n${added} novo(s) · ${updated} atualizado(s)`);
+  },400);
+}
+
+// ═══════════════════════════════════════
 // USER MGMT — Supabase Auth + user_profiles
 // ═══════════════════════════════════════
 async function openUserMgmt(){
@@ -1535,6 +1765,9 @@ async function initDashboard(){
   document.getElementById('userAvatar').textContent=(cu?.username||'?')[0].toUpperCase();
   document.getElementById('menuAdminLink').style.display=cu?.role==='admin'?'':'none';
   document.getElementById('menuImport').style.display=cu?.role==='admin'?'':'none';
+  document.getElementById('menuManualImport').style.display=cu?.role==='admin'?'':'none';
+  document.getElementById('menuClearHistorico').style.display=cu?.role==='admin'?'':'none';
+  document.getElementById('menuClearAll').style.display=cu?.role==='admin'?'':'none';
   updateClock();
   await loadData();
   // Pre-select current month if nothing selected
