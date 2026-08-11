@@ -276,7 +276,7 @@ td{padding:6px 8px;vertical-align:middle}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v2.0 — Transformações AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v2.3 — Transformações AVACY</div>
   </div>
 </div>
 
@@ -284,7 +284,7 @@ td{padding:6px 8px;vertical-align:middle}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Transformações de Grades <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v2.0</span></div>
+  <div class="htitle">Transformações de Grades <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v2.3</span></div>
   <div class="hright">
     <div>
       <div class="clock" id="clock">--:--:--</div>
@@ -1439,7 +1439,21 @@ async function clearAllRecords(){
   if(!confirm(`⛔ Excluir TODOS os ${records.length} registros?\n\nEsta ação NÃO pode ser desfeita!`))return;
   const conf=prompt('Para confirmar, digite: APAGAR TUDO');
   if(conf!=='APAGAR TUDO'){alert('Operação cancelada.');return;}
-  const {error}=await sb.from('records').delete().neq('id','__noop__');
+  // Delete in batches by actual IDs to ensure all records are removed
+  const ids=records.map(r=>r.id);
+  let error=null;
+  if(ids.length===0){
+    // Nothing to delete locally, but try to clear anything that may be in DB
+    const res=await sb.from('records').delete().not('id','is',null);
+    error=res.error;
+  } else {
+    // Delete in batches of 500
+    for(let i=0;i<ids.length;i+=500){
+      const batch=ids.slice(i,i+500);
+      const res=await sb.from('records').delete().in('id',batch);
+      if(res.error){error=res.error;break;}
+    }
+  }
   if(error){alert('Erro ao limpar: '+error.message);return;}
   records=[];_expandedIds.clear();
   _emissaoSel.clear();updateMsLabel();
@@ -1601,18 +1615,24 @@ async function importManualSheet(){
     pw.style.display='none';document.getElementById('btnManImport').disabled=false;return;
   }
 
-  pf.style.width='70%';pt.textContent=`Salvando ${toUpsert.length} registros…`;
+  // Deduplicate by ID (last row in spreadsheet wins) to prevent PostgreSQL upsert error
+  // when same DUN appears multiple times in the file with the same month
+  const dedupMap=new Map();
+  toUpsert.forEach(r=>dedupMap.set(r.id,r));
+  const dedupedList=Array.from(dedupMap.values());
+
+  pf.style.width='70%';pt.textContent=`Salvando ${dedupedList.length} registros…`;
   const batchSize=500;
-  for(let i=0;i<toUpsert.length;i+=batchSize){
-    const batch=toUpsert.slice(i,i+batchSize).map(toDbRow);
+  for(let i=0;i<dedupedList.length;i+=batchSize){
+    const batch=dedupedList.slice(i,i+batchSize).map(toDbRow);
     const {error}=await sb.from('records').upsert(batch,{onConflict:'id'});
     if(error){alert('Erro ao salvar: '+error.message);pw.style.display='none';document.getElementById('btnManImport').disabled=false;return;}
   }
 
   // Update local records
-  const idSet=new Set(toUpsert.map(r=>r.id));
+  const idSet=new Set(dedupedList.map(r=>r.id));
   records=records.filter(r=>!idSet.has(r.id));
-  records=records.concat(toUpsert);
+  records=records.concat(dedupedList);
   pf.style.width='100%';pt.textContent='Concluído!';
   document.getElementById('lastUpd').textContent='Importado: '+nowStr();
   populateFilters();render();renderKPIs();
