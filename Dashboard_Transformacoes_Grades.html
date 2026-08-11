@@ -276,7 +276,7 @@ td{padding:6px 8px;vertical-align:middle}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v2.5 — Transformações AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v2.6 — Transformações AVACY</div>
   </div>
 </div>
 
@@ -284,7 +284,7 @@ td{padding:6px 8px;vertical-align:middle}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Transformações de Grades <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v2.5</span></div>
+  <div class="htitle">Transformações de Grades <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v2.6</span></div>
   <div class="hright">
     <div>
       <div class="clock" id="clock">--:--:--</div>
@@ -1590,10 +1590,13 @@ async function importManualSheet(){
   for(const row of dataRows){
     const get=k=>{const i=cols[k];return i>=0?String(row[i]||'').trim():''};
     const dun=get('dun');
-    if(!dun||dun===''||dun.toUpperCase()==='DUN')continue; // skip empty/header rows
+    const opVal=get('op');
+    // ID: man-{AAAAMM}-{DUN} ou man-{AAAAMM}-{OP} se DUN estiver em branco
+    const idKey=dun||opVal;
+    if(!idKey||idKey.toUpperCase()==='DUN')continue; // skip linhas vazias ou cabeçalho repetido
     const dtsolc=parseDateBR(get('dtsolc'))||'20260101';
     const ym=dtsolc.slice(0,6);
-    const id=`man-${ym}-${dun}`;
+    const id=`man-${ym}-${idKey}`;
     const ex=records.find(r=>r.id===id);
     const destRaw=get('dest');
     const destMap={'GRU':'05','MT':'01','05':'05','01':'01'};
