@@ -275,7 +275,7 @@ td{padding:6px 8px;vertical-align:middle}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v1.6 — Transformações AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v1.7 — Transformações AVACY</div>
   </div>
 </div>
 
@@ -283,7 +283,7 @@ td{padding:6px 8px;vertical-align:middle}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Transformações de Grades <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v1.6</span></div>
+  <div class="htitle">Transformações de Grades <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v1.7</span></div>
   <div class="hright">
     <div>
       <div class="clock" id="clock">--:--:--</div>
@@ -1400,15 +1400,11 @@ async function addUser(){
   if(/\s/.test(un)){msg.style.color='var(--red)';msg.textContent='Usuário não pode conter espaços. Use ex: JRRoldao';return}
   if(pw.length<6){msg.style.color='var(--red)';msg.textContent='Senha muito curta (mín. 6 caracteres).';return}
   msg.style.color='var(--muted)';msg.textContent='Criando usuário…';
-  const {data,error}=await sb.auth.signUp({email:un+'@avacy.com.br',password:pw});
-  if(error){msg.style.color='var(--red)';msg.textContent='Erro ao criar usuário: '+error.message;return}
-  const {error:pe}=await sb.from('user_profiles').insert({
-    id:data.user.id,
-    username:un,
-    role:ro,
-    operador:ro==='admin'?'':op
+  const {error}=await sb.rpc('admin_create_user',{
+    p_username:un, p_password:pw,
+    p_role:ro, p_operador:ro==='admin'?'':op
   });
-  if(pe){msg.style.color='var(--red)';msg.textContent='Erro ao criar perfil: '+pe.message;return}
+  if(error){msg.style.color='var(--red)';msg.textContent='Erro ao criar usuário: '+error.message;return}
   await renderUsrTable();
   msg.style.color='var(--green)';msg.textContent=`✔ Usuário "${un}" adicionado.`;
   document.getElementById('nuUser').value='';
