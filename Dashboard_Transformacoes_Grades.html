@@ -276,7 +276,7 @@ td{padding:6px 8px;vertical-align:middle}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v2.4 — Transformações AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v2.5 — Transformações AVACY</div>
   </div>
 </div>
 
@@ -284,7 +284,7 @@ td{padding:6px 8px;vertical-align:middle}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Transformações de Grades <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v2.4</span></div>
+  <div class="htitle">Transformações de Grades <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v2.5</span></div>
   <div class="hright">
     <div>
       <div class="clock" id="clock">--:--:--</div>
@@ -1533,38 +1533,43 @@ async function importManualSheet(){
   const ws=wb.Sheets[wb.SheetNames[0]];
   const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
 
-  // Find header row (first row with "DUN" or "SEMANA")
+  // Normaliza acento e uppercase para comparação segura
+  const normCol=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().trim();
+
+  // Find header row: primeira linha que tenha "DUN MONTAGEM" ou "DUN" ou "SEMANA" como célula EXATA
+  const HEADER_MARKERS=['DUN MONTAGEM','DUN','SEMANA','DESCRICAO GRADE'];
   let hdrIdx=-1;
   for(let i=0;i<Math.min(rows.length,10);i++){
-    const r=rows[i].map(c=>String(c||'').toUpperCase().trim());
-    if(r.some(c=>c.includes('DUN')||c.includes('SEMANA'))){hdrIdx=i;break;}
+    const r=rows[i].map(c=>normCol(c));
+    if(r.some(c=>HEADER_MARKERS.includes(c))){hdrIdx=i;break;}
   }
   if(hdrIdx<0){
     alert('Cabeçalho não encontrado. Verifique se o arquivo usa o modelo AVACY.');
     pw.style.display='none';document.getElementById('btnManImport').disabled=false;return;
   }
 
-  const hdr=rows[hdrIdx].map(c=>String(c||'').toUpperCase().trim());
+  const hdr=rows[hdrIdx].map(c=>normCol(c));
   const ci=k=>{
+    // Usa matching EXATO (normalizado) para evitar mapeamento errado de colunas
     const aliases={
-      SEMANA:['SEMANA','MOVIMENTAÇÃO','MOVIMENTACAO','SEMANA MOVIMENTAÇÃO'],
+      SEMANA:['SEMANA'],
       SHIP:['SHIP','TIPO'],
-      DUN:['DUN','DUN MONTAGEM','LOTE','CÓDIGO DUN','CODIGO DUN'],
-      GRADE:['DESCRIÇÃO GRADE','DESCRICAO GRADE','DESCRIÇÃO','DESCRICAO','GRADE'],
-      CXMONT:['CX FAZER','CX. FAZER','CAIXAS NECESSÁRIAS','CAIXAS NECESSARIAS','FAZER','QT FAZER'],
-      FEITO:['CX FEITO','CX. FEITO','FEITO','QT FEITO'],
-      OP:['OP','ORDEM','NUMERO OP','NÚMERO OP'],
+      DUN:['DUN MONTAGEM','DUN','LOTE','CODIGO DUN'],
+      GRADE:['DESCRICAO GRADE','DESCRICAO','GRADE'],
+      CXMONT:['CX FAZER','FAZER','QT FAZER'],
+      FEITO:['CX FEITO','FEITO','QT FEITO'],
+      OP:['OP','ORDEM'],
       PEDIDO:['PEDIDO','NF','NOTA FISCAL'],
-      DTSOLC:['DT SOLICITAÇÃO','DT. SOLICITAÇÃO','DT SOLICITACAO','DT. SOLICITACAO','DATA SOLICITAÇÃO','DATA SOLICITACAO','DT SOL'],
-      DTFIN:['DT FINALIZAÇÃO','DT. FINALIZAÇÃO','DT FINALIZACAO','DT. FINALIZACAO','DATA FINALIZAÇÃO','DT SALDO','DT FIN'],
-      OBS:['OBS','OBSERVAÇÃO','OBSERVACAO'],
+      DTSOLC:['DT SOLICITACAO','DT. SOLICITACAO','DATA SOLICITACAO','DT SOL'],
+      DTFIN:['DT FINALIZACAO','DT. FINALIZACAO','DATA FINALIZACAO','DT FIN'],
+      OBS:['OBS','OBSERVACAO'],
       OPERADOR:['OPERADOR'],
       STATUS:['STATUS'],
       DEST:['DESTINO','DEST','CD DESTINO'],
     };
     const list=aliases[k]||[k];
     for(const a of list){
-      const idx=hdr.findIndex(h=>h===a||h.startsWith(a)||a.startsWith(h));
+      const idx=hdr.findIndex(h=>h===a);  // matching EXATO apenas
       if(idx>=0)return idx;
     }
     return-1;
