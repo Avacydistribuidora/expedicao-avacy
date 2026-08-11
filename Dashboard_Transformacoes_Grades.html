@@ -275,7 +275,7 @@ td{padding:6px 8px;vertical-align:middle}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v1.5 — Transformações AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v1.6 — Transformações AVACY</div>
   </div>
 </div>
 
@@ -283,7 +283,7 @@ td{padding:6px 8px;vertical-align:middle}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Transformações de Grades <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v1.5</span></div>
+  <div class="htitle">Transformações de Grades <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v1.6</span></div>
   <div class="hright">
     <div>
       <div class="clock" id="clock">--:--:--</div>
@@ -1425,8 +1425,20 @@ async function deleteUser(un){
   document.getElementById('usrMsg').textContent=`✔ Perfil "${un}" removido. Remova também em Authentication → Users no painel Supabase.`;
 }
 
-function resetPwd(un){
-  alert(`Para resetar a senha de outro usuário, use o painel do Supabase:\nAuthentication → Users → selecione "${un}" → Send password reset\n\nApenas o próprio usuário pode alterar sua senha por aqui.`);
+async function resetPwd(un){
+  const cu=getCurrentUser();
+  // Se for o próprio usuário, abre o modal de troca de senha
+  if(un===cu?.username){
+    openChangePwd();return;
+  }
+  // Admin resetando senha de outro usuário
+  const nova=prompt(`Nova senha para "${un}" (mín. 6 caracteres):`);
+  if(!nova)return;
+  if(nova.length<6){alert('Senha muito curta (mín. 6 caracteres).');return}
+  const targetEmail=un+'@avacy.com.br';
+  const {error}=await sb.rpc('admin_set_password',{target_email:targetEmail,new_password:nova});
+  if(error){alert('Erro ao resetar senha: '+error.message);return;}
+  alert(`✔ Senha de "${un}" redefinida com sucesso!`);
 }
 
 // ═══════════════════════════════════════
