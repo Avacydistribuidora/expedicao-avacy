@@ -275,7 +275,7 @@ td{padding:6px 8px;vertical-align:middle}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v1.3 — Transformações AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v1.4 — Transformações AVACY</div>
   </div>
 </div>
 
@@ -283,7 +283,7 @@ td{padding:6px 8px;vertical-align:middle}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Transformações de Grades <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v1.3</span></div>
+  <div class="htitle">Transformações de Grades <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v1.4</span></div>
   <div class="hright">
     <div>
       <div class="clock" id="clock">--:--:--</div>
@@ -652,7 +652,7 @@ async function doLogin(){
   const err=document.getElementById('lgErr');
   if(!user||!pass){err.textContent='Preencha usuário e senha.';return}
   err.textContent='Autenticando…';
-  const {data,error}=await sb.auth.signInWithPassword({email:user+'@avacy.local',password:pass});
+  const {data,error}=await sb.auth.signInWithPassword({email:user+'@avacy.com.br',password:pass});
   if(error){
     console.error('Auth error:',error);
     if(error.message&&error.message.includes('Email not confirmed'))
@@ -1399,7 +1399,7 @@ async function addUser(){
   if(!un||!pw){msg.style.color='var(--red)';msg.textContent='Preencha todos os campos.';return}
   if(pw.length<6){msg.style.color='var(--red)';msg.textContent='Senha muito curta (mín. 6 caracteres).';return}
   msg.style.color='var(--muted)';msg.textContent='Criando usuário…';
-  const {data,error}=await sb.auth.signUp({email:un+'@avacy.local',password:pw});
+  const {data,error}=await sb.auth.signUp({email:un+'@avacy.com.br',password:pw});
   if(error){msg.style.color='var(--red)';msg.textContent='Erro ao criar usuário: '+error.message;return}
   const {error:pe}=await sb.from('user_profiles').insert({
     id:data.user.id,
@@ -1450,7 +1450,7 @@ async function doChangePwd(){
   if(nw!==conf){msg.style.color='var(--red)';msg.textContent='As senhas não coincidem.';return}
   msg.style.color='var(--muted)';msg.textContent='Verificando senha atual…';
   // Verify current password by re-signing in
-  const {error:signInErr}=await sb.auth.signInWithPassword({email:cu.username+'@avacy.local',password:curr});
+  const {error:signInErr}=await sb.auth.signInWithPassword({email:cu.username+'@avacy.com.br',password:curr});
   if(signInErr){msg.style.color='var(--red)';msg.textContent='Senha atual incorreta.';return}
   msg.textContent='Atualizando senha…';
   const {error}=await sb.auth.updateUser({password:nw});
