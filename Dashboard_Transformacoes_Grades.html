@@ -275,7 +275,7 @@ td{padding:6px 8px;vertical-align:middle}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v1.9 — Transformações AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v2.0 — Transformações AVACY</div>
   </div>
 </div>
 
@@ -283,7 +283,7 @@ td{padding:6px 8px;vertical-align:middle}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Transformações de Grades <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v1.9</span></div>
+  <div class="htitle">Transformações de Grades <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v2.0</span></div>
   <div class="hright">
     <div>
       <div class="clock" id="clock">--:--:--</div>
@@ -886,13 +886,13 @@ const MONTHS_FULL=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho'
 const MONTHS_SHORT=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
 function getAllYM(){
-  return [...new Set(records.map(r=>r.dtsolc).filter(d=>d&&d.length===8).map(d=>d.slice(0,6)))].sort();
+  return [...new Set(records.map(r=>r.monthKey).filter(ym=>ym&&ym.length===6))].sort();
 }
 
 function buildMsPanel(){
-  const dates=[...new Set(records.map(r=>r.dtsolc).filter(d=>d&&d.length===8))].sort();
+  const allYM=getAllYM();
   const byYear=new Map();
-  dates.forEach(d=>{const y=d.slice(0,4),m=d.slice(4,6);if(!byYear.has(y))byYear.set(y,new Set());byYear.get(y).add(m);});
+  allYM.forEach(ym=>{const y=ym.slice(0,4),m=ym.slice(4,6);if(!byYear.has(y))byYear.set(y,new Set());byYear.get(y).add(m);});
   const list=document.getElementById('msEmissaoList');
   list.innerHTML='';
   byYear.forEach((months,year)=>{
@@ -980,7 +980,7 @@ function getFiltered(){
   return records.filter(r=>{
     // Filtro automático por operador (não-admin só vê registros do seu operador; em branco = oculto)
     if(cuRole!=='admin'&&cuOp&&r.operador!==cuOp)return false;
-    if(_emissaoSel.size>0){const ym=r.dtsolc?r.dtsolc.slice(0,6):'';if(!_emissaoSel.has(ym))return false;}
+    if(_emissaoSel.size>0){const ym=r.monthKey||'';if(!_emissaoSel.has(ym))return false;}
     if(fO&&r.dest!==fO)return false;
     if(fSh&&r.ship!==fSh)return false;
     if(fSt&&r.statusManual!==fSt)return false;
