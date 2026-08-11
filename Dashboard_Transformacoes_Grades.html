@@ -276,7 +276,7 @@ td{padding:6px 8px;vertical-align:middle}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v2.3 — Transformações AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v2.4 — Transformações AVACY</div>
   </div>
 </div>
 
@@ -284,7 +284,7 @@ td{padding:6px 8px;vertical-align:middle}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Transformações de Grades <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v2.3</span></div>
+  <div class="htitle">Transformações de Grades <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v2.4</span></div>
   <div class="hright">
     <div>
       <div class="clock" id="clock">--:--:--</div>
@@ -593,11 +593,13 @@ function getWeekLabel(dtsolc){
 function getMonthKey(dtsolc){
   const d=(dtsolc||'').toString().trim();
   if(d.length!==8)return'';
-  return`${d.slice(0,4)}-${d.slice(4,6)}`;
+  return d.slice(0,6); // "202608" — mesmo formato do banco (month_key)
 }
 function getMonthLabel(key){
   const ms=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const[y,mo]=key.split('-');
+  // Suporta "202608" (6 chars) e "2026-08" (legado com traço)
+  const y=key.slice(0,4);
+  const mo=key.length===7?key.slice(5,7):key.slice(4,6);
   return`${ms[parseInt(mo)-1]}/${y.slice(2)}`;
 }
 function numFmt(n){return Number.isInteger(n)?n:n.toFixed(0)}
