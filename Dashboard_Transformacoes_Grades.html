@@ -276,7 +276,7 @@ td{padding:6px 8px;vertical-align:middle}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v2.7 — Transformações AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v2.8 — Transformações AVACY</div>
   </div>
 </div>
 
@@ -284,7 +284,7 @@ td{padding:6px 8px;vertical-align:middle}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Transformações de Grades <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v2.7</span></div>
+  <div class="htitle">Transformações de Grades <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v2.8</span></div>
   <div class="hright">
     <div>
       <div class="clock" id="clock">--:--:--</div>
@@ -1534,7 +1534,7 @@ async function importManualSheet(){
   const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
 
   // Normaliza acento e uppercase para comparação segura
-  const normCol=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().trim();
+  const normCol=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
 
   // Find header row: primeira linha que tenha "DUN MONTAGEM" ou "DUN" ou "SEMANA" como célula EXATA
   const HEADER_MARKERS=['DUN MONTAGEM','DUN','SEMANA','DESCRICAO GRADE'];
@@ -1591,20 +1591,21 @@ async function importManualSheet(){
     const get=k=>{const i=cols[k];return i>=0?String(row[i]||'').trim():''};
     const opVal=get('op');
     if(!opVal)continue; // OP é obrigatório — linha sem OP é ignorada
+    const dunVal=get('dun'); // DUN MONTAGEM vai para o campo lote
     const id=`man-${opVal}`;
     const dtsolc=parseDateBR(get('dtsolc'))||'20260101';
     const ym=dtsolc.slice(0,6);
     const ex=records.find(r=>r.id===id);
     const destRaw=get('dest');
     const destMap={'GRU':'05','MT':'01','05':'05','01':'01'};
-    const dest=destMap[destRaw.toUpperCase()]||destRaw||'05';
+    const dest=destMap[(destRaw||'').toUpperCase()]||destRaw||'05';
     const dtfin=parseDateBR(get('dtfin'));
     const statusRaw=get('status').toLowerCase();
     const statusManual=statusRaw.includes('final')?'Finalizado':statusRaw.includes('and')?'Em Andamento':'Aguardando';
     const cxmont=parseFloat(get('cxmont'))||0;
     const ng={
       id,z14id:id,filial:'GRU',usrid:'manual',origem:'planilha',
-      lote:dun,grade:get('grade'),cxmont,saldo:0,
+      lote:dunVal||opVal,grade:get('grade'),cxmont,saldo:0,
       dtsolc,dtfin,statusSys:'',dest,
       semana:get('semana'),monthKey:ym,
       items:[],feito:ex?.feito||get('feito')||'',
