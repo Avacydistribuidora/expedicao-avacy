@@ -653,9 +653,20 @@ async function doLogin(){
   if(!user||!pass){err.textContent='Preencha usuário e senha.';return}
   err.textContent='Autenticando…';
   const {data,error}=await sb.auth.signInWithPassword({email:user+'@avacy.local',password:pass});
-  if(error){err.textContent='Usuário ou senha incorretos.';return}
+  if(error){
+    console.error('Auth error:',error);
+    if(error.message&&error.message.includes('Email not confirmed'))
+      err.textContent='E-mail não confirmado. Desative a confirmação no painel Supabase (Auth → Settings → Email Confirmations OFF).';
+    else
+      err.textContent='Erro de autenticação: '+error.message;
+    return;
+  }
   const {data:profile,error:pe}=await sb.from('user_profiles').select('*').eq('id',data.user.id).single();
-  if(pe||!profile){err.textContent='Perfil não encontrado. Contate o administrador.';await sb.auth.signOut();return}
+  if(pe||!profile){
+    console.error('Profile error:',pe);
+    err.textContent='Tabela user_profiles não encontrada ou usuário sem perfil. Execute o SQL do schema no Supabase.';
+    await sb.auth.signOut();return;
+  }
   _currentUser={username:profile.username,role:profile.role,operador:profile.operador||''};
   document.getElementById('loginScreen').classList.add('hidden');
   await initDashboard();
