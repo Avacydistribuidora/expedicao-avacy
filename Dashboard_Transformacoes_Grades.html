@@ -684,27 +684,44 @@ function closeActMenu(){document.getElementById('actMenu').classList.remove('ope
 // ═══════════════════════════════════════
 // PERSISTÊNCIA — Supabase
 // ═══════════════════════════════════════
+// Colunas leves (sem items/audit_log — carregados em background)
+const CORE_COLS='id,filial,z14id,usrid,origem,lote,grade,cxmont,saldo,dtsolc,dtfin,status_sys,dest,semana,month_key,feito,status_manual,ship,op,pedido,obs,operador';
+
 async function loadData(){
   const tbody=document.getElementById('tbody');
   tbody.innerHTML='<tr><td colspan="16"><div class="empty"><div class="ico" style="font-size:28px">⏳</div><p>Carregando dados…</p></div></td></tr>';
   const PAGE=1000;
-  // Step 1: get total count
-  const {count,error:ce}=await sb.from('records').select('*',{count:'exact',head:true});
-  if(ce){console.error('loadData count error:',ce);alert('Erro ao carregar dados: '+ce.message);return;}
-  const total=count||0;
-  if(total===0){records=[];return;}
-  // Step 2: build parallel requests for all pages
-  const pages=Math.ceil(total/PAGE);
-  const requests=Array.from({length:pages},(_,i)=>
-    sb.from('records').select('*').range(i*PAGE,(i+1)*PAGE-1)
-  );
-  const results=await Promise.all(requests);
-  let allData=[];
-  for(const {data,error} of results){
+  let allData=[], from=0;
+  // Carrega colunas essenciais (sem os campos JSONB pesados)
+  while(true){
+    const {data,error}=await sb.from('records').select(CORE_COLS).range(from,from+PAGE-1);
     if(error){console.error('loadData error:',error);alert('Erro ao carregar dados: '+error.message);return;}
-    allData=allData.concat(data||[]);
+    if(!data||data.length===0)break;
+    allData=allData.concat(data);
+    if(data.length<PAGE)break;
+    from+=PAGE;
   }
   records=allData.map(fromDbRow);
+  // Carrega items/audit_log em background (não bloqueia a renderização)
+  _loadItemsBackground();
+}
+
+async function _loadItemsBackground(){
+  const PAGE=1000, total=records.length;
+  let from=0;
+  while(from<total){
+    const batch=records.slice(from,from+PAGE);
+    const ids=batch.map(r=>r.id);
+    const {data}=await sb.from('records').select('id,items,audit_log').in('id',ids);
+    if(data){
+      const byId={};
+      data.forEach(d=>{byId[d.id]=d;});
+      records.forEach(r=>{
+        if(byId[r.id]){r.items=byId[r.id].items||[];r.auditLog=byId[r.id].audit_log||[];}
+      });
+    }
+    from+=PAGE;
+  }
 }
 
 // ═══════════════════════════════════════
