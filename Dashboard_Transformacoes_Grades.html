@@ -103,6 +103,13 @@ select{background:#fff;border:1px solid #c8d0e0;color:#1a2035;border-radius:6px;
 .tw{flex:1;overflow:auto}
 table{width:100%;border-collapse:collapse;background:#fff}
 thead{position:sticky;top:0;z-index:10}
+th.sortable{cursor:pointer;user-select:none;white-space:nowrap}
+th.sortable:hover{background:#162a6a}
+th.sortable .sort-ico{display:inline-block;margin-left:4px;opacity:.35;font-size:9px;vertical-align:middle;line-height:1}
+th.sortable.sort-asc .sort-ico,th.sortable.sort-desc .sort-ico{opacity:1;color:#60a5fa}
+th.sortable.sort-asc .sort-ico::after{content:'▲'}
+th.sortable.sort-desc .sort-ico::after{content:'▼'}
+th.sortable:not(.sort-asc):not(.sort-desc) .sort-ico::after{content:'⇅'}
 th{background:#0d2167;color:#94a3b8;font-size:9px;text-transform:uppercase;letter-spacing:.07em;padding:9px 8px;text-align:left;border-bottom:2px solid #8b1111;white-space:nowrap}
 tbody tr{border-bottom:1px solid #eaeff8;transition:background .12s}
 tbody tr:last-child{border-bottom:none}
@@ -276,7 +283,7 @@ td{padding:6px 8px;vertical-align:middle}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v2.9 — Transformações AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v3.0 — Transformações AVACY</div>
   </div>
 </div>
 
@@ -284,7 +291,7 @@ td{padding:6px 8px;vertical-align:middle}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Transformações de Grades <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v2.9</span></div>
+  <div class="htitle">Transformações de Grades <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v3.0</span></div>
   <div class="hright">
     <div>
       <div class="clock" id="clock">--:--:--</div>
@@ -363,19 +370,19 @@ td{padding:6px 8px;vertical-align:middle}
         <thead>
           <tr>
             <th style="width:30px"></th>
-            <th>ID</th>
+            <th id="thID" class="sortable" onclick="sortBy('id')" title="Ordenar por ID">ID<span class="sort-ico"></span></th>
             <th>DESTINO</th>
             <th>DUN MONTAGEM</th>
             <th style="min-width:220px">DESCRIÇÃO GRADE</th>
-            <th>EMISSÃO</th>
+            <th id="thEmissao" class="sortable" onclick="sortBy('emissao')" title="Ordenar por Emissão">EMISSÃO<span class="sort-ico"></span></th>
             <th style="text-align:right">FAZER</th>
             <th style="text-align:right">FEITO</th>
-            <th style="min-width:160px">STATUS</th>
+            <th id="thStatus" style="min-width:160px" class="sortable" onclick="sortBy('status')" title="Ordenar por Status">STATUS<span class="sort-ico"></span></th>
             <th style="min-width:90px">OP</th>
             <th style="min-width:160px">OBS</th>
             <th>SHIP</th>
             <th>PROTHEUS</th>
-            <th>OPERADOR</th>
+            <th id="thOperador" class="sortable" onclick="sortBy('operador')" title="Ordenar por Operador">OPERADOR<span class="sort-ico"></span></th>
             <th>USUÁRIO</th>
             <th style="width:50px;text-align:center">AÇÃO</th>
           </tr>
@@ -557,6 +564,7 @@ let _expandedIds=new Set();
 let _emissaoSel=new Set(); // selected YYYYMM keys
 let barChart=null, donutChart=null, lineChart=null;
 let _currentUser=null; // { username, role, operador }
+let _sortCol=null, _sortDir='asc'; // ordenação da tabela
 
 // ═══════════════════════════════════════
 // UTILITÁRIOS
@@ -1033,8 +1041,38 @@ function stSelStyle(s){
 }
 function sysBadge(code){const lbl=SYS_STATUS[code]||`Cód ${code}`;return`<span class="badge sys">${esc(lbl)}</span>`}
 
+// Ordem lógica de status (Aguardando < Em Andamento < Finalizado)
+const STATUS_ORDER={'Aguardando':0,'Em Andamento':1,'Finalizado':2};
+
+function sortBy(col){
+  if(_sortCol===col){_sortDir=_sortDir==='asc'?'desc':'asc';}
+  else{_sortCol=col;_sortDir='asc';}
+  // Atualizar visual dos headers
+  ['thID','thEmissao','thStatus','thOperador'].forEach(id=>{
+    const th=document.getElementById(id);
+    if(th){th.classList.remove('sort-asc','sort-desc');}
+  });
+  const colMap={id:'thID',emissao:'thEmissao',status:'thStatus',operador:'thOperador'};
+  const active=document.getElementById(colMap[_sortCol]);
+  if(active)active.classList.add(_sortDir==='asc'?'sort-asc':'sort-desc');
+  render();
+}
+
+function applySort(arr){
+  if(!_sortCol)return arr;
+  const dir=_sortDir==='asc'?1:-1;
+  return [...arr].sort((a,b)=>{
+    let va,vb;
+    if(_sortCol==='id'){va=a.z14id||'';vb=b.z14id||'';}
+    else if(_sortCol==='emissao'){va=a.dtsolc||'';vb=b.dtsolc||'';}
+    else if(_sortCol==='status'){va=STATUS_ORDER[a.statusManual]??0;vb=STATUS_ORDER[b.statusManual]??0;return(va-vb)*dir;}
+    else if(_sortCol==='operador'){va=(a.operador||'').toLowerCase();vb=(b.operador||'').toLowerCase();}
+    return va<vb?-dir:va>vb?dir:0;
+  });
+}
+
 function render(){
-  const filtered=getFiltered();
+  const filtered=applySort(getFiltered());
   const tbody=document.getElementById('tbody');
   const cu=getCurrentUser();
   const canEdit=cu?.role==='admin'||cu?.role==='partner';
