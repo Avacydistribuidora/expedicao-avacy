@@ -411,7 +411,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v7.9 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v8.0 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -419,7 +419,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v7.9</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v8.0</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1925,10 +1925,10 @@ function fillTransp(){
   selV.innerHTML='<option value="">Todos vendedores</option>';
   [...setV].sort().forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;selV.appendChild(o)});
   if(curV&&setV.has(curV))selV.value=curV;else selV.value='';
-  // Separador — lista apenas quem tem pedidos Em Separação (ativos)
+  // Separador — lista todos os separadores dos registros filtrados (qualquer status)
   const selSep=document.getElementById('sfSep'),curSep=selSep.value;
   const filteredSep=applyFilters([...activeRecs,...expedidoRecs],getFilters(),false,false,true);
-  const setSep=new Set(filteredSep.filter(r=>(stMap[r.nota]?.status||'Faturado')==='Em Separação').map(r=>stMap[r.nota]?.separador||'').filter(Boolean));
+  const setSep=new Set(filteredSep.map(r=>{const sd=stMap[r.nota]||{};return sd.sep_log?.user||sd.separador||'';}).filter(Boolean));
   selSep.innerHTML='<option value="">Todos separadores</option>';
   [...setSep].sort().forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;selSep.appendChild(o)});
   if(curSep&&setSep.has(curSep))selSep.value=curSep;else selSep.value='';
