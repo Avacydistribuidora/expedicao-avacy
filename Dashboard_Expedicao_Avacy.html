@@ -411,7 +411,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v8.0 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v8.1 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -419,7 +419,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v8.0</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v8.1</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -437,8 +437,6 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
         <a onclick="exportConsolidado();closeActMenu()">📤 Exportar Consolidado (.xlsx)</a>
         <a onclick="exportAnalitico();closeActMenu()">📈 Exportar Analítico / SLA (.xlsx)</a>
         <a onclick="exportBipados();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px">📋 Relatório de Bipados (Sep/Separado)</a>
-        <a onclick="exportBipeLog();closeActMenu()">🗂 Log Histórico de Bipes</a>
-          <a id="menuRecoverSepLink" onclick="recoverSeparadoresFromBipeLog();closeActMenu()" style="color:#16a34a">🔍 Recuperar Separadores do Log</a>
           <a onclick="openSbConfig();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px">🔗 Configurar Sincronização</a>
           <a onclick="openColetorQR();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px">📱 Coletor TC21 — QR Code</a>
           <a id="menuRestoreLink" onclick="restoreStMapFromFile();closeActMenu()" style="border-top:1px solid var(--border);margin-top:2px;color:#d97706">🔄 Restaurar Backup (JSON)</a>
@@ -492,6 +490,13 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
         <button onclick="exportTransp()" title="Exportar todas as transportadoras" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--blue);padding:0;font-weight:600">↓ Excel</button>
       </div>
       <div id="cTransp"></div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-ttl" id="cUFTitle" style="display:flex;justify-content:space-between;align-items:center">
+        <span><span>🗺</span> Por Região</span>
+        <button id="cUFBack" onclick="ufDrillBack()" style="display:none;background:none;border:none;cursor:pointer;font-size:10px;color:var(--blue);padding:0;font-weight:600">← Regiões</button>
+      </div>
+      <div id="cUF"></div>
     </div>
     <div class="chart-box">
       <div class="chart-ttl" style="display:flex;justify-content:space-between;align-items:center">
@@ -593,7 +598,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
         <thead>
           <tr>
             <th title="Prioridade">⭐</th>
-            <th>FAT</th><th>LOJA</th>
+            <th>FAT</th><th>LOJA</th><th>UF</th>
             <th class="sortable" id="th-nota" onclick="toggleSort('nota')">NOTA <span class="si" id="si-nota">⇅</span></th>
             <th class="sortable" id="th-emissao" onclick="toggleSort('emissao')">EMISSÃO <span class="si" id="si-emissao">⇅</span></th>
             <th>NOME DO CLIENTE</th><th>VENDEDOR</th><th>TRANSPORTADORA</th><th style="text-align:right">VOL</th>
@@ -1262,7 +1267,7 @@ async function importCSV(){
     const iNota=cIdx(hdr,'NOTA'),iNome=cIdx(hdr,'NOME_CLIENTE','A1_NOME','NOME DO CLIENTE','NOME_DO_CLIENTE'),iTrasp=cIdx(hdr,'TRANSPORTADORA');
     const iEmis=cIdx(hdr,'DATA_EMISSAO','EMISSÃO','EMISSAO'),iAuth=cIdx(hdr,'DT_HR_AUTORIZACAO'),iRom=cIdx(hdr,'ROMANIEO','ROMANEIO');
     const iMens=cIdx(hdr,'MENSAGEM_NOTA','MENSAGEM'),iRaj=cIdx(hdr,'RAJLOG'),iXCon=cIdx(hdr,'XCONF','CONF');
-    const iLoja=cIdx(hdr,'LOJA'),iFat=cIdx(hdr,'FAT');
+    const iLoja=cIdx(hdr,'LOJA'),iFat=cIdx(hdr,'FAT'),iUF=cIdx(hdr,'UF');
     const iVend=cIdx(hdr,'VENDEDOR','A3_NOME','C5_VEND','NOME_VENDEDOR');
     const iChave=cIdx(hdr,'CHAVE_NFE','CHAVE_NF','CHAVE');
     const iVolCSV=cIdx(hdr,'VOLUME1','VOLUME','VOL','QTD_VOL');
@@ -1305,7 +1310,7 @@ async function importCSV(){
       const fd={nome_cliente:clean(iNome>=0?c[iNome]||'':''),transportadora:clean(iTrasp>=0?c[iTrasp]||'':''),
         data_emissao:fmtDate(clean(iEmis>=0?c[iEmis]||':':'')),romaneio:rom,
         mensagem:clean(iMens>=0?c[iMens]||'':''),origem:(iOrig>=0&&clean(c[iOrig]||''))?clean(c[iOrig]||'').toUpperCase():origemFromRaj(clean(iRaj>=0?c[iRaj]||'':'')),
-        xconf,loja:clean(iLoja>=0?c[iLoja]||'':''),fat:clean(iFat>=0?c[iFat]||'':''),
+        xconf,loja:clean(iLoja>=0?c[iLoja]||'':''),fat:clean(iFat>=0?c[iFat]||'':''),uf:clean(iUF>=0?c[iUF]||'':'').toUpperCase(),
         vendedor:clean(iVend>=0?c[iVend]||'':''),
         chave_nfe:clean(iChave>=0?c[iChave]||'':''),
         volume:iVolCSV>=0?String(parseInt((c[iVolCSV]||'0').toString().replace(',','.'))||0):''};
@@ -1313,8 +1318,8 @@ async function importCSV(){
         const rec=existMap.get(nota);Object.assign(rec,fd);upd++;
         if(!stMap[nota])stMap[nota]={obs:''};
         // Detecta e remove stub de pré-bipe (por FAT ou LOJA) mesmo no caminho existente
-        {const _sk=(fd.fat&&fd.fat!==nota&&existMap.has(fd.fat))?fd.fat:
-               (fd.loja&&fd.loja!==nota&&existMap.has(fd.loja))?fd.loja:null;
+        {const _sk=(fd.fat&&fd.fat!==nota&&(existMap.has(fd.fat)||stMap[fd.fat]?.pre_scan))?fd.fat:
+               (fd.loja&&fd.loja!==nota&&(existMap.has(fd.loja)||stMap[fd.loja]?.pre_scan))?fd.loja:null;
          if(_sk){
            const _ps=stMap[_sk];
            if(_ps){['ts_sep','ts_sepd','ts_conf','ts_exp'].forEach(k=>{
@@ -1994,6 +1999,7 @@ function _render(){
       <td style="text-align:center"><button class="prio-btn ${isPrio?'on':''}" onclick="togglePriority('${esc(r.nota)}')" title="${isPrio?'Remover prioridade':'Marcar como prioritário'}">${isPrio?'⭐':'☆'}</button></td>
       <td>${r.fat?`<span class="mono">${r.fat}</span>`:`<span style="color:var(--muted)">—</span>`}</td>
       <td>${r.loja?`<span class="mono">${r.loja}</span>`:`<span style="color:var(--muted)">—</span>`}</td>
+      <td><span style="font-size:10px;font-weight:700;color:var(--muted)">${r.uf||'—'}</span></td>
       <td><span class="nota-c">${r.nota}</span></td>
       <td style="font-size:11px"><span style="white-space:nowrap">${(()=>{const dt=r.data_emissao||'';const tf=stMap[r.nota]?.ts_fat||'';const tHora=tf.match(/(\d{2}:\d{2})/)?tf.match(/(\d{2}:\d{2})/)[1]:'';return(dt||'—')+(tHora?' <span style="font-size:9px;opacity:.7;font-weight:400">'+tHora+'</span>':'');})()}</span></td>
       <td><span class="clip" title="${esc(r.nome_cliente)}">${r.nome_cliente||'—'}</span></td>
@@ -2022,13 +2028,21 @@ function _render(){
 // ═══════════════════════════════════════════════════════════
 // DASHBOARD GRÁFICOS
 // ═══════════════════════════════════════════════════════════
+const UF_REGIAO={'AC':'Norte','AM':'Norte','AP':'Norte','PA':'Norte','RO':'Norte','RR':'Norte','TO':'Norte','AL':'Nordeste','BA':'Nordeste','CE':'Nordeste','MA':'Nordeste','PB':'Nordeste','PE':'Nordeste','PI':'Nordeste','RN':'Nordeste','SE':'Nordeste','DF':'Centro-Oeste','GO':'Centro-Oeste','MS':'Centro-Oeste','MT':'Centro-Oeste','ES':'Sudeste','MG':'Sudeste','RJ':'Sudeste','SP':'Sudeste','PR':'Sul','RS':'Sul','SC':'Sul'};
+const REGIAO_COLOR={'Norte':'#059669','Nordeste':'#f97316','Centro-Oeste':'#a371f7','Sudeste':'#58a6ff','Sul':'#2dd4bf'};
+let _ufDrillRegiao=null; // null = visão regiões, string = visão estados da região
+function ufDrillBack(){_ufDrillRegiao=null;document.getElementById('cUFBack').style.display='none';document.getElementById('cUFTitle').querySelector('span span').textContent='🗺';document.getElementById('cUFTitle').querySelector('span').lastChild.textContent=' Por Região';updateDashboard(window._lastDashList||[]);}
+function ufDrillInto(regiao){_ufDrillRegiao=regiao;document.getElementById('cUFBack').style.display='';updateDashboard(window._lastDashList||[]);}
+
 function updateDashboard(list){
+  window._lastDashList=list;
   let fat=0,sep=0,sepd=0,rec=0,conf=0,exp=0,pend=0,prio=0;
   const origC={GRU:0,MATRIZ:0},transpC={};
   // Conta priorizados em TODOS os registros (ativo+expedido), não só os filtrados
   const allRecs=[...activeRecs,...expedidoRecs];
   allRecs.forEach(r=>{if(stMap[r.nota]?.priority)prio++});
   const origV={GRU:0,MATRIZ:0},transpV={};
+  const ufC={},ufV={},regiaoC={},regiaoV={};
   list.forEach(r=>{
     const sd=stMap[r.nota]||{};const st=sd.status||'Faturado';
     if(st==='Faturado')fat++;else if(st==='Em Separação')sep++;
@@ -2037,6 +2051,7 @@ function updateDashboard(list){
     const vol=parseInt((r.volume||'').toString().replace(/\D/g,''))||0;
     if(r.origem==='GRU'||r.origem==='MATRIZ'){origC[r.origem]++;origV[r.origem]=(origV[r.origem]||0)+vol;}
     if(r.transportadora){const k=r.transportadora.length>22?r.transportadora.slice(0,22)+'…':r.transportadora;transpC[k]=(transpC[k]||0)+1;transpV[k]=(transpV[k]||0)+vol;}
+    if(r.uf){ufC[r.uf]=(ufC[r.uf]||0)+1;ufV[r.uf]=(ufV[r.uf]||0)+vol;const reg=UF_REGIAO[r.uf]||'Outros';regiaoC[reg]=(regiaoC[reg]||0)+1;regiaoV[reg]=(regiaoV[reg]||0)+vol;}
   });
   document.getElementById('k-fat').textContent=fat;document.getElementById('k-rec').textContent=rec;document.getElementById('k-sep').textContent=sep;
   document.getElementById('k-sepd').textContent=sepd;document.getElementById('k-conf').textContent=conf;
@@ -2050,6 +2065,19 @@ function updateDashboard(list){
   ]);
   drawBars('cOrigem',Object.entries(origC).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([l,v])=>({label:l,value:v,vol:origV[l]||0,color:l==='GRU'?'#2dd4bf':'#58a6ff'})));
   drawBars('cTransp',Object.entries(transpC).sort((a,b)=>(transpV[b[0]]||0)-(transpV[a[0]]||0)).slice(0,5).map(([l,v])=>({label:l,value:v,vol:transpV[l]||0,color:'#58a6ff',drillType:'transp'})));
+  // Gráfico UF / Região com drilldown
+  if(_ufDrillRegiao){
+    // Drilldown: estados da região selecionada
+    const ufsNaRegiao=Object.keys(UF_REGIAO).filter(uf=>UF_REGIAO[uf]===_ufDrillRegiao);
+    const ufData=ufsNaRegiao.filter(uf=>ufC[uf]>0).sort((a,b)=>(ufC[b]||0)-(ufC[a]||0)).map(uf=>({label:uf,value:ufC[uf]||0,vol:ufV[uf]||0,color:REGIAO_COLOR[_ufDrillRegiao]||'#58a6ff'}));
+    const titleEl=document.getElementById('cUFTitle').querySelector('span');if(titleEl)titleEl.innerHTML=`<span>🗺</span> ${_ufDrillRegiao}`;
+    drawBars('cUF',ufData);
+  }else{
+    const regiaoOrder=['Sudeste','Nordeste','Sul','Norte','Centro-Oeste','Outros'];
+    const regData=regiaoOrder.filter(r=>regiaoC[r]>0).map(r=>({label:r,value:regiaoC[r]||0,vol:regiaoV[r]||0,color:REGIAO_COLOR[r]||'#8b8b8b',drillType:'regiao'}));
+    const titleEl=document.getElementById('cUFTitle').querySelector('span');if(titleEl)titleEl.innerHTML=`<span>🗺</span> Por Região`;
+    drawBars('cUF',regData);
+  }
   // Separadores ranking
   const _sfSepRank=(document.getElementById('sfSepRank')?.value||'');
   const sepRankC={},sepRankVol={};
@@ -2101,7 +2129,9 @@ function drillDown(barId,idx){
   const type=d.drillType,value=d.label;
   const pool=[...activeRecs,...expedidoRecs];
   let items=[];
-  if(type==='transp'){
+  if(type==='regiao'){
+    ufDrillInto(value);return;
+  }else if(type==='transp'){
     items=pool.filter(r=>r.transportadora===value);
   }else if(type==='sep'){
     items=pool.filter(r=>{
