@@ -371,6 +371,44 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
   line-height: 1.5; margin-top: 10px; display: none;
 }
 .imp-footer { padding: 12px 20px; border-top: 1px solid var(--borda); display: flex; gap: 10px; flex-shrink: 0; align-items: center; flex-wrap: wrap; }
+
+/* ── MODAL ALTERAR CARRETA ── */
+.alt-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.55); z-index: 9999;
+  align-items: center; justify-content: center;
+}
+.alt-overlay.open { display: flex; }
+.alt-modal {
+  background: white; border-radius: 14px;
+  width: 380px; max-width: 94vw;
+  box-shadow: 0 8px 40px rgba(0,0,0,.4);
+  overflow: hidden;
+}
+.alt-modal-header {
+  background: var(--azul-escuro); color: white;
+  padding: 14px 20px; font-size: 15px; font-weight: 700;
+  display: flex; align-items: center; gap: 10px;
+}
+.alt-modal-header .close-btn {
+  margin-left: auto; background: none; border: none;
+  color: white; font-size: 20px; cursor: pointer; opacity: .8; line-height: 1;
+}
+.alt-modal-header .close-btn:hover { opacity: 1; }
+.alt-modal-body { padding: 24px 20px; }
+.alt-modal-body label { display: block; font-size: 12px; font-weight: 700; color: #555; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .04em; }
+.alt-modal-body input[type=number] {
+  width: 100%; padding: 10px 12px; font-size: 20px; font-weight: 700;
+  border: 2px solid var(--azul-medio); border-radius: 8px;
+  text-align: center; font-family: inherit; color: var(--azul-escuro);
+}
+.alt-modal-body input[type=number]:focus { outline: none; box-shadow: 0 0 0 3px rgba(46,117,182,.18); }
+.alt-modal-info { font-size: 12px; color: #888; margin-top: 8px; text-align: center; }
+.alt-modal-footer { padding: 14px 20px; border-top: 1px solid var(--borda); display: flex; gap: 10px; justify-content: flex-end; }
+.alt-status { font-size: 12px; font-weight: 600; margin-top: 10px; padding: 7px 10px; border-radius: 6px; display: none; }
+.alt-status.err  { background: #f8d7da; color: #721c24; display: block; }
+.alt-status.ok   { background: #d4edda; color: #155724; display: block; }
+.alt-status.info { background: #cce5ff; color: #004085; display: block; }
 </style>
 </head>
 <body>
@@ -533,6 +571,28 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
   </div><!-- .main -->
 </div><!-- .layout -->
 
+<!-- MODAL ALTERAR Nº CARRETA -->
+<div class="alt-overlay" id="altOverlay">
+  <div class="alt-modal">
+    <div class="alt-modal-header">
+      ✏️ Alterar Nº da Carreta
+      <button class="close-btn" onclick="fecharModalAlterar()">✕</button>
+    </div>
+    <div class="alt-modal-body">
+      <label>Nº Atual: <span id="altNumAtual" style="color:var(--azul-medio)"></span></label>
+      <label style="margin-top:14px;">Novo Nº da Carreta</label>
+      <input type="number" id="altNovoNum" min="1" placeholder="Ex: 62"
+        onkeydown="if(event.key==='Enter')confirmarAlterar()">
+      <div class="alt-modal-info">ℹ️ O número identifica a carreta no sistema e na sidebar.</div>
+      <div class="alt-status" id="altStatus"></div>
+    </div>
+    <div class="alt-modal-footer">
+      <button class="btn btn-ghost" onclick="fecharModalAlterar()">Cancelar</button>
+      <button class="btn btn-primary" id="btnConfirmarAlt" onclick="confirmarAlterar()">✅ Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -543,7 +603,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 // ════════════════════════════════════════════════════════════════════════════
 // ── VERSÃO — atualizar a cada deploy no GitHub ─────────────────────────────
 // ════════════════════════════════════════════════════════════════════════════
-const APP_VERSION     = 'V2.7';               // ← atualizar a cada deploy
+const APP_VERSION     = 'V2.8';               // ← atualizar a cada deploy
 const GITHUB_REPO     = 'Avacydistribuidora/expedicao-avacy';
 const GITHUB_FILE     = 'Extrator_DANFE.html';
 
@@ -874,6 +934,7 @@ function renderDetalheCarreta(c) {
   <div class="btn-row">
     <button class="btn btn-warn" onclick="exportarExcelCarreta('${c.id}')">📥 Baixar Excel</button>
     <button class="btn btn-ghost" onclick="copiarCarreta('${c.id}')">📋 Copiar p/ Planilha</button>
+    <button class="btn btn-primary" onclick="abrirModalAlterar('${c.id}')" title="Alterar o número desta carreta">✏️ Alterar Nº</button>
     <button class="btn btn-danger" onclick="excluirCarreta('${c.id}')">🗑️ Excluir</button>
   </div>`;
 
@@ -899,6 +960,94 @@ async function excluirCarreta(id) {
   showTab('tab-carregar');
   renderSidebar();
 }
+
+// ── ALTERAR Nº DA CARRETA ─────────────────────────────────────────────────────
+let _altId = null;
+
+function abrirModalAlterar(id) {
+  const c = getCarretas().find(x => x.id === id);
+  if (!c) return;
+  _altId = id;
+  document.getElementById('altNumAtual').textContent = c.num + 'ª Carreta';
+  document.getElementById('altNovoNum').value = '';
+  const st = document.getElementById('altStatus');
+  st.className = 'alt-status'; st.textContent = '';
+  document.getElementById('btnConfirmarAlt').disabled = false;
+  document.getElementById('altOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('altNovoNum').focus(), 80);
+}
+
+function fecharModalAlterar() {
+  document.getElementById('altOverlay').classList.remove('open');
+  _altId = null;
+}
+
+async function confirmarAlterar() {
+  const novoNum = parseInt(document.getElementById('altNovoNum').value);
+  const st = document.getElementById('altStatus');
+  st.className = 'alt-status'; st.textContent = '';
+
+  if (!novoNum || novoNum < 1) {
+    st.className = 'alt-status err'; st.textContent = '⚠️ Digite um número de carreta válido.'; return;
+  }
+
+  const c = getCarretas().find(x => x.id === _altId);
+  if (!c) { fecharModalAlterar(); return; }
+  if (novoNum === c.num) {
+    st.className = 'alt-status err'; st.textContent = '⚠️ O número informado é igual ao atual.'; return;
+  }
+  const duplicado = getCarretas().find(x => x.num === novoNum && x.id !== _altId);
+  if (duplicado) {
+    st.className = 'alt-status err';
+    st.textContent = `⚠️ Já existe a ${novoNum}ª Carreta cadastrada (${fmtData(duplicado.data)}).`; return;
+  }
+
+  document.getElementById('btnConfirmarAlt').disabled = true;
+  st.className = 'alt-status info'; st.textContent = '⏳ Salvando…';
+  st.style.display = 'block';
+
+  try {
+    // Atualiza no banco (Supabase ou localStorage)
+    if (db) {
+      const { error } = await db.from('carretas').update({ num: novoNum }).eq('id', _altId);
+      if (error) throw error;
+    }
+    // Atualiza cache local
+    const idx = carretasCache.findIndex(x => x.id === _altId);
+    if (idx !== -1) {
+      carretasCache[idx] = { ...carretasCache[idx], num: novoNum };
+      carretasCache.sort((a, b) => a.num - b.num);
+    }
+    if (!db) localStorage.setItem('fob_carretas', JSON.stringify(carretasCache));
+
+    st.className = 'alt-status ok';
+    st.textContent = `✅ Carreta renomeada para ${novoNum}ª Carreta com sucesso!`;
+
+    // Atualiza sidebar e aba
+    renderSidebar();
+    const cAtual = carretasCache.find(x => x.id === _altId);
+    if (cAtual) {
+      document.getElementById('tab-carreta-label').textContent = `${novoNum}ª Carreta`;
+      renderDetalheCarreta(cAtual);
+      // Reseleciona o item no sidebar
+      document.querySelectorAll('.carreta-item').forEach(el => el.classList.remove('active'));
+      const el = document.querySelector(`.carreta-item[data-id="${_altId}"]`);
+      if (el) el.classList.add('active');
+    }
+
+    setTimeout(fecharModalAlterar, 1200);
+  } catch(e) {
+    document.getElementById('btnConfirmarAlt').disabled = false;
+    st.className = 'alt-status err';
+    st.textContent = '❌ Erro ao salvar: ' + (e.message || e);
+  }
+}
+
+// Fechar ao clicar fora do modal
+document.addEventListener('click', e => {
+  const overlay = document.getElementById('altOverlay');
+  if (overlay && overlay.classList.contains('open') && e.target === overlay) fecharModalAlterar();
+});
 
 // ── DRAG & DROP ───────────────────────────────────────────────────────────────
 let arquivosSelecionados = [];
