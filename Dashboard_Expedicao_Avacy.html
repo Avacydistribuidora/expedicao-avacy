@@ -411,7 +411,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v8.1 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v8.2 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -419,7 +419,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v8.1</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v8.2</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1156,7 +1156,14 @@ function importVDK(arrayBuffer){
         const p=k.padStart(9,'0');if(existMap.has(p))return p;
         return null;
       }
-      let add=0,upd=0,skip=0;const n=nowStr();
+      // Lookup tolerante no stMap — evita criar entrada duplicada se a chave já existe em formato diferente
+      function vdkFindStKey(foundNota){
+        if(stMap[foundNota]!==undefined)return foundNota;
+        const s=foundNota.replace(/^0+/,'')||'0';if(stMap[s]!==undefined)return s;
+        const p=foundNota.padStart(9,'0');if(stMap[p]!==undefined)return p;
+        return foundNota;
+      }
+      let add=0,upd=0,skip=0;const updatedNotas=[];const n=nowStr();
       for(let i=hdrIdx+1;i<raw.length;i++){
         const c=raw[i];if(!c||c.every(v=>!v))continue;
         const nfRaw=iNF>=0?c[iNF]:'';
@@ -1170,21 +1177,21 @@ function importVDK(arrayBuffer){
         if(serie.trim()!=='0')continue;
         const fat=iPed>=0?String(c[iPed]||'').trim():'';
         const dtRaw=iDtExp>=0&&c[iDtExp]?c[iDtExp]:(iDtEnt>=0?c[iDtEnt]:'');
-        const fd={
-          nome_cliente:iCli>=0?String(c[iCli]||'').trim():'',
-          transportadora:iTrasp>=0?cleanTranspVDK(String(c[iTrasp]||'')):'' ,
-          data_emissao:fmtDateVDK(dtRaw),
-          romaneio:'',mensagem:'',
-          origem:'GRU',xconf:'',
-          loja:serie,fat:fat,vendedor:'',
-          volume:iVol>=0?String(parseInt((c[iVol]||'0').toString().replace(',','.'))||0):''
-        };
         const situacao=iSit>=0?String(c[iSit]||'').trim():'';
         const mappedSt=mapSituacao(situacao);
         const foundNota=vdkFindNota(nota);
         if(foundNota){
-          const rec=existMap.get(foundNota);Object.assign(rec,fd);upd++;
-          const sKey=foundNota;
+          // Atualiza só os campos que o VDK fornece — preserva romaneio, mensagem, vendedor existentes
+          const rec=existMap.get(foundNota);
+          if(iCli>=0&&c[iCli])rec.nome_cliente=String(c[iCli]).trim();
+          if(iTrasp>=0&&c[iTrasp])rec.transportadora=cleanTranspVDK(String(c[iTrasp]));
+          if(dtRaw)rec.data_emissao=fmtDateVDK(dtRaw);
+          rec.origem='GRU';
+          if(fat)rec.fat=fat;
+          if(iVol>=0)rec.volume=String(parseInt((c[iVol]||'0').toString().replace(',','.'))||0);
+          upd++;
+          // Usa lookup tolerante no stMap para não criar entrada duplicada por formato de chave diferente
+          const sKey=vdkFindStKey(foundNota);
           if(!stMap[sKey])stMap[sKey]={obs:''};
           // Preenche ts_fat com a data/hora real do VDK (se ainda não tiver)
           const dtTs=fmtDateTimeVDK(dtRaw);
@@ -1194,9 +1201,12 @@ function importVDK(arrayBuffer){
           const ord={Faturado:1,Recebido:1.5,'Em Separação':2,Separado:3,Conferido:4,Expedido:5,Pendente:0.5};
           if((ord[mappedSt]||0)>1&&(ord[mappedSt]||0)>(ord[curSt]||0)){
             stMap[sKey].status=mappedSt;
+            // CRÍTICO: define _ts agora para que sbPollStatus não sobrescreva antes de sbSyncStatus terminar
+            stMap[sKey]._ts=new Date().toISOString();
             const tsMap2={Expedido:'ts_exp','Em Separação':'ts_sep',Separado:'ts_sepd',Conferido:'ts_conf',Pendente:'ts_pend',Faturado:'ts_fat'};
             const tsVal=fmtDateTimeVDK(dtRaw)||n;
             if(!stMap[sKey][tsMap2[mappedSt]])stMap[sKey][tsMap2[mappedSt]]=tsVal;
+            updatedNotas.push(sKey);
           }
         }else{
           // Nota não existe localmente — VDK não cria novos registros, apenas ignora
@@ -1204,19 +1214,26 @@ function importVDK(arrayBuffer){
         }
       }
       pf.style.width='85%';pt.textContent='Salvando…';
+      // Reconstrói as listas preservando romaneio existente (não foi apagado pelo fd)
       const nA=[],nE=[];existMap.forEach(r=>{if(r.romaneio)nE.push(r);else nA.push(r)});
       activeRecs=nA;expedidoRecs=nE;saveLS();
+      // Garante que registros Expedidos apareçam na tela
+      if(updatedNotas.some(k=>stMap[k]?.status==='Expedido')){
+        const expChk=document.getElementById('showExp');if(expChk)expChk.checked=true;
+      }
       setTimeout(async()=>{
         pf.style.width='100%';pt.textContent='Concluído!';
         renderDateTree();onFilterChange();closeModal();
         document.getElementById('lastUpd').textContent='VDK GRU: '+n;
         if(SB_URL&&SB_KEY){
-          pt.textContent='Sincronizando…';
-          await sbSyncRecords([...activeRecs,...expedidoRecs]);
-          const autoStatus=Object.entries(stMap).filter(([,sd])=>['Expedido','Conferido','Em Separação'].includes(sd.status));
-          for(const[nota]of autoStatus)await sbSyncStatus(nota);
+          pt.textContent='Sincronizando status…';
+          // Sincroniza apenas os status que avançaram (não envia 36k registros desnecessariamente)
+          for(const nota of updatedNotas)await sbSyncStatus(nota);
+          // Sincroniza registros alterados pelo VDK (somente os que foram encontrados)
+          const changedRecs=[...activeRecs,...expedidoRecs].filter(r=>updatedNotas.includes(r.nota)||updatedNotas.includes(r.nota.replace(/^0+/,'')||'0')||updatedNotas.includes(r.nota.padStart(9,'0')));
+          if(changedRecs.length)await sbSyncRecords(changedRecs);
         }
-        alert(`✓ VDK GRU — status atualizados!\n${upd} atualizado(s) · ${skip} ignorados (não encontrados/FRAN/outros)`);
+        alert(`✓ VDK GRU — status atualizados!\n${updatedNotas.length} status avançado(s) · ${upd} registro(s) atualizado(s) · ${skip} ignorados (não encontrados/FRAN/outros)`);
       },300);
     }catch(e){alert('Erro ao ler XLS: '+e.message);pw.classList.remove('show');}
   });
