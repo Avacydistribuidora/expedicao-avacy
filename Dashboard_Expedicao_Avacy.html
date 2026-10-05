@@ -411,7 +411,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v8.4 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v8.5 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -419,7 +419,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v8.4</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v8.5</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1178,7 +1178,7 @@ function importVDK(arrayBuffer){
           const rec=existMap.get(foundNota);
           if(iCli>=0&&c[iCli])rec.nome_cliente=String(c[iCli]).trim();
           if(iTrasp>=0&&c[iTrasp])rec.transportadora=cleanTranspVDK(String(c[iTrasp]));
-          if(dtRaw)rec.data_emissao=fmtDateVDK(dtRaw);
+          // data_emissao NÃO é alterada pelo VDK — mantém a emissão original
           rec.origem='GRU';
           if(fat)rec.fat=fat;
           if(iVol>=0)rec.volume=String(parseInt((c[iVol]||'0').toString().replace(',','.'))||0);
@@ -1319,7 +1319,9 @@ async function importCSV(){
         volume:iVolCSV>=0?String(parseInt((c[iVolCSV]||'0').toString().replace(',','.'))||0):''};
       if(existMap.has(nota)){
         const rec=existMap.get(nota);
-        const _prevUF=rec.uf;Object.assign(rec,fd);
+        const _prevUF=rec.uf,_prevEmis=rec.data_emissao;Object.assign(rec,fd);
+        // Emissão: VDK nunca altera; demais importações só alteram se vier preenchida
+        if(_prevEmis&&(_isVdkCsv||!fd.data_emissao))rec.data_emissao=_prevEmis;
         // Preserva UF existente se o CSV atual não tem coluna UF
         if(iUF<0&&_prevUF)rec.uf=_prevUF;else if(iUF>=0)rec.uf=clean(c[iUF]||'').toUpperCase()||_prevUF;
         upd++;
