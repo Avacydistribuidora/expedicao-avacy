@@ -207,7 +207,7 @@ tbody tr:last-child td{border-bottom:none}
 <header>
   <div class="logo">Avacy</div>
   <div style="width:1px;height:30px;background:rgba(255,255,255,.15);margin:0 6px;flex-shrink:0"></div>
-  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v4.3</span></div>
+  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v4.4</span></div>
   <div class="header-center">
     <div class="admin-tabs" id="admin-tabs">
       <button class="atab active" onclick="adminShowTab('sep')" id="atab-sep">📋 Separações</button>
@@ -575,12 +575,18 @@ async function executarScan() {
   syncDot('sync');
 
   try {
-    // 1. Busca em avacy_records
-    const { data: recs, error: errR } = await db
+    // 1. Busca em avacy_records (v4.4: também tenta a NOTA com zeros à esquerda)
+    const cods = [codigo];
+    if (/^\d+$/.test(codigo) && codigo.length < 9) cods.push(codigo.padStart(9, '0'));
+    const filtro = cods.flatMap(c => [`fat.eq.${c}`, `loja.eq.${c}`, `nota.eq.${c}`]).join(',');
+    const { data: recsRaw, error: errR } = await db
       .from('avacy_records')
       .select('nota, fat, loja, nome_cliente')
-      .or(`fat.eq.${codigo},loja.eq.${codigo},nota.eq.${codigo}`)
-      .limit(3);
+      .or(filtro)
+      .limit(5);
+    // Prefere o registro real (com CSV) ao stub de pré-bipe
+    const recs = (recsRaw || []).sort((a, b) =>
+      (a.nome_cliente === '(aguardando importação CSV)') - (b.nome_cliente === '(aguardando importação CSV)'));
 
     if (errR) throw errR;
 
@@ -643,9 +649,10 @@ async function executarScan() {
         scan_log: { user: cu.nome, ts: n, code: codigo },
         updated_at: new Date().toISOString()
       });
-      await db.from('separacoes').insert({
+      const { error: errIns } = await db.from('separacoes').insert({
         pedido: nota, status: 'em_separacao', separador: cu.nome, inicio: new Date().toISOString()
       });
+      if (errIns) throw new Error('Histórico não gravado: ' + errIns.message);
       const clienteLabel = rec.nome_cliente && rec.nome_cliente !== '(aguardando importação CSV)'
         ? rec.nome_cliente.split(' ')[0]
         : (novoPedido ? '⚠ novo — importar CSV depois' : '');
@@ -659,9 +666,20 @@ async function executarScan() {
         sep_log: { user: cu.nome, ts: n, code: codigo },
         updated_at: new Date().toISOString()
       });
-      await db.from('separacoes')
-        .update({ status: 'separado', fim: new Date().toISOString() })
-        .eq('pedido', nota).eq('separador', cu.nome).eq('status', 'em_separacao');
+      const agora = new Date().toISOString();
+      const { data: upd, error: errUpd } = await db.from('separacoes')
+        .update({ status: 'separado', fim: agora })
+        .eq('pedido', nota).eq('separador', cu.nome).eq('status', 'em_separacao')
+        .select('pedido');
+      if (errUpd) throw new Error('Histórico não gravado: ' + errUpd.message);
+      // v4.4: se não havia "em separação" deste separador (outro usuário iniciou, ou o
+      // início não foi gravado), cria o registro de Separado para não perder quem separou
+      if (!upd || upd.length === 0) {
+        const { error: errIns2 } = await db.from('separacoes').insert({
+          pedido: nota, status: 'separado', separador: cu.nome, inicio: agora, fim: agora
+        });
+        if (errIns2) throw new Error('Histórico não gravado: ' + errIns2.message);
+      }
       const clienteLabel = rec.nome_cliente && rec.nome_cliente !== '(aguardando importação CSV)'
         ? rec.nome_cliente.split(' ')[0]
         : '';
