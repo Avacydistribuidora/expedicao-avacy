@@ -411,7 +411,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v8.8 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v8.9 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -419,7 +419,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v8.8</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v8.9</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1930,7 +1930,7 @@ function applyFilters(pool,filters,exclTr=false,exclVend=false,exclSep=false){
     if(sfSt==='__PRIO__'){if(!sd.priority)return false}
     else if(sfSt&&st!==sfSt)return false;
     if(sfOrig&&r.origem!==sfOrig)return false;
-    if(!exclTr&&sfTr&&r.transportadora!==sfTr)return false;
+    if(!exclTr&&sfTr&&normTransp(r.transportadora)!==sfTr)return false;
     if(!exclVend&&sfVend&&r.vendedor!==sfVend)return false;
     if(!exclSep&&sfSep&&(sd.separador||'')!==sfSep)return false;
     if(!isDateSelected(r.data_emissao))return false;
@@ -1952,7 +1952,7 @@ function onFilterChange(){
 function fillTransp(){
   const sel=document.getElementById('sfTransp'),cur=sel.value;
   const filtered=applyFilters([...activeRecs,...expedidoRecs],getFilters(),true);
-  const set=new Set(filtered.map(r=>r.transportadora).filter(Boolean));
+  const set=new Set(filtered.map(r=>normTransp(r.transportadora)).filter(Boolean));
   sel.innerHTML='<option value="">Todas transportadoras</option>';
   [...set].sort().forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;sel.appendChild(o)});
   if(cur&&set.has(cur))sel.value=cur;else sel.value='';
@@ -2037,7 +2037,7 @@ function _render(){
       <td style="font-size:11px"><span style="white-space:nowrap">${(()=>{const dt=r.data_emissao||'';const tf=stMap[r.nota]?.ts_fat||'';const tHora=tf.match(/(\d{2}:\d{2})/)?tf.match(/(\d{2}:\d{2})/)[1]:'';return(dt||'—')+(tHora?' <span style="font-size:9px;opacity:.7;font-weight:400">'+tHora+'</span>':'');})()}</span></td>
       <td><span class="clip" title="${esc(r.nome_cliente)}">${r.nome_cliente||'—'}</span></td>
       <td><span class="clip-sm" title="${esc(r.vendedor||'')}" style="color:${r.vendedor?'var(--text)':'var(--muted)'}">${r.vendedor||'—'}</span></td>
-      <td><span class="clip-sm" title="${esc(r.transportadora)}">${r.transportadora||'—'}</span></td>
+      <td><span class="clip-sm" title="${esc(r.transportadora)}">${esc(normTransp(r.transportadora))||'—'}</span></td>
       <td style="text-align:right;font-size:11px;color:var(--muted);font-family:monospace">${r.volume||'—'}</td>
       <td><div class="has-tip"><span class="badge ${sc}"><span class="dot ${sc}"></span>${st}</span>${tipHtml}</div></td>
       <td>${(()=>{
@@ -2083,7 +2083,7 @@ function updateDashboard(list){
     else if(st==='Expedido')exp++;else if(st==='Pendente')pend++;
     const vol=parseInt((r.volume||'').toString().replace(/\D/g,''))||0;
     if(r.origem==='GRU'||r.origem==='MATRIZ'){origC[r.origem]++;origV[r.origem]=(origV[r.origem]||0)+vol;}
-    if(r.transportadora){const k=r.transportadora.length>22?r.transportadora.slice(0,22)+'…':r.transportadora;transpC[k]=(transpC[k]||0)+1;transpV[k]=(transpV[k]||0)+vol;}
+    if(r.transportadora){const k=normTransp(r.transportadora);transpC[k]=(transpC[k]||0)+1;transpV[k]=(transpV[k]||0)+vol;}
     if(r.uf){ufC[r.uf]=(ufC[r.uf]||0)+1;ufV[r.uf]=(ufV[r.uf]||0)+vol;const reg=UF_REGIAO[r.uf]||'Outros';regiaoC[reg]=(regiaoC[reg]||0)+1;regiaoV[reg]=(regiaoV[reg]||0)+vol;}
   });
   document.getElementById('k-fat').textContent=fat;document.getElementById('k-rec').textContent=rec;document.getElementById('k-sep').textContent=sep;
@@ -2096,7 +2096,7 @@ function updateDashboard(list){
     {label:'Separado',value:sepd,color:'#a371f7'},{label:'Conferido',value:conf,color:'#2dd4bf'},
     {label:'Expedido',value:exp,color:'#3fb950'},{label:'Pendente',value:pend,color:'#f85149'},
   ]);
-  drawBars('cOrigem',Object.entries(origC).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([l,v])=>({label:l,value:v,vol:origV[l]||0,color:l==='GRU'?'#2dd4bf':'#58a6ff'})));
+  drawBars('cOrigem',Object.entries(origC).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([l,v])=>({label:l,value:v,vol:origV[l]||0,color:l==='GRU'?'#2dd4bf':'#58a6ff'})),{total:true});
   drawBars('cTransp',Object.entries(transpC).sort((a,b)=>(transpV[b[0]]||0)-(transpV[a[0]]||0)).slice(0,5).map(([l,v])=>({label:l,value:v,vol:transpV[l]||0,color:'#58a6ff',drillType:'transp'})));
   // Gráfico UF / Região com drilldown
   if(_ufDrillRegiao){
@@ -2145,7 +2145,23 @@ function drawDonut(id,data){
   const leg=document.getElementById('legStatus');if(!leg)return;
   leg.innerHTML=fd.map(d=>`<div class="leg-item"><div class="leg-dot" style="background:${d.color}"></div>${d.label}:<strong style="color:${d.color};margin-left:3px">${d.value}</strong></div>`).join('');
 }
-function drawBars(id,data){
+// v8.9: unifica nomes de transportadoras que vêm diferentes do Protheus (MATRIZ) e VDK (GRU)
+const TRANSP_ALIAS=[
+  [/BRASPRESS|AEROPRESS/,'BRASPRESS'],[/JAMEF/,'JAMEF'],[/RODONAVES/,'RODONAVES'],[/PATRUS/,'PATRUS'],
+  [/BUSLOG|METAR|METOR/,'BUSLOG METAR'],[/FEDEX\s*AEREO/,'FEDEX AÉREO'],[/FEDEX|TNT|MERCURIO/,'FEDEX TNT MERCÚRIO'],
+  [/JR\s*ROLDAO/,'JR ROLDÃO'],[/^MS\s+TRANSPORTE/,'MS TRANSPORTES'],[/ALPYTRANS/,'ALPYTRANS'],
+  [/TORNADO/,'TORNADO LOGÍSTICA'],[/EBAZAR|MERCADO\s*LIVRE/,'MERCADO LIVRE'],[/TOTAL\s*EXPRESS/,'TOTAL EXPRESS'],
+  [/ENTREGA\s+EM\s+ONIBUS/,'ENTREGA EM ÔNIBUS'],[/TRANSPORTE\s+PELA\s+AVACY/,'TRANSPORTE PELA AVACY'],[/RAJLOG/,'RAJLOG']
+];
+const _trCache=new Map();
+function normTransp(t){
+  if(!t)return'';
+  if(_trCache.has(t))return _trCache.get(t);
+  const u=String(t).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+  let r=u;for(const[re,nm]of TRANSP_ALIAS){if(re.test(u)){r=nm;break;}}
+  _trCache.set(t,r);return r;
+}
+function drawBars(id,data,opts={}){
   const el=document.getElementById(id);if(!el)return;
   if(!data.length){el.innerHTML='<div style="font-size:10px;color:var(--muted);text-align:center;padding:8px">Sem dados</div>';return}
   const fmtVol=v=>v>0?v.toLocaleString('pt-BR'):'—';
@@ -2154,7 +2170,10 @@ function drawBars(id,data){
   el.innerHTML=data.map((d,i)=>{
     const drill=d.drillType?`onclick="drillDown('${id}',${i})" style="cursor:pointer" title="Clique para detalhar ${esc(d.label)}"`:'' ;
     return`<div class="bar-row" ${drill}><span class="bar-rank">${i+1}.</span><div class="bar-lbl" title="${esc(d.label)}">${d.label}</div><div class="bar-val">${d.value}<span class="bar-vol"> · ${fmtVol(d.vol)}</span></div></div>`;
-  }).join('');
+  }).join('')+(opts.total?(()=>{
+    const tv=data.reduce((a,d)=>a+(d.value||0),0),tvol=data.reduce((a,d)=>a+(d.vol||0),0);
+    return`<div class="bar-row" style="border-top:1px solid var(--border);margin-top:4px;padding-top:6px;font-weight:800"><span class="bar-rank"></span><div class="bar-lbl">TOTAL</div><div class="bar-val">${tv.toLocaleString('pt-BR')}<span class="bar-vol"> · ${fmtVol(tvol)}</span></div></div>`;
+  })():'');
 }
 // ─── DRILL-DOWN ───────────────────────────────────────────────
 function drillDown(barId,idx){
@@ -2165,7 +2184,7 @@ function drillDown(barId,idx){
   if(type==='regiao'){
     ufDrillInto(value);return;
   }else if(type==='transp'){
-    items=pool.filter(r=>r.transportadora===value);
+    items=pool.filter(r=>normTransp(r.transportadora)===value);
   }else if(type==='sep'){
     items=pool.filter(r=>{
       const sd=stMap[r.nota]||{};
@@ -2240,7 +2259,7 @@ function exportTransp(){
     // Agrupar por transportadora
     const map={};
     list.forEach(r=>{
-      const k=r.transportadora||'(sem transportadora)';
+      const k=normTransp(r.transportadora)||'(sem transportadora)';
       const vol=parseInt((r.volume||'0').toString())||0;
       if(!map[k])map[k]={nf:0,vol:0};
       map[k].nf++;map[k].vol+=vol;
