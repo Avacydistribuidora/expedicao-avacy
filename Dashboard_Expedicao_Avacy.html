@@ -411,7 +411,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v8.5 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v8.6 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -419,7 +419,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v8.5</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v8.6</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1286,7 +1286,7 @@ async function importCSV(){
     const baseRecs=_importMode==='replace'?[]:([...activeRecs,...expedidoRecs]);
     if(_importMode==='replace'){activeRecs=[];expedidoRecs=[];stMap={};}
     const existMap=new Map(baseRecs.map(r=>[r.nota,r]));
-    let add=0,upd=0;const n=nowStr();
+    let add=0,upd=0;const n=nowStr();const _stubMerged=[];
     for(let i=1;i<rows.length;i++){
       const c=rows[i];if(!c||c.length<2)continue;
       const nota=clean(c[iNota]||'');if(!nota)continue;
@@ -1334,10 +1334,13 @@ async function importCSV(){
            if(_ps){['ts_sep','ts_sepd','ts_conf','ts_exp'].forEach(k=>{
              if(_ps[k]&&(!stMap[nota][k]||_ps[k]<stMap[nota][k]))stMap[nota][k]=_ps[k];
            });
+           // v8.6: preserva SEMPRE quem bipou (scan_log/sep_log/separador), mesmo que o status não avance
+           ['scan_log','sep_log','rec_log','separador'].forEach(k=>{if(_ps[k]&&!stMap[nota][k])stMap[nota][k]=_ps[k];});
            if((PROG[_ps.status]||0)>(PROG[stMap[nota].status||'Faturado']||0)){
              stMap[nota].status=_ps.status;
              if(_ps.separador)stMap[nota].separador=_ps.separador;
-           }}
+           }
+           stMap[nota]._ts=new Date().toISOString();_stubMerged.push(nota);}
            delete stMap[_sk];existMap.delete(_sk);
            if(SB_URL&&SB_KEY){const _b=SB_URL.replace(/\/+$/,''),_h={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
              fetch(`${_b}/rest/v1/avacy_records?nota=eq.${encodeURIComponent(_sk)}`,{method:'DELETE',headers:_h}).catch(()=>{});
@@ -1403,7 +1406,8 @@ async function importCSV(){
               const a=stMap[nota]?.[k],b=_ps?.[k];
               if(a&&b)_mg[k]=a<b?a:b;else _mg[k]=b||a||_mg[k];
             });
-            stMap[nota]=_mg;
+            _mg._ts=new Date().toISOString();
+            stMap[nota]=_mg;_stubMerged.push(nota);
             delete stMap[_preK];
             existMap.delete(_preK);
             // NÃO faz DELETE no Supabase aqui — o sync posterior cuida disso com segurança
@@ -1457,7 +1461,9 @@ async function importCSV(){
       if(SB_URL&&SB_KEY){
         const snapRecs=[...activeRecs,...expedidoRecs];
         const autoStatus=Object.entries(stMap).filter(([,sd])=>['Expedido','Conferido'].includes(sd.status)).map(([nota])=>nota);
-        sbSyncRecords(snapRecs).then(()=>sbBulkSyncStatus(autoStatus)).catch(e=>console.warn('bg sync err:',e));
+        // v8.6: inclui notas que receberam dados de pré-bipe (stub) para gravar o separador no Supabase
+        _stubMerged.forEach(x=>{if(stMap[x]&&!autoStatus.includes(x))autoStatus.push(x);});
+        sbSyncRecords(snapRecs).then(()=>sbBulkSyncStatus(autoStatus)).then(()=>sbReconcileColetor()).then(c=>{if(c)onFilterChange();}).catch(e=>console.warn('bg sync err:',e));
       }
     },300);
   },50);
@@ -2022,8 +2028,8 @@ function _render(){
       <td style="text-align:right;font-size:11px;color:var(--muted);font-family:monospace">${r.volume||'—'}</td>
       <td><div class="has-tip"><span class="badge ${sc}"><span class="dot ${sc}"></span>${st}</span>${tipHtml}</div></td>
       <td>${(()=>{
-        const sepU=st==='Em Separação'?(sd.scan_log?.user||sd.separador||''):(sd.sep_log?.user||sd.separador||'');
-        const sepTs=st==='Em Separação'?(sd.scan_log?.ts||sd.ts_sep||''):(sd.sep_log?.ts||sd.ts_sepd||'');
+        const sepU=st==='Em Separação'?(sd.scan_log?.user||sd.separador||''):(sd.sep_log?.user||sd.separador||sd.scan_log?.user||'');
+        const sepTs=st==='Em Separação'?(sd.scan_log?.ts||sd.ts_sep||''):(sd.sep_log?.ts||sd.ts_sepd||sd.scan_log?.ts||'');
         const sepClr=st==='Em Separação'?'var(--orange)':st==='Separado'?'#9333ea':st==='Conferido'?'var(--teal)':'var(--muted)';
         if(!sepU)return'<span style="color:var(--muted)">—</span>';
         return'<span style="font-size:10px;color:'+sepClr+';font-weight:700" title="'+esc(sepU+' '+sepTs)+'">'+(sepTs?'<span style="font-weight:400;opacity:.85;white-space:nowrap">'+esc(sepTs)+'</span><br>':'')+esc(sepU)+'</span>';
@@ -2479,6 +2485,62 @@ async function sbPollStatus(){
   }catch(e){setSyncUI('err');console.warn('sbPollStatus:',e);}
 }
 
+// ── v8.6: Reconcilia histórico do Coletor TC21 (tabela separacoes) ────────────
+// O coletor grava em "separacoes" o código bipado (pode ser FAT, LOJA ou NOTA).
+// Essa base nunca é apagada; aqui ela é cruzada com os registros (nota/fat/loja)
+// para preencher scan_log/sep_log das notas que ficaram sem separador.
+function _isoToBr(iso){
+  if(!iso)return'';
+  try{const d=new Date(iso);if(isNaN(d))return'';
+    return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}catch(e){return''}
+}
+let _reconcRunning=false;
+async function sbReconcileColetor(dias=60){
+  if(!SB_URL||!SB_KEY||_reconcRunning)return 0;
+  _reconcRunning=true;
+  try{
+    const base=SB_URL.replace(/\/+$/,''),hdr={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+    const desde=new Date(Date.now()-dias*86400000).toISOString();
+    const SIZE=1000;const rows=[];let from=0;
+    while(true){
+      const r=await fetch(`${base}/rest/v1/separacoes?select=pedido,status,separador,inicio,fim&inicio=gte.${encodeURIComponent(desde)}&order=inicio.asc&limit=${SIZE}&offset=${from}`,{headers:hdr});
+      if(!r.ok)throw new Error('separacoes HTTP '+r.status);
+      const page=await r.json();
+      if(!Array.isArray(page)||!page.length)break;
+      rows.push(...page);if(page.length<SIZE)break;from+=SIZE;
+    }
+    if(!rows.length)return 0;
+    // Índice código → nota real (nota tem prioridade, depois FAT, depois LOJA)
+    const idx=new Map();
+    const recs=[...activeRecs,...expedidoRecs].filter(r=>r.nome_cliente!=='(aguardando importação CSV)');
+    recs.forEach(r=>{if(r.loja&&!idx.has(r.loja))idx.set(r.loja,r.nota);});
+    recs.forEach(r=>{if(r.fat)idx.set(r.fat,r.nota);});
+    recs.forEach(r=>{idx.set(r.nota,r.nota);});
+    const changed=new Set();const now=new Date().toISOString();
+    rows.forEach(s=>{
+      const cod=String(s.pedido||'').trim();if(!cod||!s.separador)return;
+      const nota=idx.get(cod)||idx.get(cod.padStart(9,'0'));
+      if(!nota)return;
+      if(!stMap[nota])stMap[nota]={obs:'',status:'Faturado'};
+      const sd=stMap[nota];let ch=false;
+      const tsIni=_isoToBr(s.inicio),tsFim=_isoToBr(s.fim||s.inicio);
+      if(!sd.scan_log?.user){sd.scan_log={user:s.separador,ts:tsIni,code:cod,src:'coletor'};ch=true;}
+      if(!sd.ts_sep&&tsIni){sd.ts_sep=tsIni;ch=true;}
+      if(s.status==='separado'){
+        if(!sd.sep_log?.user){sd.sep_log={user:s.separador,ts:tsFim,code:cod,src:'coletor'};ch=true;}
+        if(!sd.ts_sepd&&tsFim){sd.ts_sepd=tsFim;ch=true;}
+      }
+      if(ch){sd._ts=now;changed.add(nota);}
+    });
+    if(changed.size){
+      saveLS();
+      await sbBulkSyncStatus([...changed]);
+      console.info('Coletor reconciliado: '+changed.size+' nota(s) com separador recuperado.');
+    }
+    return changed.size;
+  }finally{_reconcRunning=false;}
+}
+
 async function sbLoadAll(){
   if(!SB_URL||!SB_KEY)return false;setSyncUI('sync');
   try{
@@ -2520,7 +2582,9 @@ async function sbLoadAll(){
       });
     }
     fixExpedidoStatus();
-    saveLS();setSyncUI('ok');return true;
+    saveLS();setSyncUI('ok');
+    sbReconcileColetor().then(c=>{if(c)onFilterChange();}).catch(e=>console.warn('reconcile coletor:',e));
+    return true;
   }catch(e){
     setSyncUI('err');
     const msg=e.message||String(e);
