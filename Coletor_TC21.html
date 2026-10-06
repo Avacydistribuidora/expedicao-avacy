@@ -207,7 +207,7 @@ tbody tr:last-child td{border-bottom:none}
 <header>
   <div class="logo">Avacy</div>
   <div style="width:1px;height:30px;background:rgba(255,255,255,.15);margin:0 6px;flex-shrink:0"></div>
-  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v4.4</span></div>
+  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v4.5</span></div>
   <div class="header-center">
     <div class="admin-tabs" id="admin-tabs">
       <button class="atab active" onclick="adminShowTab('sep')" id="atab-sep">📋 Separações</button>
@@ -240,12 +240,12 @@ tbody tr:last-child td{border-bottom:none}
     <p>Identificação do separador</p>
     <div class="lfield">
       <label>Usuário</label>
-      <input type="text" id="lg-nome" placeholder="seu nome" autocomplete="off"
+      <input type="text" id="lg-nome" name="coletor-user" placeholder="seu nome" autocomplete="off" autocapitalize="characters" spellcheck="false"
              onkeydown="if(event.key==='Enter')document.getElementById('lg-senha').focus()">
     </div>
     <div class="lfield">
       <label>Senha</label>
-      <input type="password" id="lg-senha" placeholder="••••••"
+      <input type="password" id="lg-senha" name="coletor-pass" placeholder="••••••" autocomplete="new-password"
              onkeydown="if(event.key==='Enter')login()">
     </div>
     <div id="login-erro"></div>
@@ -478,10 +478,13 @@ async function login() {
   if (!nome || !senha) { errEl.textContent = 'Preencha usuário e senha.'; return; }
   syncDot('sync');
   try {
-    const { data, error } = await db.from('separadores')
-      .select('id, nome, ativo, admin')
-      .ilike('nome', nome).eq('senha', senha).single();
-    if (error || !data)  { errEl.textContent = '❌ Usuário ou senha incorretos.'; syncDot('err'); return; }
+    // v4.4: erro de rede/servidor não é mais exibido como "senha incorreta"
+    const { data: rows, error } = await db.from('separadores')
+      .select('id, nome, ativo, admin, senha')
+      .ilike('nome', nome);
+    if (error) { errEl.textContent = '❌ Sem conexão com o servidor: ' + (error.message || error); syncDot('err'); return; }
+    const data = (rows || []).find(u => (u.nome || '').trim().toUpperCase() === nome && String(u.senha || '').trim() === senha);
+    if (!data)  { errEl.textContent = '❌ Usuário ou senha incorretos.'; syncDot('err'); return; }
     if (!data.ativo)     { errEl.textContent = '⛔ Usuário inativo. Fale com o admin.'; syncDot('err'); return; }
     usuario = { id: data.id, nome: data.nome, admin: data.admin };
     localStorage.setItem('col_sess', JSON.stringify(usuario));

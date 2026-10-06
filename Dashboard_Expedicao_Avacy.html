@@ -406,12 +406,12 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     <h2>Dashboard — Expedição</h2>
     <p class="login-sub">Faça login para acessar o sistema</p>
     <div class="login-fields">
-      <div><label>Usuário</label><input type="text" id="lgUser" placeholder="seu usuário" autocomplete="off" onkeydown="if(event.key==='Enter')document.getElementById('lgPass').focus()"></div>
-      <div><label>Senha</label><input type="password" id="lgPass" placeholder="••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <div><label>Usuário</label><input type="text" id="lgUser" name="dash-user" placeholder="seu usuário" autocomplete="off" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter')document.getElementById('lgPass').focus()"></div>
+      <div><label>Senha</label><input type="password" id="lgPass" name="dash-pass" placeholder="••••••" autocomplete="new-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v8.6 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v8.7 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -419,7 +419,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v8.6</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v8.7</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -823,13 +823,26 @@ function initUsers(){const u=getUsers();if(!u.find(x=>x.username==='admin'))save
 function getCurrentUser(){try{return JSON.parse(sessionStorage.getItem(SS_USER)||'null')}catch{return null}}
 function setCurrentUser(obj){sessionStorage.setItem(SS_USER,JSON.stringify(obj))}
 
-function doLogin(){
+async function doLogin(){
   const user=document.getElementById('lgUser').value.trim();
-  const pass=document.getElementById('lgPass').value;
+  const pass=document.getElementById('lgPass').value.trim();
   const err=document.getElementById('lgErr');
   if(!user||!pass){err.textContent='Preencha usuário e senha.';return}
-  const found=getUsers().find(u=>u.username===user&&u.password===pass);
-  if(!found){err.textContent='Usuário ou senha incorretos.';return}
+  // v8.6: usuário sem diferenciar maiúsculas; se não achar, recarrega a lista do Supabase e tenta de novo
+  const match=()=>getUsers().find(u=>(u.username||'').trim().toLowerCase()===user.toLowerCase()&&String(u.password||'').trim()===pass);
+  let found=match();
+  if(!found){
+    err.textContent='Verificando…';
+    const okSb=await sbLoadUsers();
+    found=match();
+    if(!found){
+      err.textContent=okSb===false
+        ?'Sem conexão com o servidor — verifique a internet/bloqueadores e tente de novo.'
+        :'Usuário ou senha incorretos.';
+      return;
+    }
+  }
+  err.textContent='';
   setCurrentUser({username:found.username,role:found.role});
   document.getElementById('loginScreen').classList.add('hidden');
   initDashboard();
@@ -2430,20 +2443,34 @@ function setSyncUI(state){
 
 
 // ── Sync de status em lote (substitui loop individual no import) ─────────────
+// v8.6: nunca envia null para os dados de bipagem de uma nota que já passou daquela etapa.
+// Antes, cada importação reenviava todas as notas Conferido/Expedido com scan_log/sep_log=null
+// e apagava no Supabase o separador gravado pelo Coletor.
+function _statusRow(nota,sd){
+  const row={nota,status:sd.status||'Faturado',obs:sd.obs||'',priority:!!sd.priority,
+    ts_fat:sd.ts_fat||null,ts_sep:sd.ts_sep||null,ts_sepd:sd.ts_sepd||null,
+    ts_conf:sd.ts_conf||null,ts_exp:sd.ts_exp||null,ts_pend:sd.ts_pend||null,
+    pend_prev:sd.pend_prev||null,scan_log:sd.scan_log||null,sep_log:sd.sep_log||null,
+    pend_log:sd.pend_log||null,updated_at:new Date().toISOString()};
+  const pr=PROG_SYNC[row.status]||0;
+  if(pr>=2){if(!row.scan_log)delete row.scan_log;if(!row.ts_sep)delete row.ts_sep;}
+  if(pr>=3){if(!row.sep_log)delete row.sep_log;if(!row.ts_sepd)delete row.ts_sepd;}
+  return row;
+}
+const PROG_SYNC={Faturado:1,Recebido:1.5,'Em Separação':2,Separado:3,Conferido:4,Expedido:5,Pendente:0.5,Cancelado:6,Devolvido:6};
+async function _postStatusRows(rows){
+  // PostgREST exige as mesmas colunas em todas as linhas do lote → agrupa por conjunto de colunas
+  const groups={};
+  rows.forEach(r=>{const k=Object.keys(r).sort().join(',');(groups[k]=groups[k]||[]).push(r);});
+  const CHUNK=100;
+  for(const k in groups){const g=groups[k];for(let i=0;i<g.length;i+=CHUNK)await sbPost('/rest/v1/avacy_status',g.slice(i,i+CHUNK));}
+}
 async function sbBulkSyncStatus(notaList){
   if(!SB_URL||!SB_KEY||!notaList.length)return;
   setSyncUI('sync');
   try{
-    const CHUNK=100;
-    const rows=notaList.map(nota=>{
-      const sd=stMap[nota]||{};
-      return{nota,status:sd.status||'Faturado',obs:sd.obs||'',priority:!!sd.priority,
-        ts_fat:sd.ts_fat||null,ts_sep:sd.ts_sep||null,ts_sepd:sd.ts_sepd||null,
-        ts_conf:sd.ts_conf||null,ts_exp:sd.ts_exp||null,ts_pend:sd.ts_pend||null,
-        pend_prev:sd.pend_prev||null,scan_log:sd.scan_log||null,sep_log:sd.sep_log||null,
-        pend_log:sd.pend_log||null,updated_at:new Date().toISOString()};
-    });
-    for(let i=0;i<rows.length;i+=CHUNK)await sbPost('/rest/v1/avacy_status',rows.slice(i,i+CHUNK));
+    const rows=notaList.map(nota=>_statusRow(nota,stMap[nota]||{}));
+    await _postStatusRows(rows);
     setSyncUI('ok');
   }catch(e){setSyncUI('err');console.warn('sbBulkSyncStatus:',e);}
 }
@@ -2453,11 +2480,7 @@ async function sbSyncStatus(nota){
   setSyncUI('sync');
   const sd=stMap[nota];if(!sd)return;
   try{
-    await sbPost('/rest/v1/avacy_status',{nota,status:sd.status||'Faturado',obs:sd.obs||'',priority:!!sd.priority,
-      ts_fat:sd.ts_fat||null,ts_sep:sd.ts_sep||null,ts_sepd:sd.ts_sepd||null,
-      ts_conf:sd.ts_conf||null,ts_exp:sd.ts_exp||null,ts_pend:sd.ts_pend||null,
-      pend_prev:sd.pend_prev||null,scan_log:sd.scan_log||null,sep_log:sd.sep_log||null,
-      pend_log:sd.pend_log||null,updated_at:new Date().toISOString()});
+    await sbPost('/rest/v1/avacy_status',_statusRow(nota,sd));
     setSyncUI('ok');
   }catch(e){setSyncUI('err');console.warn('sbSyncStatus:',e)}
 }
@@ -2477,7 +2500,10 @@ async function sbPollStatus(){
       const loc=stMap[nota];
       // aceita só se Supabase tem dado mais recente
       if(!loc||(updated_at&&(!loc._ts||updated_at>loc._ts))){
-        stMap[nota]={...sd,_ts:updated_at};changed=true;
+        const nv={...sd,_ts:updated_at},pr=PROG_SYNC[nv.status]||0;
+        if(loc){if(pr>=2&&!nv.scan_log&&loc.scan_log)nv.scan_log=loc.scan_log;
+                if(pr>=3&&!nv.sep_log&&loc.sep_log)nv.sep_log=loc.sep_log;}
+        stMap[nota]=nv;changed=true;
       }
     });
     if(changed){saveLS();onFilterChange();}
@@ -2521,12 +2547,14 @@ async function sbReconcileColetor(dias=60){
       const cod=String(s.pedido||'').trim();if(!cod||!s.separador)return;
       const nota=idx.get(cod)||idx.get(cod.padStart(9,'0'));
       if(!nota)return;
-      if(!stMap[nota])stMap[nota]={obs:'',status:'Faturado'};
+      if(!stMap[nota])return;
       const sd=stMap[nota];let ch=false;
+      const pr=PROG_SYNC[sd.status||'Faturado']||0;
+      if(pr<2||sd.status==='Cancelado'||sd.status==='Devolvido')return; // não reaplica bipe desfeito
       const tsIni=_isoToBr(s.inicio),tsFim=_isoToBr(s.fim||s.inicio);
       if(!sd.scan_log?.user){sd.scan_log={user:s.separador,ts:tsIni,code:cod,src:'coletor'};ch=true;}
       if(!sd.ts_sep&&tsIni){sd.ts_sep=tsIni;ch=true;}
-      if(s.status==='separado'){
+      if(s.status==='separado'&&pr>=3){
         if(!sd.sep_log?.user){sd.sep_log={user:s.separador,ts:tsFim,code:cod,src:'coletor'};ch=true;}
         if(!sd.ts_sepd&&tsFim){sd.ts_sepd=tsFim;ch=true;}
       }
@@ -2577,7 +2605,10 @@ async function sbLoadAll(){
         const loc=stMap[nota];
         // aceita do Supabase se: não existe local, ou timestamp do Supabase é mais recente
         if(!loc||(updated_at&&(!loc._ts||updated_at>loc._ts))){
-          stMap[nota]={...sd,_ts:updated_at};
+          const nv={...sd,_ts:updated_at},pr=PROG_SYNC[nv.status]||0;
+          if(loc){if(pr>=2&&!nv.scan_log&&loc.scan_log)nv.scan_log=loc.scan_log;
+                  if(pr>=3&&!nv.sep_log&&loc.sep_log)nv.sep_log=loc.sep_log;}
+          stMap[nota]=nv;
         }
       });
     }
@@ -2622,16 +2653,17 @@ async function sbSyncUsers(users){
   }catch(e){console.warn('sbSyncUsers:',e)}
 }
 async function sbLoadUsers(){
-  if(!SB_URL||!SB_KEY)return;
+  if(!SB_URL||!SB_KEY)return false;
   try{
     const sbUsers=await sbGetAll('avacy_users','username');
-    if(!Array.isArray(sbUsers)||sbUsers.length===0)return;
+    if(!Array.isArray(sbUsers)||sbUsers.length===0)return true;
     const local=getUsers();
     const merged=[...sbUsers.map(u=>({username:u.username,password:u.password,role:u.role}))];
     // Garante que o admin local existe sempre
     if(!merged.find(u=>u.username==='admin'))merged.push({username:'admin',password:'235241',role:'admin'});
     saveUsers(merged);
-  }catch(e){console.warn('sbLoadUsers:',e)}
+    return true;
+  }catch(e){console.warn('sbLoadUsers:',e);return false}
 }
 
 // ── Config modal ────────────────────────────────────────────
@@ -2759,6 +2791,8 @@ function initDashboard(){
       if(Date.now()-_lastSyncTs<20000)return;
       sbPollStatus();
     },20000);
+    // v8.6: reconcilia o histórico do Coletor a cada 5 min
+    setInterval(()=>{sbReconcileColetor().then(c=>{if(c)onFilterChange();}).catch(e=>console.warn('reconcile coletor:',e));},300000);
   }
 }
 initUsers();
