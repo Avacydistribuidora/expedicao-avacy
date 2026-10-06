@@ -207,7 +207,7 @@ tbody tr:last-child td{border-bottom:none}
 <header>
   <div class="logo">Avacy</div>
   <div style="width:1px;height:30px;background:rgba(255,255,255,.15);margin:0 6px;flex-shrink:0"></div>
-  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v4.5</span></div>
+  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v4.6</span></div>
   <div class="header-center">
     <div class="admin-tabs" id="admin-tabs">
       <button class="atab active" onclick="adminShowTab('sep')" id="atab-sep">📋 Separações</button>
@@ -586,10 +586,13 @@ async function executarScan() {
       .from('avacy_records')
       .select('nota, fat, loja, nome_cliente')
       .or(filtro)
-      .limit(5);
+      .limit(20);
     // Prefere o registro real (com CSV) ao stub de pré-bipe
+    // v4.6: o mesmo número pode ser LOJA de uma nota nova e FAT de uma nota antiga →
+    // prefere registro real (com CSV) e, entre eles, a NOTA mais recente
     const recs = (recsRaw || []).sort((a, b) =>
-      (a.nome_cliente === '(aguardando importação CSV)') - (b.nome_cliente === '(aguardando importação CSV)'));
+      ((a.nome_cliente === '(aguardando importação CSV)') - (b.nome_cliente === '(aguardando importação CSV)'))
+      || String(b.nota).localeCompare(String(a.nota)));
 
     if (errR) throw errR;
 

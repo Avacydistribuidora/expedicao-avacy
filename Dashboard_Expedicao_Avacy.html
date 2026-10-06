@@ -411,7 +411,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v8.7 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v8.8 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -419,7 +419,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v8.7</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v8.8</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -2446,13 +2446,13 @@ function setSyncUI(state){
 // v8.6: nunca envia null para os dados de bipagem de uma nota que já passou daquela etapa.
 // Antes, cada importação reenviava todas as notas Conferido/Expedido com scan_log/sep_log=null
 // e apagava no Supabase o separador gravado pelo Coletor.
-function _statusRow(nota,sd){
+function _statusRow(nota,sd,forcarNulos){
   const row={nota,status:sd.status||'Faturado',obs:sd.obs||'',priority:!!sd.priority,
     ts_fat:sd.ts_fat||null,ts_sep:sd.ts_sep||null,ts_sepd:sd.ts_sepd||null,
     ts_conf:sd.ts_conf||null,ts_exp:sd.ts_exp||null,ts_pend:sd.ts_pend||null,
     pend_prev:sd.pend_prev||null,scan_log:sd.scan_log||null,sep_log:sd.sep_log||null,
     pend_log:sd.pend_log||null,updated_at:new Date().toISOString()};
-  const pr=PROG_SYNC[row.status]||0;
+  const pr=forcarNulos?0:(PROG_SYNC[row.status]||0);
   if(pr>=2){if(!row.scan_log)delete row.scan_log;if(!row.ts_sep)delete row.ts_sep;}
   if(pr>=3){if(!row.sep_log)delete row.sep_log;if(!row.ts_sepd)delete row.ts_sepd;}
   return row;
@@ -2521,6 +2521,13 @@ function _isoToBr(iso){
     return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}catch(e){return''}
 }
 let _reconcRunning=false;
+// Converte 'DD/MM/YYYY[ HH:MM]' ou ISO em número AAAAMMDD (para comparar datas)
+function _ymd(v){
+  if(!v)return 0;const t=String(v).trim();
+  let m=t.match(/^(\d{2})\/(\d{2})\/(\d{4})/);if(m)return +(m[3]+m[2]+m[1]);
+  m=t.match(/^(\d{4})-?(\d{2})-?(\d{2})/);if(m)return +(m[1]+m[2]+m[3]);
+  return 0;
+}
 async function sbReconcileColetor(dias=60){
   if(!SB_URL||!SB_KEY||_reconcRunning)return 0;
   _reconcRunning=true;
@@ -2535,23 +2542,43 @@ async function sbReconcileColetor(dias=60){
       if(!Array.isArray(page)||!page.length)break;
       rows.push(...page);if(page.length<SIZE)break;from+=SIZE;
     }
-    if(!rows.length)return 0;
-    // Índice código → nota real (nota tem prioridade, depois FAT, depois LOJA)
-    const idx=new Map();
-    const recs=[...activeRecs,...expedidoRecs].filter(r=>r.nome_cliente!=='(aguardando importação CSV)');
-    recs.forEach(r=>{if(r.loja&&!idx.has(r.loja))idx.set(r.loja,r.nota);});
-    recs.forEach(r=>{if(r.fat)idx.set(r.fat,r.nota);});
-    recs.forEach(r=>{idx.set(r.nota,r.nota);});
-    const changed=new Set();const now=new Date().toISOString();
+    // v8.8: o mesmo número pode ser LOJA de uma nota nova e FAT de uma nota antiga.
+    // Guarda TODOS os candidatos de cada código e escolhe a nota mais recente
+    // emitida até a data do bipe (antes pegava a primeira que achava → nota errada).
+    const cand=new Map();
+    const add=(k,r)=>{if(!k)return;k=String(k).trim();if(!cand.has(k))cand.set(k,[]);const a=cand.get(k);if(!a.includes(r))a.push(r);};
+    [...activeRecs,...expedidoRecs].filter(r=>r.nome_cliente!=='(aguardando importação CSV)')
+      .forEach(r=>{add(r.nota,r);add(r.fat,r);add(r.loja,r);});
+    const melhor=(cod,dataBipe)=>{
+      const c=cand.get(cod)||cand.get(cod.padStart(9,'0'))||[];
+      if(!c.length)return null;
+      const db=_ymd(dataBipe);
+      const ok=db?c.filter(r=>{const e=_ymd(r.data_emissao);return !e||e<=db;}):c;
+      const lst=(ok.length?ok:c).map(r=>r.nota).sort();
+      return lst[lst.length-1];
+    };
+    const changed=new Set(),cleared=new Set();const now=new Date().toISOString();
+    // 1) Corrige atribuições feitas na nota errada pela v8.6/v8.7
+    Object.entries(stMap).forEach(([nota,sd])=>{
+      ['scan_log','sep_log'].forEach(k=>{
+        const lg=sd[k];if(!lg||lg.src!=='coletor'||!lg.code)return;
+        const certo=melhor(String(lg.code),lg.ts);
+        if(certo&&certo!==nota){
+          const tsK=k==='scan_log'?'ts_sep':'ts_sepd';
+          if(sd[tsK]===lg.ts)sd[tsK]=null;
+          sd[k]=null;sd._ts=now;cleared.add(nota);
+        }
+      });
+    });
+    // 2) Preenche o separador na nota correta
     rows.forEach(s=>{
       const cod=String(s.pedido||'').trim();if(!cod||!s.separador)return;
-      const nota=idx.get(cod)||idx.get(cod.padStart(9,'0'));
-      if(!nota)return;
-      if(!stMap[nota])return;
+      const tsIni=_isoToBr(s.inicio),tsFim=_isoToBr(s.fim||s.inicio);
+      const nota=melhor(cod,tsIni);
+      if(!nota||!stMap[nota])return;
       const sd=stMap[nota];let ch=false;
       const pr=PROG_SYNC[sd.status||'Faturado']||0;
       if(pr<2||sd.status==='Cancelado'||sd.status==='Devolvido')return; // não reaplica bipe desfeito
-      const tsIni=_isoToBr(s.inicio),tsFim=_isoToBr(s.fim||s.inicio);
       if(!sd.scan_log?.user){sd.scan_log={user:s.separador,ts:tsIni,code:cod,src:'coletor'};ch=true;}
       if(!sd.ts_sep&&tsIni){sd.ts_sep=tsIni;ch=true;}
       if(s.status==='separado'&&pr>=3){
@@ -2560,12 +2587,15 @@ async function sbReconcileColetor(dias=60){
       }
       if(ch){sd._ts=now;changed.add(nota);}
     });
-    if(changed.size){
+    if(changed.size||cleared.size){
       saveLS();
-      await sbBulkSyncStatus([...changed]);
-      console.info('Coletor reconciliado: '+changed.size+' nota(s) com separador recuperado.');
+      // Limpezas precisam enviar null explicitamente
+      const clr=[...cleared].filter(n=>!changed.has(n));
+      if(clr.length)await _postStatusRows(clr.map(n=>_statusRow(n,stMap[n],true)));
+      if(changed.size)await sbBulkSyncStatus([...changed]);
+      console.info(`Coletor reconciliado: ${changed.size} preenchida(s), ${cleared.size} corrigida(s).`);
     }
-    return changed.size;
+    return changed.size+cleared.size;
   }finally{_reconcRunning=false;}
 }
 
