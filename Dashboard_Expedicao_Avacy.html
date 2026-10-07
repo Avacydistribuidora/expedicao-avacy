@@ -411,7 +411,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v8.9 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v9.0 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -419,7 +419,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v8.9</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v9.0</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -2547,6 +2547,17 @@ function _ymd(v){
   m=t.match(/^(\d{4})-?(\d{2})-?(\d{2})/);if(m)return +(m[1]+m[2]+m[3]);
   return 0;
 }
+// Regra de evolução: Faturado → Recebido → Em Separação → Separado → Conferido → Expedido.
+// Expedido sobrepõe tudo; os demais nunca regridem. Pendente/Cancelado/Devolvido são manuais e não são alterados.
+function _avancaPorEvidencia(sd){
+  if(!sd)return false;
+  const st=sd.status||'Faturado';
+  if(['Expedido','Pendente','Cancelado','Devolvido'].includes(st))return false;
+  const pr=PROG_SYNC[st]||0;
+  if((sd.sep_log?.user||sd.ts_sepd)&&pr<3){sd.status='Separado';return true;}
+  if((sd.scan_log?.user||sd.ts_sep)&&pr<2){sd.status='Em Separação';return true;}
+  return false;
+}
 async function sbReconcileColetor(dias=60){
   if(!SB_URL||!SB_KEY||_reconcRunning)return 0;
   _reconcRunning=true;
@@ -2577,6 +2588,8 @@ async function sbReconcileColetor(dias=60){
       return lst[lst.length-1];
     };
     const changed=new Set(),cleared=new Set();const now=new Date().toISOString();
+    // 0) v9.0: status segue a evolução — se já tem bipe de separação, não fica atrás dele
+    Object.entries(stMap).forEach(([nota,sd])=>{if(_avancaPorEvidencia(sd)){sd._ts=now;changed.add(nota);}});
     // 1) Corrige atribuições feitas na nota errada pela v8.6/v8.7
     Object.entries(stMap).forEach(([nota,sd])=>{
       ['scan_log','sep_log'].forEach(k=>{
@@ -2593,17 +2606,18 @@ async function sbReconcileColetor(dias=60){
     rows.forEach(s=>{
       const cod=String(s.pedido||'').trim();if(!cod||!s.separador)return;
       const tsIni=_isoToBr(s.inicio),tsFim=_isoToBr(s.fim||s.inicio);
+      if(s.status!=='separado'&&s.status!=='em_separacao')return; // ignora bipes desfeitos
       const nota=melhor(cod,tsIni);
       if(!nota||!stMap[nota])return;
       const sd=stMap[nota];let ch=false;
-      const pr=PROG_SYNC[sd.status||'Faturado']||0;
-      if(pr<2||sd.status==='Cancelado'||sd.status==='Devolvido')return; // não reaplica bipe desfeito
+      if(['Cancelado','Devolvido'].includes(sd.status))return;
       if(!sd.scan_log?.user){sd.scan_log={user:s.separador,ts:tsIni,code:cod,src:'coletor'};ch=true;}
       if(!sd.ts_sep&&tsIni){sd.ts_sep=tsIni;ch=true;}
-      if(s.status==='separado'&&pr>=3){
+      if(s.status==='separado'){
         if(!sd.sep_log?.user){sd.sep_log={user:s.separador,ts:tsFim,code:cod,src:'coletor'};ch=true;}
         if(!sd.ts_sepd&&tsFim){sd.ts_sepd=tsFim;ch=true;}
       }
+      if(_avancaPorEvidencia(sd))ch=true;
       if(ch){sd._ts=now;changed.add(nota);}
     });
     if(changed.size||cleared.size){
@@ -2918,6 +2932,14 @@ function debipeConfirm(nota,prevSt){
   if(curSt==='Em Separação'){delete sd.ts_sep;delete sd.scan_log;if(sd.pre_scan)delete sd.pre_scan;}
   if(curSt==='Separado'){delete sd.ts_sepd;delete sd.sep_log;}
   if(curSt==='Recebido'){delete sd.ts_recebido;delete sd.rec_log;}
+  // v9.0: marca o bipe do Coletor como desfeito para a reconciliação não reaplicar
+  if((curSt==='Em Separação'||curSt==='Separado')&&SB_URL&&SB_KEY){
+    const r=[...activeRecs,...expedidoRecs].find(x=>x.nota===nota)||{};
+    const cods=[...new Set([nota,r.fat,r.loja].filter(Boolean))].map(c=>encodeURIComponent(c)).join(',');
+    const novo=curSt==='Separado'?'em_separacao':'desfeito';
+    fetch(`${SB_URL.replace(/\/+$/,'')}/rest/v1/separacoes?pedido=in.(${cods})&status=eq.${curSt==='Separado'?'separado':'em_separacao'}`,
+      {method:'PATCH',headers:{...sbHdr(),'Prefer':'return=minimal'},body:JSON.stringify(curSt==='Separado'?{status:novo,fim:null}:{status:novo})}).catch(e=>console.warn('debipe coletor:',e));
+  }
   sd.status=prevSt;
   sd._ts=new Date().toISOString();
   saveLS();sbSyncStatus(nota);onFilterChange();

@@ -207,7 +207,7 @@ tbody tr:last-child td{border-bottom:none}
 <header>
   <div class="logo">Avacy</div>
   <div style="width:1px;height:30px;background:rgba(255,255,255,.15);margin:0 6px;flex-shrink:0"></div>
-  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v4.7</span></div>
+  <div style="font-size:17px;font-weight:800;color:#ffffff;letter-spacing:-.01em">Coletor TC21 <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:2px">v4.8</span></div>
   <div class="header-center">
     <div class="admin-tabs" id="admin-tabs">
       <button class="atab active" onclick="adminShowTab('sep')" id="atab-sep">📋 Separações</button>
@@ -650,8 +650,9 @@ async function executarScan() {
       showFb('warn', nota, '⚠', `Já está como "${statusAtual}"`);
       syncDot('ok'); inp.focus(); return;
     }
-    if (modoAtual === 'sepd' && statusAtual !== 'Em Separação') {
-      showFb('warn', nota, '⚠', `Status atual: "${statusAtual}" — esperado "Em Separação"`);
+    // v4.8: Separado pode vir direto de Faturado/Recebido (pedido não bipado no início)
+    if (modoAtual === 'sepd' && !['Faturado','Recebido','Em Separação'].includes(statusAtual)) {
+      showFb('warn', nota, '⚠', `Já está como "${statusAtual}"`);
       syncDot('ok'); inp.focus(); return;
     }
 
