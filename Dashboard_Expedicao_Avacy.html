@@ -141,6 +141,13 @@ canvas{display:block;margin:0 auto}
 .dt-row.dt-year-row{font-weight:700;font-size:11.5px;color:#1a2035;margin-top:4px}
 .dt-row.dt-month-row{padding-left:28px;font-size:11px;color:#6b7a99}
 
+/* ── MULTI-SELEÇÃO DOS FILTROS (v9.1) ─────────────────────── */
+.ms-panel{min-width:240px;max-height:360px}
+.ms-search{width:calc(100% - 12px);margin:0 6px 6px;padding:5px 8px;border:1px solid #c8d0e0;border-radius:5px;font-size:12px;outline:none}
+.ms-search:focus{border-color:#8b1111}
+.ms-row{font-size:12px;color:#1a2035}
+.ms-btn-on{border-color:#8b1111!important;background:#fff5f5!important}
+
 /* ── RIGHT MAIN ────────────────────────────────────────────── */
 .right-main{flex:1;overflow:hidden;display:flex;flex-direction:column}
 .toolbar{padding:7px 12px;display:flex;gap:7px;align-items:center;flex-wrap:wrap;
@@ -411,7 +418,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v9.0 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v9.1 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -419,7 +426,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v9.0</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v9.1</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -567,27 +574,11 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
         </button>
         <div class="dt-panel" id="dtPanel"></div>
       </div>
-      <select id="sfStatus" onchange="onStatusChange()">
-        <option value="">Todos os status</option>
-        <option>Faturado</option><option>Recebido</option><option>Em Separação</option>
-        <option>Separado</option><option>Conferido</option>
-        <option>Expedido</option><option>Pendente</option>
-        <option>Cancelado</option><option>Devolvido</option>
-        <option value="__PRIO__">⭐ Priorizados</option>
-      </select>
-      <select id="sfOrigem" onchange="onFilterChange()">
-        <option value="">Todas origens</option>
-        <option value="GRU">GRU</option><option value="MATRIZ">MATRIZ</option>
-      </select>
-      <select id="sfTransp" onchange="render()">
-        <option value="">Todas transportadoras</option>
-      </select>
-      <select id="sfVend" onchange="render()">
-        <option value="">Todos vendedores</option>
-      </select>
-      <select id="sfSep" onchange="render()">
-        <option value="">Todos separadores</option>
-      </select>
+      <div class="dt-wrap ms-wrap" id="ms-sfStatus"></div>
+      <div class="dt-wrap ms-wrap" id="ms-sfOrigem"></div>
+      <div class="dt-wrap ms-wrap" id="ms-sfTransp"></div>
+      <div class="dt-wrap ms-wrap" id="ms-sfVend"></div>
+      <div class="dt-wrap ms-wrap" id="ms-sfSep"></div>
       <div class="spacer"></div>
       <button class="btn-clear-filter" onclick="clearFilters()" title="Limpar todos os filtros">✕ Limpar filtros</button>
       <label class="tog"><input type="checkbox" id="showExp" onchange="onFilterChange()"> Expedidos</label>
@@ -853,6 +844,7 @@ document.addEventListener('click',e=>{
   if(!e.target.closest('#userBadge'))document.getElementById('userMenu').classList.remove('open');
   if(!e.target.closest('#actWrap'))document.getElementById('actMenu').classList.remove('open');
   if(!e.target.closest('#dtWrap')){document.getElementById('dtPanel').classList.remove('open');document.getElementById('dtBtn').classList.remove('active')}
+  document.querySelectorAll('.ms-wrap').forEach(w=>{if(!w.contains(e.target)){w.querySelector('.ms-panel')?.classList.remove('open');w.querySelector('.dt-btn')?.classList.remove('active');}});
   if(!e.target.closest('.act-trigger')&&!e.target.closest('#rowPopover'))closeRowMenu();
 });
 // ── Alterar própria senha ──────────────────────────────────
@@ -1913,26 +1905,79 @@ document.addEventListener('click',e=>{if(!e.target.closest('.act-trigger')&&!e.t
 // FILTROS
 // ═══════════════════════════════════════════════════════════
 function clearFilters(){
-  document.getElementById('sfStatus').value='';
-  document.getElementById('sfOrigem').value='';
-  document.getElementById('sfTransp').value='';
-  document.getElementById('sfVend').value='';
+  msClearAll();
   document.getElementById('showExp').checked=true;
   document.getElementById('srch').value='';
   onFilterChange();
 }
-function getFilters(){return{srch:document.getElementById('srch').value.toLowerCase(),sfSt:document.getElementById('sfStatus').value,sfOrig:document.getElementById('sfOrigem').value,sfTr:document.getElementById('sfTransp').value,sfVend:document.getElementById('sfVend').value,sfSep:document.getElementById('sfSep').value,showExp:document.getElementById('showExp').checked}}
+// ── v9.1: filtros com seleção múltipla (vazio = todos) ──────────
+const MS={};
+function msInit(id,ph,opts,onchange){
+  const wrap=document.getElementById('ms-'+id);if(!wrap)return;
+  MS[id]={sel:new Set(),opts:[],ph,onchange,wrap,q:''};
+  wrap.innerHTML=`<button class="dt-btn" type="button" onclick="msToggle(event,'${id}')"><span class="ms-lbl"></span><span class="dt-arrow">▾</span></button><div class="dt-panel ms-panel" onclick="event.stopPropagation()"></div>`;
+  // Elemento de compatibilidade: código antigo que faz getElementById(id).value continua funcionando
+  const px=document.createElement('span');px.id=id;px.style.display='none';wrap.appendChild(px);
+  Object.defineProperty(px,'value',{get(){return [...MS[id].sel][0]||''},set(v){MS[id].sel=new Set(v?[v]:[]);msLabel(id);if(MS[id].wrap.querySelector('.ms-panel').classList.contains('open'))msPanel(id);}});
+  msSetOptions(id,opts||[]);
+}
+function msVals(id){return MS[id]?[...MS[id].sel]:[]}
+function msSetOptions(id,list){
+  const m=MS[id];if(!m)return;
+  m.opts=list.map(x=>typeof x==='string'?{v:x,l:x}:x);
+  const vs=new Set(m.opts.map(o=>o.v));m.sel=new Set([...m.sel].filter(v=>vs.has(v)));
+  msLabel(id);if(m.wrap.querySelector('.ms-panel').classList.contains('open'))msPanel(id);
+}
+function msLabel(id){
+  const m=MS[id],b=m.wrap.querySelector('.dt-btn'),l=m.wrap.querySelector('.ms-lbl');
+  const n=m.sel.size;
+  l.textContent=!n?m.ph:n===1?(m.opts.find(o=>o.v===[...m.sel][0])?.l||[...m.sel][0]):`${n} selecionados`;
+  b.classList.toggle('ms-btn-on',n>0);b.title=n?[...m.sel].join(', '):m.ph;
+}
+function msPanel(id){
+  const m=MS[id],p=m.wrap.querySelector('.ms-panel');
+  const q=(m.q||'').toLowerCase();
+  const vis=m.opts.filter(o=>!q||o.l.toLowerCase().includes(q));
+  const busca=m.opts.length>8?`<input class="ms-search" placeholder="🔍 Buscar…" value="${esc(m.q||'')}" oninput="MS['${id}'].q=this.value;msPanel('${id}');const i=MS['${id}'].wrap.querySelector('.ms-search');i.focus();i.setSelectionRange(i.value.length,i.value.length)">`:'';
+  p.innerHTML=busca+
+    `<label class="dt-row dt-all"><input type="checkbox" ${m.sel.size?'':'checked'} onchange="msAll('${id}')"> (Selecionar Tudo)</label>`+
+    (q&&vis.length?`<label class="dt-row ms-row" style="color:var(--blue)"><input type="checkbox" onchange="msAddVisible('${id}',this.checked)"> Marcar os ${vis.length} encontrados</label>`:'')+
+    vis.map(o=>`<label class="dt-row ms-row"><input type="checkbox" ${m.sel.has(o.v)?'checked':''} onchange="msPick('${id}',this.dataset.v,this.checked)" data-v="${esc(o.v)}"> ${esc(o.l)}</label>`).join('')+
+    (vis.length?'':'<div style="font-size:11px;color:var(--muted);padding:6px 10px">Nada encontrado</div>');
+}
+function msToggle(e,id){
+  e.stopPropagation();
+  document.querySelectorAll('.ms-wrap').forEach(w=>{if(w.id!=='ms-'+id){w.querySelector('.ms-panel')?.classList.remove('open');w.querySelector('.dt-btn')?.classList.remove('active');}});
+  const m=MS[id],p=m.wrap.querySelector('.ms-panel'),b=m.wrap.querySelector('.dt-btn');
+  if(!p.classList.contains('open')){m.q='';msPanel(id);}
+  p.classList.toggle('open');b.classList.toggle('active',p.classList.contains('open'));
+  if(p.classList.contains('open'))setTimeout(()=>p.querySelector('.ms-search')?.focus(),30);
+}
+function msChanged(id){msLabel(id);msPanel(id);const f=MS[id].onchange;if(typeof f==='function')f();}
+function msPick(id,v,on){const m=MS[id];if(on)m.sel.add(v);else m.sel.delete(v);if(m.sel.size===m.opts.length)m.sel.clear();msChanged(id);}
+function msAll(id){MS[id].sel.clear();msChanged(id);}
+function msAddVisible(id,on){const m=MS[id],q=(m.q||'').toLowerCase();m.opts.filter(o=>o.l.toLowerCase().includes(q)).forEach(o=>on?m.sel.add(o.v):m.sel.delete(o.v));msChanged(id);}
+function msClearAll(){Object.keys(MS).forEach(id=>{MS[id].sel.clear();msLabel(id);});}
+function initFilterMS(){
+  msInit('sfStatus','Todos os status',['Faturado','Recebido','Em Separação','Separado','Conferido','Expedido','Pendente','Cancelado','Devolvido',{v:'__PRIO__',l:'⭐ Priorizados'}],()=>onStatusChange());
+  msInit('sfOrigem','Todas origens',['GRU','MATRIZ'],()=>onFilterChange());
+  msInit('sfTransp','Todas transportadoras',[],()=>render());
+  msInit('sfVend','Todos vendedores',[],()=>render());
+  msInit('sfSep','Todos separadores',[],()=>render());
+}
+initFilterMS();
+function _sepDe(sd){return (sd.sep_log?.user||sd.separador||sd.scan_log?.user||'').toUpperCase().trim();}
+function getFilters(){return{srch:document.getElementById('srch').value.toLowerCase(),sfSt:msVals('sfStatus'),sfOrig:msVals('sfOrigem'),sfTr:msVals('sfTransp'),sfVend:msVals('sfVend'),sfSep:msVals('sfSep'),showExp:document.getElementById('showExp').checked}}
 function applyFilters(pool,filters,exclTr=false,exclVend=false,exclSep=false){
   const{srch,sfSt,sfOrig,sfTr,sfVend,sfSep,showExp}=filters;
   return pool.filter(r=>{
     const sd=stMap[r.nota]||{};const st=sd.status||'Faturado';
     if(st==='Expedido'&&!showExp)return false;
-    if(sfSt==='__PRIO__'){if(!sd.priority)return false}
-    else if(sfSt&&st!==sfSt)return false;
-    if(sfOrig&&r.origem!==sfOrig)return false;
-    if(!exclTr&&sfTr&&normTransp(r.transportadora)!==sfTr)return false;
-    if(!exclVend&&sfVend&&r.vendedor!==sfVend)return false;
-    if(!exclSep&&sfSep&&(sd.separador||'')!==sfSep)return false;
+    if(sfSt.length&&!(sfSt.includes(st)||(sfSt.includes('__PRIO__')&&sd.priority)))return false;
+    if(sfOrig.length&&!sfOrig.includes(r.origem))return false;
+    if(!exclTr&&sfTr.length&&!sfTr.includes(normTransp(r.transportadora)))return false;
+    if(!exclVend&&sfVend.length&&!sfVend.includes(r.vendedor))return false;
+    if(!exclSep&&sfSep.length&&!sfSep.includes(_sepDe(sd)))return false;
     if(!isDateSelected(r.data_emissao))return false;
     if(srch){const hay=[r.nota,r.nome_cliente,r.transportadora,r.fat,r.loja,r.origem].join(' ').toLowerCase();if(!hay.includes(srch))return false}
     return true;
@@ -1940,44 +1985,23 @@ function applyFilters(pool,filters,exclTr=false,exclVend=false,exclSep=false){
 }
 function onStatusChange(){
   // Auto-check "Expedidos" só quando o SELECT de status muda
-  const sfSt=document.getElementById('sfStatus').value;
+  const sfSt=msVals('sfStatus');
   const expChk=document.getElementById('showExp');
-  if(sfSt==='Expedido'||sfSt===''){expChk.checked=true}
-  else if(sfSt&&sfSt!==''){expChk.checked=false}
+  expChk.checked=!sfSt.length||sfSt.includes('Expedido');
   onFilterChange();
 }
 function onFilterChange(){
   fillTransp();render();updateDtLabel();
 }
 function fillTransp(){
-  const sel=document.getElementById('sfTransp'),cur=sel.value;
-  const filtered=applyFilters([...activeRecs,...expedidoRecs],getFilters(),true);
-  const set=new Set(filtered.map(r=>normTransp(r.transportadora)).filter(Boolean));
-  sel.innerHTML='<option value="">Todas transportadoras</option>';
-  [...set].sort().forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;sel.appendChild(o)});
-  if(cur&&set.has(cur))sel.value=cur;else sel.value='';
-  // Vendedor
-  const selV=document.getElementById('sfVend'),curV=selV.value;
-  const filteredV=applyFilters([...activeRecs,...expedidoRecs],getFilters(),false,true);
-  const setV=new Set(filteredV.map(r=>r.vendedor).filter(Boolean));
-  selV.innerHTML='<option value="">Todos vendedores</option>';
-  [...setV].sort().forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;selV.appendChild(o)});
-  if(curV&&setV.has(curV))selV.value=curV;else selV.value='';
-  // Separador — lista todos os separadores dos registros filtrados (qualquer status)
-  const selSep=document.getElementById('sfSep'),curSep=selSep.value;
-  const filteredSep=applyFilters([...activeRecs,...expedidoRecs],getFilters(),false,false,true);
-  const setSep=new Set(filteredSep.map(r=>{const sd=stMap[r.nota]||{};return sd.sep_log?.user||sd.separador||'';}).filter(Boolean));
-  selSep.innerHTML='<option value="">Todos separadores</option>';
-  [...setSep].sort().forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;selSep.appendChild(o)});
-  if(curSep&&setSep.has(curSep))selSep.value=curSep;else selSep.value='';
+  const pool=[...activeRecs,...expedidoRecs],f=getFilters();
+  msSetOptions('sfTransp',[...new Set(applyFilters(pool,f,true).map(r=>normTransp(r.transportadora)).filter(Boolean))].sort());
+  msSetOptions('sfVend',[...new Set(applyFilters(pool,f,false,true).map(r=>r.vendedor).filter(Boolean))].sort());
+  msSetOptions('sfSep',[...new Set(applyFilters(pool,f,false,false,true).map(r=>_sepDe(stMap[r.nota]||{})).filter(Boolean))].sort());
 }
 function clearFilters(){
   document.getElementById('srch').value='';
-  document.getElementById('sfStatus').value='';
-  document.getElementById('sfOrigem').value='';
-  document.getElementById('sfTransp').value='';
-  document.getElementById('sfVend').value='';
-  document.getElementById('sfSep').value='';
+  msClearAll();
   document.getElementById('showExp').checked=true;
   selectedDates=null; // todos os meses
   renderDateTree();onFilterChange();
