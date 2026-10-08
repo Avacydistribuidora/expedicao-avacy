@@ -418,7 +418,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v9.1 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v9.2 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -426,7 +426,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v9.1</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v9.2</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -1506,7 +1506,16 @@ function doBipe(){
   const inp=document.getElementById('bipeInput');const val=inp.value.trim();inp.value='';
   if(!val)return;
   const cu=getCurrentUser();const n=nowStr();
-  const found=[...activeRecs,...expedidoRecs].filter(r=>r.fat===val||r.loja===val||r.nota===val);
+  // v9.2: o mesmo número pode ser LOJA de um pedido novo e FAT de um pedido antigo (já expedido).
+  // Antes o bipe aplicava em TODOS os encontrados e mostrava o status do primeiro (o antigo).
+  // Agora: NOTA exata tem prioridade; senão, usa só o pedido mais recente que tem esse código.
+  const _all=[...activeRecs,...expedidoRecs];
+  const _pad=/^\d+$/.test(val)&&val.length<9?val.padStart(9,'0'):val;
+  let found=_all.filter(r=>r.nota===val||r.nota===_pad);
+  if(!found.length){
+    const c=_all.filter(r=>r.fat===val||r.loja===val);
+    if(c.length)found=[c.reduce((a,b)=>String(b.nota)>String(a.nota)?b:a)];
+  }
   if(!found.length){
     // Pré-bipe: nota ainda não importada — registra em stMap para aplicar quando CSV chegar
     const newSt=bipeMode==='sep'?'Em Separação':bipeMode==='recebido'?'Recebido':'Separado';
@@ -1560,7 +1569,11 @@ function doBipe(){
     found.forEach(r=>{const st=stMap[r.nota]?.status;if(['Em Separação','Separado','Recebido'].includes(st))sbSyncStatus(r.nota);});
     showBipeFeedback('ok',`✔ ${changed} pedido(s) → ${bipeMode==='sep'?'Em Separação':bipeMode==='recebido'?'Recebido':'Separado'}`);onFilterChange()
   }
-  else showBipeFeedback('warn',`⚠ Status incompatível (${found[0]&&stMap[found[0].nota]?.status})`);
+  else{
+    const r0=found[0],sd0=stMap[r0.nota]||{},st0=sd0.status||'Faturado';
+    const quem=st0==='Em Separação'?(sd0.scan_log?.user||''):st0==='Separado'?(sd0.sep_log?.user||''):'';
+    showBipeFeedback('warn',`⚠ Nota ${r0.nota} já está como "${st0}"${quem?' ('+quem+')':''} — não pode voltar para ${bipeMode==='sep'?'Em Separação':bipeMode==='recebido'?'Recebido':'Separado'}`);
+  }
   renderBipeLog();
 }
 let bFbTimer=null;
