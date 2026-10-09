@@ -256,6 +256,10 @@ tbody tr:hover { background: var(--azul-hover); }
 tbody td { padding: 8px 10px; text-align: center; border-bottom: 1px solid #e8edf5; font-size: 12px; }
 tbody td.l { text-align: left; }
 tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text-align: center; font-weight: 700; font-size: 12px; }
+/* V3.1: cabeçalho (e total) congelados ao rolar as tabelas */
+.table-wrap { max-height: calc(100vh - 150px); overflow: auto; }
+.table-wrap thead th { position: sticky; top: 0; z-index: 3; box-shadow: 0 2px 0 rgba(0,0,0,.08); }
+.table-wrap tfoot td { position: sticky; bottom: 0; z-index: 3; }
 
 /* ── ESTATÍSTICAS (CARDS NUMÉRICOS) ── */
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-bottom: 18px; }
@@ -385,6 +389,18 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
 .doc-log { margin-top:12px; max-height:220px; overflow:auto; font-size:12px; font-family:monospace; background:#f7f7f9;
   border:1px solid var(--borda); border-radius:8px; padding:8px 10px; white-space:pre-wrap; display:none; }
 .doc-sql { font-size:11px; background:#1e1e2e; color:#e0e0e0; padding:10px; border-radius:8px; white-space:pre; overflow:auto; max-height:200px; }
+
+/* ── MENU MAIS AÇÕES (V3.2) ── */
+.acoes-wrap { position:relative; display:inline-block; }
+.acoes-menu { display:none; position:absolute; left:0; bottom:calc(100% + 6px); min-width:240px; background:white;
+  border:1px solid var(--borda); border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,.18); padding:6px; z-index:600; }
+.acoes-menu.open { display:block; }
+.acoes-menu button { display:block; width:100%; text-align:left; background:none; border:none; padding:9px 12px; border-radius:7px;
+  font-size:13px; font-family:inherit; cursor:pointer; color:var(--texto); }
+.acoes-menu button:hover { background:var(--azul-hover); }
+.acoes-menu button.del { color:#c0392b; }
+.acoes-menu button.del:hover { background:#fdecea; }
+.acoes-menu .sep { height:1px; background:var(--borda); margin:4px 6px; }
 
 /* ── PESQUISA GLOBAL (V3.0) ── */
 .gsearch { margin-left:auto; position:relative; display:flex; align-items:center; padding:6px 0; }
@@ -662,7 +678,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 // ════════════════════════════════════════════════════════════════════════════
 // ── VERSÃO — atualizar a cada deploy no GitHub ─────────────────────────────
 // ════════════════════════════════════════════════════════════════════════════
-const APP_VERSION     = 'V3.0';               // ← atualizar a cada deploy
+const APP_VERSION     = 'V3.2';               // ← atualizar a cada deploy
 const GITHUB_REPO     = 'Avacydistribuidora/expedicao-avacy';
 const GITHUB_FILE     = 'Extrator_DANFE.html';
 
@@ -924,7 +940,10 @@ function selecionarCarreta(id) {
   document.getElementById('btn-tab-carreta').style.display = '';
   showTab('tab-carreta');
   renderDetalheCarreta(c);
+  // V3.1: preenche em segundo plano as remessas faltantes usando os XML/DANFE já anexados
+  if (!_remAuto.has(c.id)) { _remAuto.add(c.id); preencherRemessasCarreta(true, c).catch(() => {}); }
 }
+const _remAuto = new Set();
 
 function renderDetalheCarreta(c) {
   _carretaAtual = c;
@@ -995,11 +1014,17 @@ function renderDetalheCarreta(c) {
 
   <div class="btn-row">
     <button class="btn btn-warn" onclick="exportarExcelCarreta('${c.id}')">📥 Baixar Excel</button>
-    <button class="btn btn-ghost" onclick="copiarCarreta('${c.id}')">📋 Copiar p/ Planilha</button>
-    <button class="btn btn-primary" onclick="abrirModalAlterar('${c.id}')" title="Alterar o número desta carreta">✏️ Alterar Nº</button>
-    <button class="btn btn-primary" style="background:#5b6ee1" onclick="abrirModalDocs()" title="Anexar XML e DANFE às notas">📎 Importar XML / DANFE</button>
-    <button class="btn btn-ghost" onclick="preencherRemessasCarreta()" title="Lê a remessa dos XML/DANFE anexados e preenche as notas sem remessa">🔄 Preencher Remessas</button>
-    <button class="btn btn-danger" onclick="excluirCarreta('${c.id}')">🗑️ Excluir</button>
+    <div class="acoes-wrap" id="acoesWrap">
+      <button class="btn btn-ghost" onclick="toggleAcoes(event)">⚙️ Mais ações ▾</button>
+      <div class="acoes-menu" id="acoesMenu">
+        <button onclick="fecharAcoes();copiarCarreta('${c.id}')">📋 Copiar p/ Planilha</button>
+        <button onclick="fecharAcoes();abrirModalAlterar('${c.id}')">✏️ Alterar Nº da carreta</button>
+        <button onclick="fecharAcoes();abrirModalDocs()">📎 Importar XML / DANFE</button>
+        <button onclick="fecharAcoes();preencherRemessasCarreta()">🔄 Preencher Remessas</button>
+        <div class="sep"></div>
+        <button class="del" onclick="fecharAcoes();excluirCarreta('${c.id}')">🗑️ Excluir carreta</button>
+      </div>
+    </div>
   </div>`;
 
   document.getElementById('carretaDetalhe').innerHTML = html;
@@ -1708,15 +1733,52 @@ function exportarExcel() {
   XLSX.writeFile(wb, `FOB_2026_${num}a_CARRETA.xlsx`);
 }
 
+// V3.2: Excel idêntico à tela da carreta (todas as linhas preenchidas + total)
 function exportarExcelCarreta(id) {
   const c = getCarretas().find(x => x.id === id);
   if (!c) return;
+  const dt = iso => iso ? new Date(iso + 'T12:00:00') : '';
+  const dtBR = s => { if (!s) return ''; const [d, m, y] = s.split('/'); return (d && m && y) ? new Date(`${y}-${m}-${d}T12:00:00`) : s; };
+  const num = v => { if (v == null || v === '') return ''; if (typeof v === 'number') return v; const n = parseBR(v); return isNaN(n) ? v : n; };
+  const frete = c.frete || 0, totVal = c.totalValor || 0;
+  const pct = totVal > 0 ? frete / totVal * 100 : '';
+
+  const rows = [];
+  rows.push([`${c.num}ª Carreta · Programação ${fmtData(c.data)}`]);
+  rows.push(['Coleta', dt(c.dtColeta), 'Entrega', dt(c.dtEntrega), 'Sistema', dt(c.dtSistema), 'Shipment', c.shipment || '', 'Placa', c.placa || '', 'Vol m³', num(c.volM3)]);
+  rows.push(['Transportadora', c.transportadora || '', 'Frete', frete, '% Frete/NF', pct === '' ? '' : Math.round(pct * 100) / 100, 'NFs', c.nfs.length, 'Caixas', c.totalCaixas || 0, 'Pares', c.totalPares || 0]);
+  rows.push([]);
+  const HDR = 4; // índice da linha de cabeçalho
+  rows.push(['#', 'ORIGEM', 'FORNECEDOR', 'DT FATURAMENTO', 'QTDS CAIXAS', 'QTDS PARES', 'VALOR NF', 'VLM M³', 'PESO KG', 'NF', 'REMESSA', 'ARQUIVOS']);
+  c.nfs.forEach((nf, i) => {
+    const d = docsMap.get(Number(nf.nf)) || {};
+    const arq = [d.xml_path ? 'XML' : '', d.pdf_path ? 'PDF' : ''].filter(Boolean).join(' · ');
+    rows.push([i + 1, nf.origem || '', 'ALPARGATAS', dtBR(nf.dtStr), nf.qtdCaixas ?? '', nf.qtdPares ?? '',
+      nf.valorNF || 0, num(nf.vlmM3), nf.peso ?? '', String(nf.nfRaw || nf.nf || ''), nf.remessa ? String(nf.remessa) : '', arq]);
+  });
+  const totPeso = c.nfs.reduce((s, n) => s + (n.peso || 0), 0);
+  rows.push(['TOTAL', '', '', '', c.totalCaixas || 0, c.totalPares || 0, totVal, num(c.volM3), totPeso || '', `${c.nfs.length} NFs`, '', docResumo(c)]);
+
+  const ws = XLSX.utils.aoa_to_sheet(rows, { cellDates: true });
+  const fmtCol = (col, z, r0, r1) => { for (let r = r0; r <= r1; r++) { const a = XLSX.utils.encode_cell({ r, c: col }); if (ws[a] && ws[a].t === 'n') ws[a].z = z; if (ws[a] && ws[a].t === 'd') ws[a].z = z; } };
+  const last = rows.length - 1;
+  fmtCol(3, 'dd/mm/yyyy', HDR + 1, last - 1);
+  fmtCol(4, '#,##0', HDR + 1, last); fmtCol(5, '#,##0', HDR + 1, last);
+  fmtCol(6, '"R$" #,##0.00', HDR + 1, last);
+  fmtCol(7, '#,##0.00', HDR + 1, last); fmtCol(8, '#,##0.000', HDR + 1, last);
+  [1, 3, 5].forEach(col => fmtCol(col, 'dd/mm/yyyy', 1, 1));
+  fmtCol(3, '"R$" #,##0.00', 2, 2); fmtCol(5, '0.00"%"', 2, 2);
+  ws['!cols'] = [{wch:6},{wch:10},{wch:14},{wch:15},{wch:13},{wch:13},{wch:16},{wch:10},{wch:12},{wch:14},{wch:14},{wch:12}];
+  ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 11 } }];
+  ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: HDR, c: 0 }, e: { r: last - 1, c: 11 } }) };
   const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(montarLinhasExcel(c));
-  ws['!cols'] = [{wch:6},{wch:14},{wch:14},{wch:12},{wch:14},{wch:12},{wch:12},{wch:12},{wch:12},{wch:14},{wch:10},{wch:18},{wch:12},{wch:8},{wch:12},{wch:10},{wch:10},{wch:8}];
   XLSX.utils.book_append_sheet(wb, ws, `${c.num}ª CARRETA`);
   XLSX.writeFile(wb, `FOB_2026_${c.num}a_CARRETA.xlsx`);
 }
+
+function toggleAcoes(e) { e.stopPropagation(); document.getElementById('acoesMenu')?.classList.toggle('open'); }
+function fecharAcoes() { document.getElementById('acoesMenu')?.classList.remove('open'); }
+document.addEventListener('click', e => { if (!e.target.closest('#acoesWrap')) fecharAcoes(); });
 
 // ── COPIAR ────────────────────────────────────────────────────────────────────
 // Aplica ORIGEM padrão a todas as linhas — funciona antes e depois de extrair
@@ -1820,7 +1882,10 @@ async function carregarDocs() {
     console.warn('nf_docs indisponível:', e.message);
     docsOk = false;
   }
-  if (_carretaAtual && document.getElementById('tab-carreta')?.classList.contains('active')) renderDetalheCarreta(_carretaAtual);
+  if (_carretaAtual && document.getElementById('tab-carreta')?.classList.contains('active')) {
+    renderDetalheCarreta(_carretaAtual);
+    if (docsOk) preencherRemessasCarreta(true).catch(() => {});
+  }
 }
 
 function docIcons(nf) {
@@ -1942,7 +2007,12 @@ async function importarDocs(files) {
     }
   }
   add(`— Concluído: ${ok} anexado(s)${erro ? ', ' + erro + ' com problema' : ''}.`);
-  if (_carretaAtual) renderDetalheCarreta(_carretaAtual);
+  // V3.1: completa automaticamente as remessas que ainda faltarem nesta carreta
+  if (_carretaAtual) {
+    const n = await preencherRemessasCarreta(true);
+    if (n) add(`🔄 ${n} remessa(s) preenchida(s) automaticamente a partir dos arquivos.`);
+    renderDetalheCarreta(_carretaAtual);
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════════
@@ -1975,12 +2045,12 @@ async function aplicarRemessa(nf, remessa) {
 }
 
 // Lê remessas dos arquivos já anexados (XML primeiro, depois PDF) para as NFs sem remessa
-async function preencherRemessasCarreta() {
-  const c = _carretaAtual; if (!c) return;
+async function preencherRemessasCarreta(silencioso = false, carreta = null) {
+  const c = carreta || _carretaAtual; if (!c || !db || docsOk !== true) return 0;
   const falta = c.nfs.filter(x => !x.remessa);
-  if (!falta.length) { alert('Todas as notas desta carreta já têm remessa.'); return; }
+  if (!falta.length) { if (!silencioso) alert('Todas as notas desta carreta já têm remessa.'); return 0; }
   const comDoc = falta.filter(x => { const d = docsMap.get(Number(x.nf)); return d && (d.xml_path || d.pdf_path); });
-  if (!comDoc.length) { alert(`${falta.length} nota(s) sem remessa, mas nenhuma tem XML/DANFE anexado.\nUse "📎 Importar XML / DANFE" primeiro.`); return; }
+  if (!comDoc.length) { if (silencioso) return 0; alert(`${falta.length} nota(s) sem remessa, mas nenhuma tem XML/DANFE anexado.\nUse "📎 Importar XML / DANFE" primeiro.`); return; }
   let ok = 0, sem = 0;
   for (const x of comDoc) {
     const d = docsMap.get(Number(x.nf));
@@ -2000,7 +2070,8 @@ async function preencherRemessasCarreta() {
       if (rem && await aplicarRemessa(x.nf, rem)) ok++; else sem++;
     } catch (e) { console.warn('remessa', x.nf, e); sem++; }
   }
-  renderDetalheCarreta(c);
+  if (_carretaAtual === c) renderDetalheCarreta(c);
+  if (silencioso) return ok;
   alert(`✅ ${ok} remessa(s) preenchida(s).` + (sem ? `\n⚠ ${sem} arquivo(s) sem remessa nas informações complementares.` : '') +
         (falta.length > comDoc.length ? `\nℹ ${falta.length - comDoc.length} nota(s) sem arquivo anexado.` : ''));
 }
