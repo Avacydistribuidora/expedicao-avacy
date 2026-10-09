@@ -386,6 +386,21 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
   border:1px solid var(--borda); border-radius:8px; padding:8px 10px; white-space:pre-wrap; display:none; }
 .doc-sql { font-size:11px; background:#1e1e2e; color:#e0e0e0; padding:10px; border-radius:8px; white-space:pre; overflow:auto; max-height:200px; }
 
+/* ── PESQUISA GLOBAL (V3.0) ── */
+.gsearch { margin-left:auto; position:relative; display:flex; align-items:center; padding:6px 0; }
+.gsearch input { width:340px; padding:7px 12px; border:1.5px solid var(--borda); border-radius:18px; font-size:13px; font-family:inherit; outline:none; }
+.gsearch input:focus { border-color:var(--azul-medio); box-shadow:0 0 0 3px rgba(46,117,182,.15); }
+.gs-res { display:none; position:absolute; top:calc(100% + 2px); right:0; width:520px; max-height:430px; overflow:auto; background:white;
+  border:1px solid var(--borda); border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,.18); z-index:500; }
+.gs-res.open { display:block; }
+.gs-item { padding:9px 14px; border-bottom:1px solid #eef1f6; cursor:pointer; font-size:12.5px; }
+.gs-item:hover { background:#f2f7fd; }
+.gs-item .t { font-weight:700; color:var(--azul-escuro); }
+.gs-item .s { font-size:11.5px; color:#666; margin-top:2px; }
+.gs-item mark { background:#ffe58a; padding:0 1px; border-radius:2px; }
+.gs-vazio { padding:14px; color:#888; font-size:12.5px; text-align:center; }
+tr.nf-hl td { background:#fff6c7 !important; transition:background .3s; }
+
 /* ── MODAL ALTERAR CARRETA ── */
 .alt-overlay {
   display: none; position: fixed; inset: 0;
@@ -476,6 +491,12 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
       <button class="tab-btn active" onclick="showTab('tab-resumo')" id="btn-tab-resumo">
         📊 Resumo Geral
       </button>
+      <div class="gsearch" id="gsearch">
+        <input id="gsInput" type="text" autocomplete="off" placeholder="🔍 Pesquisar shipment, NF, remessa ou origem…"
+          oninput="pesquisaGlobal(this.value)" onfocus="pesquisaGlobal(this.value)"
+          onkeydown="if(event.key==='Escape'){this.value='';pesquisaGlobal('')}">
+        <div class="gs-res" id="gsRes"></div>
+      </div>
     </div>
 
     <!-- ABA: CARREGAR DANFEs -->
@@ -641,7 +662,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 // ════════════════════════════════════════════════════════════════════════════
 // ── VERSÃO — atualizar a cada deploy no GitHub ─────────────────────────────
 // ════════════════════════════════════════════════════════════════════════════
-const APP_VERSION     = 'V2.9';               // ← atualizar a cada deploy
+const APP_VERSION     = 'V3.0';               // ← atualizar a cada deploy
 const GITHUB_REPO     = 'Avacydistribuidora/expedicao-avacy';
 const GITHUB_FILE     = 'Extrator_DANFE.html';
 
@@ -942,7 +963,7 @@ function renderDetalheCarreta(c) {
   `;
 
   c.nfs.forEach((nf, i) => {
-    html += `<tr>
+    html += `<tr data-nf="${Number(nf.nf)||''}" class="${_hlNfs.has(Number(nf.nf))?'nf-hl':''}">
       <td>${i+1}</td>
       <td>${nf.origem||''}</td>
       <td>ALPARGATAS</td>
@@ -977,6 +998,7 @@ function renderDetalheCarreta(c) {
     <button class="btn btn-ghost" onclick="copiarCarreta('${c.id}')">📋 Copiar p/ Planilha</button>
     <button class="btn btn-primary" onclick="abrirModalAlterar('${c.id}')" title="Alterar o número desta carreta">✏️ Alterar Nº</button>
     <button class="btn btn-primary" style="background:#5b6ee1" onclick="abrirModalDocs()" title="Anexar XML e DANFE às notas">📎 Importar XML / DANFE</button>
+    <button class="btn btn-ghost" onclick="preencherRemessasCarreta()" title="Lê a remessa dos XML/DANFE anexados e preenche as notas sem remessa">🔄 Preencher Remessas</button>
     <button class="btn btn-danger" onclick="excluirCarreta('${c.id}')">🗑️ Excluir</button>
   </div>`;
 
@@ -1204,7 +1226,7 @@ function parseDanfe(texto, nome) {
 
   const origem = /Campina Grande|CAMPINA GRANDE/.test(texto) ? 'CG'
                : /Monte Carmelo|MONTE CARMELO/.test(texto) ? 'MC' : '?';
-  const remessa = find(/REMESSA:\s*(\d+)/);
+  const remessa = extrairRemessa(texto);
 
   // PESO BRUTO
   let peso = null;
@@ -1870,7 +1892,7 @@ async function identificarDoc(file) {
     let chave = tag('chNFe');
     if (!chave) { const inf = xml.getElementsByTagName('infNFe')[0]; chave = (inf?.getAttribute('Id') || '').replace(/^NFe/, ''); }
     const nNF = tag('nNF') || (chave.length === 44 ? chave.substr(25, 9) : '');
-    return { tipo: 'xml', nf: nNF ? parseInt(nNF, 10) : null, chave };
+    return { tipo: 'xml', nf: nNF ? parseInt(nNF, 10) : null, chave, remessa: extrairRemessa(tag('infCpl')) };
   }
   if (nome.endsWith('.pdf') || file.type === 'application/pdf') {
     const texto = await extrairTexto(file);
@@ -1880,7 +1902,7 @@ async function identificarDoc(file) {
     if (!chave) { const m = texto.replace(/\s+/g, ' ').match(/\b\d{44}\b/); if (m) chave = m[0]; }
     let nf = chave.length === 44 ? parseInt(chave.substr(25, 9), 10) : null;
     if (!nf) { try { nf = parseDanfe(texto, file.name).nf; } catch {} }
-    return { tipo: 'pdf', nf, chave };
+    return { tipo: 'pdf', nf, chave, remessa: extrairRemessa(texto) };
   }
   return { tipo: null, nf: null, chave: '' };
 }
@@ -1912,7 +1934,9 @@ async function importarDocs(files) {
       if (te) throw te;
       docsMap.set(id.nf, { ...(docsMap.get(id.nf) || {}), ...row });
       const onde = nfsCarreta.has(id.nf) ? 'nesta carreta' : nfsTodas.has(id.nf) ? 'em outra carreta' : 'NF ainda não está em nenhuma carreta';
-      add(`✅ NF ${id.nf} — ${id.tipo.toUpperCase()} anexado (${onde})`); ok++;
+      let extra = '';
+      if (id.remessa) { const n = await aplicarRemessa(id.nf, id.remessa); if (n) extra = ` · remessa ${id.remessa} preenchida`; }
+      add(`✅ NF ${id.nf} — ${id.tipo.toUpperCase()} anexado (${onde})${extra}`); ok++;
     } catch (e) {
       add(`❌ ${f.name}: ${e.message || e}`); erro++;
     }
@@ -1920,6 +1944,120 @@ async function importarDocs(files) {
   add(`— Concluído: ${ok} anexado(s)${erro ? ', ' + erro + ' com problema' : ''}.`);
   if (_carretaAtual) renderDetalheCarreta(_carretaAtual);
 }
+
+// ════════════════════════════════════════════════════════════════════════
+// ── REMESSA (V3.0) — lida das Informações Complementares da NF ───────────
+// Ex.: "... NF.ORIG 0913938766 REMESSA 8011788901/ ..."
+// ════════════════════════════════════════════════════════════════════════
+function extrairRemessa(texto) {
+  if (!texto) return null;
+  const m = String(texto).match(/REMESSA\s*[:.\-]?\s*(\d{8,12})/i);
+  return m ? m[1] : null;
+}
+
+// Preenche a remessa da NF em todas as carretas onde ela estiver vazia
+async function aplicarRemessa(nf, remessa) {
+  if (!nf || !remessa) return 0;
+  let n = 0;
+  for (const c of getCarretas()) {
+    for (const x of c.nfs) {
+      if (Number(x.nf) === Number(nf) && !x.remessa) {
+        x.remessa = remessa; n++;
+        if (db) {
+          const { error } = await db.from('nfs').update({ remessa }).eq('carreta_id', c.id).eq('nf', Number(nf));
+          if (error) console.warn('remessa NF', nf, error.message);
+        }
+      }
+    }
+  }
+  if (n && !db) localStorage.setItem('fob_carretas', JSON.stringify(carretasCache));
+  return n;
+}
+
+// Lê remessas dos arquivos já anexados (XML primeiro, depois PDF) para as NFs sem remessa
+async function preencherRemessasCarreta() {
+  const c = _carretaAtual; if (!c) return;
+  const falta = c.nfs.filter(x => !x.remessa);
+  if (!falta.length) { alert('Todas as notas desta carreta já têm remessa.'); return; }
+  const comDoc = falta.filter(x => { const d = docsMap.get(Number(x.nf)); return d && (d.xml_path || d.pdf_path); });
+  if (!comDoc.length) { alert(`${falta.length} nota(s) sem remessa, mas nenhuma tem XML/DANFE anexado.\nUse "📎 Importar XML / DANFE" primeiro.`); return; }
+  let ok = 0, sem = 0;
+  for (const x of comDoc) {
+    const d = docsMap.get(Number(x.nf));
+    try {
+      let rem = null;
+      if (d.xml_path) {
+        const { data, error } = await db.storage.from(DOC_BUCKET).download(d.xml_path);
+        if (!error && data) {
+          const xml = new DOMParser().parseFromString(await data.text(), 'application/xml');
+          rem = extrairRemessa(xml.getElementsByTagName('infCpl')[0]?.textContent || '');
+        }
+      }
+      if (!rem && d.pdf_path) {
+        const { data, error } = await db.storage.from(DOC_BUCKET).download(d.pdf_path);
+        if (!error && data) rem = extrairRemessa(await extrairTexto(data));
+      }
+      if (rem && await aplicarRemessa(x.nf, rem)) ok++; else sem++;
+    } catch (e) { console.warn('remessa', x.nf, e); sem++; }
+  }
+  renderDetalheCarreta(c);
+  alert(`✅ ${ok} remessa(s) preenchida(s).` + (sem ? `\n⚠ ${sem} arquivo(s) sem remessa nas informações complementares.` : '') +
+        (falta.length > comDoc.length ? `\nℹ ${falta.length - comDoc.length} nota(s) sem arquivo anexado.` : ''));
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// ── PESQUISA GLOBAL (V3.0): shipment, NF, remessa ou origem ──────────────
+// ════════════════════════════════════════════════════════════════════════
+let _hlNfs = new Set();
+function _gsMark(txt, q) {
+  const t = String(txt ?? ''); if (!q) return t;
+  const i = t.toLowerCase().indexOf(q.toLowerCase());
+  return i < 0 ? t : t.slice(0, i) + '<mark>' + t.slice(i, i + q.length) + '</mark>' + t.slice(i + q.length);
+}
+function pesquisaGlobal(qRaw) {
+  const box = document.getElementById('gsRes');
+  const q = (qRaw || '').trim();
+  if (q.length < 2) { box.classList.remove('open'); box.innerHTML = ''; return; }
+  const qU = q.toUpperCase(), qD = q.replace(/\D/g, '');
+  const res = [];
+  for (const c of getCarretas()) {
+    const shipOk = c.shipment && String(c.shipment).toUpperCase().includes(qU);
+    const nfs = c.nfs.filter(x => {
+      const nfD = String(x.nfRaw || x.nf || '').replace(/\D/g, '');
+      return (qD.length >= 3 && (nfD.includes(qD) || String(Number(nfD)).includes(qD))) ||
+             (x.remessa && String(x.remessa).includes(q)) ||
+             (x.origem && String(x.origem).toUpperCase() === qU);
+    });
+    if (shipOk || nfs.length) res.push({ c, shipOk, nfs });
+  }
+  res.sort((a, b) => (b.c.num || 0) - (a.c.num || 0));
+  if (!res.length) { box.innerHTML = `<div class="gs-vazio">Nada encontrado para "<b>${q.replace(/</g,'&lt;')}</b>"</div>`; box.classList.add('open'); return; }
+  box.innerHTML = res.slice(0, 60).map((r, i) => {
+    const c = r.c;
+    const det = r.nfs.slice(0, 4).map(x =>
+      `NF <b>${_gsMark(x.nfRaw || x.nf, qD.length >= 3 ? q : '')}</b>` +
+      (x.remessa ? ` · Rem. ${_gsMark(x.remessa, q)}` : '') + (x.origem ? ` · ${x.origem}` : '')).join('<br>');
+    const mais = r.nfs.length > 4 ? `<br><i>+ ${r.nfs.length - 4} nota(s)</i>` : '';
+    return `<div class="gs-item" onclick="abrirResultadoPesquisa(${i})">
+      <div class="t">🚛 ${c.num}ª Carreta · ${fmtData(c.data)}${c.shipment ? ` · Shipment ${_gsMark(c.shipment, r.shipOk ? q : '')}` : ''}</div>
+      <div class="s">${r.nfs.length ? `${r.nfs.length} nota(s) encontrada(s)<br>${det}${mais}` : 'Shipment encontrado'}</div>
+    </div>`;
+  }).join('') + (res.length > 60 ? `<div class="gs-vazio">Mostrando 60 de ${res.length} carretas — refine a busca</div>` : '');
+  box._res = res;
+  box.classList.add('open');
+}
+function abrirResultadoPesquisa(i) {
+  const box = document.getElementById('gsRes'); const r = box._res?.[i]; if (!r) return;
+  _hlNfs = new Set(r.nfs.map(x => Number(x.nf)));
+  box.classList.remove('open');
+  selecionarCarreta(r.c.id);
+  setTimeout(() => {
+    const tr = document.querySelector('#carretaDetalhe tr.nf-hl');
+    if (tr) tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => { _hlNfs = new Set(); document.querySelectorAll('tr.nf-hl').forEach(t => t.classList.remove('nf-hl')); }, 6000);
+  }, 150);
+}
+document.addEventListener('click', e => { if (!e.target.closest('#gsearch')) document.getElementById('gsRes')?.classList.remove('open'); });
 
 initDB().then(() => { renderSidebar(); showTab('tab-resumo'); renderResumo(); carregarDocs(); });
 checkVersion();
