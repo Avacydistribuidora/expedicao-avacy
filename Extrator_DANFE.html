@@ -372,6 +372,20 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
 }
 .imp-footer { padding: 12px 20px; border-top: 1px solid var(--borda); display: flex; gap: 10px; flex-shrink: 0; align-items: center; flex-wrap: wrap; }
 
+/* ── DOCUMENTOS DA NF (XML / DANFE) — V2.9 ── */
+.doc-ico { display:inline-flex; align-items:center; justify-content:center; min-width:34px; height:20px; padding:0 5px;
+  border-radius:4px; font-size:9.5px; font-weight:800; letter-spacing:.03em; cursor:pointer; border:none; margin-right:3px;
+  font-family:inherit; color:white; transition:transform .1s, opacity .1s; }
+.doc-ico:hover { transform:translateY(-1px); opacity:.9; }
+.doc-ico.xml { background:#5b6ee1; }
+.doc-ico.pdf { background:#e04a2f; }
+.doc-drop { border:2px dashed var(--azul-medio); border-radius:10px; padding:22px; text-align:center; color:#555;
+  font-size:13px; cursor:pointer; background:#f6f9fd; }
+.doc-drop.over { background:#e3eefa; }
+.doc-log { margin-top:12px; max-height:220px; overflow:auto; font-size:12px; font-family:monospace; background:#f7f7f9;
+  border:1px solid var(--borda); border-radius:8px; padding:8px 10px; white-space:pre-wrap; display:none; }
+.doc-sql { font-size:11px; background:#1e1e2e; color:#e0e0e0; padding:10px; border-radius:8px; white-space:pre; overflow:auto; max-height:200px; }
+
 /* ── MODAL ALTERAR CARRETA ── */
 .alt-overlay {
   display: none; position: fixed; inset: 0;
@@ -571,6 +585,30 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
   </div><!-- .main -->
 </div><!-- .layout -->
 
+<!-- MODAL IMPORTAR XML / DANFE (V2.9) -->
+<div class="alt-overlay" id="docOverlay">
+  <div class="alt-modal" style="width:560px">
+    <div class="alt-modal-header">
+      📎 Importar XML / DANFE por Nota Fiscal
+      <button class="close-btn" onclick="fecharModalDocs()">✕</button>
+    </div>
+    <div class="alt-modal-body">
+      <div id="docSetup" style="display:none"></div>
+      <div class="doc-drop" id="docDrop" onclick="document.getElementById('docInput').click()">
+        <div style="font-size:26px">📂</div>
+        <b>Clique ou arraste os arquivos aqui</b><br>
+        <span style="font-size:11px;color:#888">XML da NF-e e/ou PDF da DANFE — vários de uma vez. A nota é identificada automaticamente pelo número/chave.</span>
+      </div>
+      <input type="file" id="docInput" accept=".xml,.pdf,application/pdf,text/xml" multiple style="display:none"
+        onchange="importarDocs(Array.from(this.files));this.value=''">
+      <div class="doc-log" id="docLog"></div>
+    </div>
+    <div class="alt-modal-footer">
+      <button class="btn btn-ghost" onclick="fecharModalDocs()">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL ALTERAR Nº CARRETA -->
 <div class="alt-overlay" id="altOverlay">
   <div class="alt-modal">
@@ -603,7 +641,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 // ════════════════════════════════════════════════════════════════════════════
 // ── VERSÃO — atualizar a cada deploy no GitHub ─────────────────────────────
 // ════════════════════════════════════════════════════════════════════════════
-const APP_VERSION     = 'V2.8';               // ← atualizar a cada deploy
+const APP_VERSION     = 'V2.9';               // ← atualizar a cada deploy
 const GITHUB_REPO     = 'Avacydistribuidora/expedicao-avacy';
 const GITHUB_FILE     = 'Extrator_DANFE.html';
 
@@ -868,6 +906,7 @@ function selecionarCarreta(id) {
 }
 
 function renderDetalheCarreta(c) {
+  _carretaAtual = c;
   const frete = c.frete || 0;
   const totVal = c.totalValor || 0;
   const totCx  = c.totalCaixas || 0;
@@ -897,7 +936,7 @@ function renderDetalheCarreta(c) {
     <table>
       <thead><tr>
         <th>#</th><th>ORIGEM</th><th>FORNECEDOR</th><th>DT FATURAMENTO</th>
-        <th>QTDS CAIXAS</th><th>QTDS PARES</th><th>VALOR NF</th><th>VLM M³</th><th>PESO KG</th><th>NF</th><th>REMESSA</th>
+        <th>QTDS CAIXAS</th><th>QTDS PARES</th><th>VALOR NF</th><th>VLM M³</th><th>PESO KG</th><th>NF</th><th>REMESSA</th><th>ARQUIVOS</th>
       </tr></thead>
       <tbody>
   `;
@@ -915,6 +954,7 @@ function renderDetalheCarreta(c) {
       <td style="font-size:11px">${nf.peso!=null?nf.peso.toLocaleString('pt-BR',{maximumFractionDigits:3}):''}</td>
       <td><b>${nf.nfRaw||nf.nf||''}</b></td>
       <td style="font-size:11px">${nf.remessa||''}</td>
+      <td style="white-space:nowrap">${docIcons(nf.nf)}</td>
     </tr>`;
   });
 
@@ -927,6 +967,7 @@ function renderDetalheCarreta(c) {
       <td>${c.volM3||''}</td>
       <td>${totPeso>0?totPeso.toLocaleString('pt-BR',{maximumFractionDigits:3}):''}</td>
       <td>${c.nfs.length} NFs</td><td></td>
+      <td style="font-size:11px;white-space:nowrap">${docResumo(c)}</td>
     </tr></tfoot>
     </table></div>
   </div>
@@ -935,6 +976,7 @@ function renderDetalheCarreta(c) {
     <button class="btn btn-warn" onclick="exportarExcelCarreta('${c.id}')">📥 Baixar Excel</button>
     <button class="btn btn-ghost" onclick="copiarCarreta('${c.id}')">📋 Copiar p/ Planilha</button>
     <button class="btn btn-primary" onclick="abrirModalAlterar('${c.id}')" title="Alterar o número desta carreta">✏️ Alterar Nº</button>
+    <button class="btn btn-primary" style="background:#5b6ee1" onclick="abrirModalDocs()" title="Anexar XML e DANFE às notas">📎 Importar XML / DANFE</button>
     <button class="btn btn-danger" onclick="excluirCarreta('${c.id}')">🗑️ Excluir</button>
   </div>`;
 
@@ -1714,7 +1756,172 @@ function setStatus(msg, type) {
 // ── INIT ──────────────────────────────────────────────────────────────────────
 document.getElementById('dataProg').valueAsDate = new Date();
 document.getElementById('dtColeta').valueAsDate = new Date();
-initDB().then(() => { renderSidebar(); showTab('tab-resumo'); renderResumo(); });
+
+// ════════════════════════════════════════════════════════════════════════
+// ── DOCUMENTOS DA NF: XML + DANFE (V2.9) ─────────────────────────────────
+// Arquivos ficam no Supabase Storage (bucket "nf-docs"); o índice por NF fica
+// na tabela "nf_docs". Ícones só aparecem quando o arquivo existe.
+// ════════════════════════════════════════════════════════════════════════
+const DOC_BUCKET = 'nf-docs';
+let docsMap = new Map();      // nf (número) → {xml_path, pdf_path, chave, ...}
+let docsOk  = null;           // null = não verificado, true = pronto, false = falta configurar
+let _carretaAtual = null;
+
+const DOC_SQL = `-- Rode UMA vez no Supabase → SQL Editor
+insert into storage.buckets (id, name, public) values ('nf-docs','nf-docs', false)
+  on conflict (id) do nothing;
+create policy "nf_docs_sel" on storage.objects for select using (bucket_id = 'nf-docs');
+create policy "nf_docs_ins" on storage.objects for insert with check (bucket_id = 'nf-docs');
+create policy "nf_docs_upd" on storage.objects for update using (bucket_id = 'nf-docs');
+create table if not exists nf_docs (
+  nf bigint primary key, chave text,
+  xml_path text, xml_nome text, pdf_path text, pdf_nome text,
+  updated_at timestamptz default now()
+);
+alter table nf_docs enable row level security;
+create policy "allow_all" on nf_docs for all using (true) with check (true);`;
+
+async function carregarDocs() {
+  if (!db) { docsOk = false; return; }
+  try {
+    const rows = []; let from = 0;
+    while (true) {
+      const { data, error } = await db.from('nf_docs').select('*').range(from, from + 999);
+      if (error) throw error;
+      rows.push(...(data || []));
+      if (!data || data.length < 1000) break;
+      from += 1000;
+    }
+    docsMap = new Map(rows.map(r => [Number(r.nf), r]));
+    docsOk = true;
+  } catch (e) {
+    console.warn('nf_docs indisponível:', e.message);
+    docsOk = false;
+  }
+  if (_carretaAtual && document.getElementById('tab-carreta')?.classList.contains('active')) renderDetalheCarreta(_carretaAtual);
+}
+
+function docIcons(nf) {
+  const d = docsMap.get(Number(nf));
+  if (!d) return '';
+  let h = '';
+  if (d.xml_path) h += `<button class="doc-ico xml" title="Abrir XML da NF ${nf}" onclick="abrirDoc(${Number(nf)},'xml')">XML</button>`;
+  if (d.pdf_path) h += `<button class="doc-ico pdf" title="Abrir DANFE da NF ${nf}" onclick="abrirDoc(${Number(nf)},'pdf')">PDF</button>`;
+  return h;
+}
+function docResumo(c) {
+  const n = c.nfs.length; if (!n) return '';
+  const x = c.nfs.filter(f => docsMap.get(Number(f.nf))?.xml_path).length;
+  const p = c.nfs.filter(f => docsMap.get(Number(f.nf))?.pdf_path).length;
+  return `XML ${x}/${n} · PDF ${p}/${n}`;
+}
+
+async function abrirDoc(nf, tipo) {
+  const d = docsMap.get(Number(nf)); const path = d && d[tipo + '_path'];
+  if (!path) return;
+  const w = window.open('', '_blank');   // abre já, para o navegador não bloquear o pop-up
+  try {
+    const { data, error } = await db.storage.from(DOC_BUCKET).createSignedUrl(path, 600);
+    if (error) throw error;
+    if (tipo === 'xml') {
+      // Exibe o XML como texto legível
+      const txt = await (await fetch(data.signedUrl)).text();
+      const blob = new Blob([txt], { type: 'text/xml;charset=utf-8' });
+      w.location = URL.createObjectURL(blob);
+    } else {
+      w.location = data.signedUrl;
+    }
+  } catch (e) {
+    if (w) w.close();
+    alert('Não foi possível abrir o arquivo: ' + (e.message || e));
+  }
+}
+
+function abrirModalDocs() {
+  const setup = document.getElementById('docSetup');
+  document.getElementById('docLog').style.display = 'none';
+  document.getElementById('docLog').textContent = '';
+  if (docsOk === false) {
+    setup.style.display = 'block';
+    setup.innerHTML = `<div class="alt-status err" style="margin-bottom:10px">⚙️ O armazenamento dos arquivos ainda não foi criado no Supabase.
+      Copie o comando abaixo, rode no <b>Supabase → SQL Editor</b> e depois recarregue esta página.</div>
+      <div class="doc-sql" id="docSqlTxt"></div>
+      <button class="btn btn-ghost" style="margin:8px 0 12px" onclick="navigator.clipboard.writeText(DOC_SQL).then(()=>this.textContent='✅ Copiado')">📋 Copiar SQL</button>`;
+    document.getElementById('docSqlTxt').textContent = DOC_SQL;
+  } else setup.style.display = 'none';
+  document.getElementById('docOverlay').classList.add('open');
+}
+function fecharModalDocs() { document.getElementById('docOverlay').classList.remove('open'); }
+
+(function prepararDropDocs() {
+  const dz = document.getElementById('docDrop'); if (!dz) return;
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); importarDocs(Array.from(e.dataTransfer.files)); });
+})();
+
+// Lê o número da NF e a chave do arquivo
+async function identificarDoc(file) {
+  const nome = file.name.toLowerCase();
+  if (nome.endsWith('.xml') || file.type.includes('xml')) {
+    const txt = await file.text();
+    const xml = new DOMParser().parseFromString(txt, 'application/xml');
+    const tag = t => xml.getElementsByTagName(t)[0]?.textContent?.trim() || '';
+    let chave = tag('chNFe');
+    if (!chave) { const inf = xml.getElementsByTagName('infNFe')[0]; chave = (inf?.getAttribute('Id') || '').replace(/^NFe/, ''); }
+    const nNF = tag('nNF') || (chave.length === 44 ? chave.substr(25, 9) : '');
+    return { tipo: 'xml', nf: nNF ? parseInt(nNF, 10) : null, chave };
+  }
+  if (nome.endsWith('.pdf') || file.type === 'application/pdf') {
+    const texto = await extrairTexto(file);
+    let chave = '';
+    const mEsp = texto.match(/\d{4}(?:\s+\d{4}){10}/);
+    if (mEsp) chave = mEsp[0].replace(/\s+/g, '');
+    if (!chave) { const m = texto.replace(/\s+/g, ' ').match(/\b\d{44}\b/); if (m) chave = m[0]; }
+    let nf = chave.length === 44 ? parseInt(chave.substr(25, 9), 10) : null;
+    if (!nf) { try { nf = parseDanfe(texto, file.name).nf; } catch {} }
+    return { tipo: 'pdf', nf, chave };
+  }
+  return { tipo: null, nf: null, chave: '' };
+}
+
+async function importarDocs(files) {
+  if (!files.length) return;
+  const log = document.getElementById('docLog');
+  log.style.display = 'block';
+  const add = m => { log.textContent += m + '\n'; log.scrollTop = log.scrollHeight; };
+  if (!db) { add('❌ Sem conexão com o Supabase.'); return; }
+  if (docsOk === false) { add('❌ Configure o armazenamento primeiro (SQL acima).'); return; }
+  const nfsCarreta = new Set((_carretaAtual?.nfs || []).map(n => Number(n.nf)));
+  const nfsTodas = new Set(getCarretas().flatMap(c => c.nfs.map(n => Number(n.nf))));
+  let ok = 0, erro = 0;
+  for (const f of files) {
+    try {
+      const id = await identificarDoc(f);
+      if (!id.tipo) { add(`⚠ ${f.name}: tipo não suportado (use .xml ou .pdf)`); erro++; continue; }
+      if (!id.nf) { add(`⚠ ${f.name}: não encontrei o número da NF no arquivo`); erro++; continue; }
+      const path = `${id.nf}/${id.nf}.${id.tipo}`;
+      const { error: ue } = await db.storage.from(DOC_BUCKET).upload(path, f, {
+        upsert: true, contentType: id.tipo === 'xml' ? 'text/xml' : 'application/pdf'
+      });
+      if (ue) throw ue;
+      const row = { nf: id.nf, updated_at: new Date().toISOString() };
+      if (id.chave) row.chave = id.chave;
+      row[id.tipo + '_path'] = path; row[id.tipo + '_nome'] = f.name;
+      const { error: te } = await db.from('nf_docs').upsert(row, { onConflict: 'nf' });
+      if (te) throw te;
+      docsMap.set(id.nf, { ...(docsMap.get(id.nf) || {}), ...row });
+      const onde = nfsCarreta.has(id.nf) ? 'nesta carreta' : nfsTodas.has(id.nf) ? 'em outra carreta' : 'NF ainda não está em nenhuma carreta';
+      add(`✅ NF ${id.nf} — ${id.tipo.toUpperCase()} anexado (${onde})`); ok++;
+    } catch (e) {
+      add(`❌ ${f.name}: ${e.message || e}`); erro++;
+    }
+  }
+  add(`— Concluído: ${ok} anexado(s)${erro ? ', ' + erro + ' com problema' : ''}.`);
+  if (_carretaAtual) renderDetalheCarreta(_carretaAtual);
+}
+
+initDB().then(() => { renderSidebar(); showTab('tab-resumo'); renderResumo(); carregarDocs(); });
 checkVersion();
 
 // ══════════════════════════════════════════════════════════════════════════════
