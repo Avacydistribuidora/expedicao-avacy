@@ -98,7 +98,7 @@ thead th{position:sticky;top:0;background:var(--navy);color:#fff;font-size:10px;
 tbody td{padding:7px 9px;border-bottom:1px solid #edf0f6;vertical-align:middle}
 tbody tr:hover{background:#f6f9ff}
 tfoot td{position:sticky;bottom:0;background:#eef2fa;font-weight:800;padding:8px 9px;border-top:2px solid var(--navy)}
-td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 td.c,th.c{text-align:center}
 .mono{font-family:monospace;font-weight:700}
 .clip{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle}
@@ -231,7 +231,9 @@ body.oper .adm-only{display:none!important}
 }
 /* v1.6 — operador sem menu lateral */
 .hUser{display:none;align-items:center;gap:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:4px 6px 4px 4px;font-size:12.5px}
-.hUser .hLogo{width:26px;height:26px;display:flex}.hUser .hLogo svg{width:100%;height:100%}
+.hLogoL{display:none;width:36px;height:36px;flex-shrink:0;border-radius:9px;box-shadow:0 2px 6px rgba(0,0,0,.3)}.hLogoL svg{width:100%;height:100%}
+body.oper .hLogoL{display:flex}
+.hUser{padding-left:12px!important}
 .hUser .rb{font-size:9.5px;font-weight:800;letter-spacing:.05em;padding:2px 7px;border-radius:6px;background:#0ea5e9;color:#fff;text-transform:uppercase}
 .hUser button{background:none;border:none;color:#fff;font-size:16px;cursor:pointer;padding:0 6px}
 body.oper .sb, body.oper .sbBack, body.oper .hamb{display:none!important}
@@ -311,6 +313,7 @@ body.oper .hUser{display:flex}
 <div class="content">
 <header>
   <button class="hamb" onclick="toggleSb(true)"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+  <span class="hLogoL"><svg viewBox="0 0 48 48" aria-label="Avacy"><rect width="48" height="48" rx="11" fill="#fff"/><circle cx="24" cy="24" r="15.5" fill="#2b3f95"/><clipPath id="lgc3"><circle cx="24" cy="24" r="14"/></clipPath><path clip-path="url(#lgc3)" d="M14 41 L19.4 24.5 C21.2 18.3 26.8 18.3 28.6 24.5 L34 41 Z" fill="#e10a17" stroke="#fff" stroke-width="1.1"/></svg></span>
   <div class="htitle">Controle de Entregas <small id="hVer"></small></div>
   <div class="hsp"></div>
   <div class="mnav" title="Mês de competência">
@@ -319,7 +322,7 @@ body.oper .hUser{display:flex}
     <button onclick="mudaMes(1)">›</button>
   </div>
   <div class="sdot" id="sdot" title="Conexão"></div>
-  <div class="hUser" id="hUser"><span class="hLogo"><svg viewBox="0 0 48 48" aria-label="Avacy"><rect width="48" height="48" rx="11" fill="#fff"/><circle cx="24" cy="24" r="15.5" fill="#2b3f95"/><clipPath id="lgc3"><circle cx="24" cy="24" r="14"/></clipPath><path clip-path="url(#lgc3)" d="M14 41 L19.4 24.5 C21.2 18.3 26.8 18.3 28.6 24.5 L34 41 Z" fill="#e10a17" stroke="#fff" stroke-width="1.1"/></svg></span><b id="hUserNome"></b><span class="rb op">Operador</span><button onclick="sair()" title="Sair">⏻</button></div>
+  <div class="hUser" id="hUser"><b id="hUserNome"></b><span class="rb op">Operador</span><button onclick="sair()" title="Sair">⏻</button></div>
 </header>
 
 <div class="strip">
@@ -447,7 +450,7 @@ body.oper .hUser{display:flex}
 // ══════════════════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v1.6';
+const APP_VERSION = 'v1.7';
 const SB_URL = 'https://wureelywtpcdxbmyblqj.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const BUCKET = 'entregas-docs';
