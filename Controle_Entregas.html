@@ -488,7 +488,7 @@ table.km td.n{min-width:70px}
 // ══════════════════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v2.4';
+const APP_VERSION = 'v2.5';
 const SB_URL = 'https://wureelywtpcdxbmyblqj.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const BUCKET = 'entregas-docs';
@@ -780,24 +780,23 @@ function tabelaEntregas(E, comFrente) {
   if (!L.length) return `<div class="empty">${E.length ? 'Nenhuma entrega com esses filtros.' : 'Nenhuma entrega registrada neste mês.'}</div>`;
   const tv = L.reduce((s, x) => s + (x.volume || 0), 0), tvn = L.reduce((s, x) => s + (x.volume_nf || 0), 0), tval = L.reduce((s, x) => s + num(x.valor), 0);
   return `<div class="tw"><table><thead><tr>
-    ${comFrente ? '<th>Frente</th>' : ''}<th>DT programada</th><th>Hora prog.</th><th>DT entrega</th><th>Hora entrega</th><th>NF</th><th>Pedido</th><th>Cliente</th><th>Vendedor</th>
-    <th>Local</th><th class="n">Vol entregue</th><th>Entregador</th><th class="n">Custo</th><th class="c">Status</th><th class="c">Fotos</th><th class="acoes">Ações</th>
+    ${comFrente ? '<th>Frente</th>' : ''}<th>DT programada</th><th>Hora prog.</th><th>NF</th><th>Pedido</th><th>Cliente</th><th>Vendedor</th>
+    <th>Local</th><th class="n">Vol entregue</th><th>Entregador</th><th>DT entrega</th><th>Hora entrega</th><th class="c">Status</th><th class="c">Fotos</th><th class="acoes">Ações</th>
   </tr></thead><tbody>${L.map(x => `<tr>
     ${comFrente ? `<td><span class="tag ${x.frente}">${nomeFrente(x.frente)}</span></td>` : ''}
     <td>${dBR(x.data_entrega)}</td><td>${esc(x.hora_entrega || '')}</td>
-    <td>${entregueEm(x)?.data || ''}</td><td>${entregueEm(x)?.hora || ''}</td>
     <td class="mono" title="${esc(x.chave || '')}">${esc(x.nota)}</td><td>${esc(x.loja || x.fat || '')}</td>
     <td><span class="clip" title="${esc(x.cliente)}">${esc(x.cliente || '')}</span></td><td><span class="clip" style="max-width:120px">${esc(x.vendedor || '')}</span></td>
     <td><span class="clip" style="max-width:150px" title="${esc(x.local)}">${esc(x.local || '')}</span></td>
     <td class="n ${x.divergencia ? 'div-alert' : ''}" title="${x.divergencia ? 'Volume diferente da NF (' + (x.volume_nf ?? '?') + ')' + (x.obs ? ' — ' + esc(x.obs) : '') : 'Volume da NF: ' + (x.volume_nf ?? '—')}">${x.divergencia ? '⚠ ' : ''}${x.volume ?? ''}</td>
-    <td>${esc(x.responsavel || '')}</td><td class="n">${num(x.valor) ? brl(x.valor) : ''}</td>
+    <td>${esc(x.responsavel || '')}</td><td>${entregueEm(x)?.data || ''}</td><td>${entregueEm(x)?.hora || ''}</td>
     <td class="c">${finalizada(x) ? '<span class="tag fin">✔ Finalizado</span>' : '<span class="tag pend">Pendente</span>'}</td>
     <td class="c">${x.fotos?.length ? `<button class="btn sm" onclick="verFotosEntrega('${x.id}')">📷 ${x.fotos.length}</button>` : ''}</td>
     <td class="acoes"><button class="btn sm" title="Visualizar" onclick="verEntrega('${x.id}')">👁</button>
       <button class="btn sm" title="Editar / anexar foto" onclick="editarEntrega('${x.id}')">✏️</button>
       ${podeExcluir() ? `<button class="btn sm" title="Excluir" onclick="excluirEntrega('${x.id}')">🗑</button>` : ''}</td>
   </tr>`).join('')}</tbody>
-  <tfoot><tr><td colspan="${comFrente ? 10 : 9}">${L.length} entrega(s)</td><td class="n">${int(tv)}</td><td></td><td class="n">${brl(tval)}</td><td colspan="3"></td></tr></tfoot>
+  <tfoot><tr><td colspan="${comFrente ? 8 : 7}">${L.length} entrega(s)</td><td class="n">${int(tv)}</td><td colspan="6"></td></tr></tfoot>
   </table></div>`;
 }
 
