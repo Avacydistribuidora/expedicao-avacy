@@ -240,6 +240,8 @@ body.oper .hLogoL{display:flex}
 body.oper .sb, body.oper .sbBack, body.oper .hamb{display:none!important}
 body.oper .hUser{display:flex}
 .opTag{margin-left:6px}
+/* v2.3 — entregas sempre em CAIXA ALTA (tabela, cartões, visualização e formulário) */
+.tw tbody td,.opCard,.vgrid>div,#ovEnt input:not([type=date]):not([type=time]):not([type=number]),#ovEnt textarea{text-transform:uppercase}
 /* v2.0 — veículos e custos operacionais */
 .tag.operacao{background:#e8eef7;color:#334e7a}
 .vchips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
@@ -472,7 +474,7 @@ table.km td.n{min-width:70px}
 // ══════════════════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v2.2';
+const APP_VERSION = 'v2.3';
 const SB_URL = 'https://wureelywtpcdxbmyblqj.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const BUCKET = 'entregas-docs';
@@ -601,6 +603,7 @@ function isAdmin() { return usuario?.role === 'admin'; }
 function isOper() { return !!usuario && usuario.role !== 'admin'; }
 function podeExcluir() { return !isOper(); }
 // v1.5: entrega "minha" = entregador igual ao usuário logado, ou registrada por ele
+const up = v => String(v ?? '').toUpperCase();   // v2.3
 const _nrm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
 function minha(x) { const u = _nrm(usuario?.username); return !!u && (_nrm(x.responsavel) === u || _nrm(x.criado_por) === u); }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { ['ovEnt', 'ovCus', 'ovSetup', 'ovAg', 'ovGal', 'ovView', 'ovForm'].forEach(fecha); pararScan(); }; });
@@ -1072,8 +1075,8 @@ async function salvarEntrega() {
     cliente: rec.nome_cliente || rec.cliente || null, vendedor: rec.vendedor || null, transportadora: rec.transportadora || null,
     origem: rec.origem || null, data_emissao: rec.data_emissao || null,
     volume_nf: volNF, volume: vol, divergencia: div,
-    data_entrega: data, hora_entrega: hora, local, endereco: end,
-    responsavel: g('eResp') || null, valor: num(g('eValor')), obs: g('eObs') || null,
+    data_entrega: data, hora_entrega: hora, local: up(local), endereco: up(end),
+    responsavel: up(g('eResp')) || null, valor: num(g('eValor')), obs: up(g('eObs')) || null,
     atualizado_em: new Date().toISOString(),
   };
   if (fr === 'agregados' && !row.responsavel) { toast('⚠ Informe o agregado.'); return; }
@@ -1093,8 +1096,8 @@ async function salvarEntrega() {
       // v2.2: quem finaliza (1ª foto) passa a ser o entregador — operador ou admin (exceto Agregados, que mantém o agregado)
       const ant = ent ? ent.responsavel : row.responsavel;
       if (row.frente !== 'agregados' && _fotosNovas.length && !_fotosExist.length && _nrm(ant) !== _nrm(usuario.username)) {
-        row.responsavel = usuario.username;
-        row.obs = [row.obs, `Entregador alterado de ${ant || '—'} para ${usuario.username} ao finalizar.`].filter(Boolean).join(' | ');
+        row.responsavel = up(usuario.username);
+        row.obs = [row.obs, up(`Entregador alterado de ${ant || '—'} para ${usuario.username} ao finalizar.`)].filter(Boolean).join(' | ');
       }
     }
     let r;
@@ -1648,6 +1651,7 @@ function exportarExcel(fr) {
   const ent = [['FRENTE','DT PROGRAMADA','HORA PROGRAMADA','DT ENTREGA','HORA ENTREGA','NF','CHAVE','PEDIDO','CLIENTE','VENDEDOR','TRANSPORTADORA NF','LOCAL','ENDEREÇO','VOL NF','VOL ENTREGUE','DIVERGÊNCIA','ENTREGADOR','CUSTO','STATUS','FOTOS','OBS','REGISTRADO POR']];
   E.forEach(x => ent.push([nomeFrente(x.frente), x.data_entrega ? new Date(x.data_entrega + 'T12:00:00') : '', x.hora_entrega || '', entregueEm(x)?.data || '', entregueEm(x)?.hora || '', x.nota, x.chave || '', x.loja || x.fat || '',
     x.cliente || '', x.vendedor || '', x.transportadora || '', x.local || '', x.endereco || '', x.volume_nf ?? '', x.volume ?? '', x.divergencia ? 'SIM' : '', x.responsavel || '', num(x.valor), finalizada(x) ? 'Finalizado' : 'Pendente', x.fotos?.length || 0, x.obs || '', x.criado_por || '']));
+  for (let i = 1; i < ent.length; i++) ent[i] = ent[i].map(v => typeof v === 'string' ? v.toUpperCase() : v);   // v2.3
   const ws1 = XLSX.utils.aoa_to_sheet(ent, { cellDates: true });
   ws1['!cols'] = [14, 12, 7, 12, 46, 10, 34, 18, 26, 22, 40, 8, 10, 10, 18, 12, 11, 7, 30, 14].map(w => ({ wch: w }));
   for (let r = 1; r < ent.length; r++) { const a = XLSX.utils.encode_cell({ r, c: 1 }); if (ws1[a]) ws1[a].z = 'dd/mm/yyyy'; const b = XLSX.utils.encode_cell({ r, c: 15 }); if (ws1[b]) ws1[b].z = '"R$" #,##0.00'; }
