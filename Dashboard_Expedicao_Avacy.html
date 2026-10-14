@@ -418,7 +418,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
     </div>
     <div class="login-err" id="lgErr"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
-    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v9.2 — Expedição AVACY</div>
+    <div style="margin-top:14px;font-size:9px;color:#c0c8d8;text-align:center;letter-spacing:.05em">v9.3 — Expedição AVACY</div>
   </div>
 </div>
 
@@ -426,7 +426,7 @@ tr.hl-p{animation:scanhl-p .9s ease-out}
 <header>
   <div class="avacy-logo"><span class="avacy-logo-text">Avacy</span></div>
   <div class="hdivider"></div>
-  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v9.2</span></div>
+  <div class="htitle">Expedição <span style="font-size:9px;font-weight:400;opacity:.4;letter-spacing:.05em;margin-left:4px">v9.3</span></div>
   <div class="hright">
     <div class="clock-wrap">
       <span class="clock" id="clock">--:--:--</span>
@@ -772,7 +772,7 @@ ALTER TABLE avacy_records ADD COLUMN IF NOT EXISTS chave_nfe TEXT;</pre>
       <div class="form-row">
         <div class="form-field"><label>Nova senha <span style="color:var(--muted);font-size:10px">(deixe vazio para manter)</span></label><input type="password" id="euPass" placeholder="nova senha" autocomplete="new-password"></div>
         <div class="form-field" id="euRoleWrap" style="max-width:130px"><label>Papel</label>
-          <select id="euRole"><option value="user">Operador</option><option value="admin">Admin</option></select>
+          <select id="euRole"><option value="user">Operador</option><option value="admin">Admin</option><option value="vendedor">Vendedor</option></select>
         </div>
         <div style="display:flex;gap:8px;align-self:flex-end">
           <button class="btn primary" onclick="saveEditUser()">💾 Salvar</button>
@@ -787,7 +787,7 @@ ALTER TABLE avacy_records ADD COLUMN IF NOT EXISTS chave_nfe TEXT;</pre>
       <div class="form-field"><label>Usuário</label><input type="text" id="nuUser" placeholder="nome" autocomplete="off"></div>
       <div class="form-field"><label>Senha</label><input type="password" id="nuPass" placeholder="senha"></div>
       <div class="form-field" style="max-width:120px"><label>Papel</label>
-        <select id="nuRole"><option value="user">Operador</option><option value="admin">Admin</option></select>
+        <select id="nuRole"><option value="user">Operador</option><option value="admin">Admin</option><option value="vendedor">Vendedor</option></select>
       </div>
       <button class="btn primary" onclick="addUser()" style="align-self:flex-end">+ Adicionar</button>
     </div>
@@ -833,6 +833,8 @@ async function doLogin(){
       return;
     }
   }
+  // v9.3: perfil Vendedor acessa só o Controle de Entregas (consulta de comprovantes)
+  if(found.role==='vendedor'){err.textContent='Usuário Vendedor: acesse pelo Controle de Entregas.';return}
   err.textContent='';
   setCurrentUser({username:found.username,role:found.role});
   document.getElementById('loginScreen').classList.add('hidden');
@@ -885,7 +887,7 @@ function renderUsrTable(){
   document.getElementById('usrTbody').innerHTML=users.map(u=>`
     <tr id="urow-${esc(u.username)}">
       <td><strong>${esc(u.username)}</strong>${u.username===cu?.username?'<span style="font-size:9px;color:var(--muted);margin-left:6px">(você)</span>':''}</td>
-      <td><span class="role-badge ${u.role==='admin'?'role-admin':'role-user'}">${u.role==='admin'?'Admin':'Operador'}</span></td>
+      <td><span class="role-badge ${u.role==='admin'?'role-admin':'role-user'}">${u.role==='admin'?'Admin':u.role==='vendedor'?'Vendedor':'Operador'}</span></td>
       <td style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn sm" onclick="startEditUser('${esc(u.username)}')" style="color:var(--blue);border-color:rgba(88,166,255,.3)">✏️ Editar</button>
         ${u.username!==cu?.username?`<button class="btn sm" style="color:var(--red);border-color:rgba(248,81,73,.3)" onclick="deleteUser('${esc(u.username)}')">🗑 Remover</button>`:''}
