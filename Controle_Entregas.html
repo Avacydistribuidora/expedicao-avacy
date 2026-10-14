@@ -150,6 +150,10 @@ td.c,th.c{text-align:center}
 .fotos .ft button{position:absolute;top:2px;right:2px;border:none;background:rgba(0,0,0,.6);color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer}
 .fotoAdd{width:84px;height:84px;border:2px dashed #b9c3d6;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);font-size:11px;cursor:pointer;background:#fafbfd}
 .fotoAdd b{font-size:24px}
+/* v2.4 — câmera ou arquivo */
+.fotoAdd.cam{border-color:#0f766e;color:#0f766e;background:#effaf8}
+#camVid{width:100%;max-height:65vh;display:block;background:#000;object-fit:contain}
+.camBar{display:flex;gap:10px;justify-content:center;padding:12px}
 #ovScan .modal{background:#000;width:520px}
 #scanVid{width:100%;max-height:70vh;display:block;background:#000;object-fit:cover}
 .scanWrap{position:relative}
@@ -368,7 +372,8 @@ table.km td.n{min-width:70px}
         <div class="f w4"><label>Observação</label><textarea id="eObs" placeholder="Opcional — obrigatório em caso de divergência de volume"></textarea></div>
         <div class="f w4"><label>📷 Fotos da entrega</label>
           <div class="fotos" id="eFotos"></div>
-          <input type="file" id="eFotoIn" accept="image/*" capture="environment" multiple style="display:none" onchange="addFotos(this.files);this.value=''">
+          <input type="file" id="eFotoIn" accept="image/*" capture="environment" style="display:none" onchange="addFotos(this.files);this.value=''">
+          <input type="file" id="eFotoArq" accept="image/*" multiple style="display:none" onchange="addFotos(this.files);this.value=''">
           <div id="eFotoMsg" style="font-size:11px;color:var(--muted)"></div></div>
       </div>
       <div id="eVolAlert" style="margin-top:12px"></div>
@@ -429,6 +434,15 @@ table.km td.n{min-width:70px}
   </div>
 </div>
 
+<!-- MODAL CÂMERA PARA FOTO DA ENTREGA (v2.4) -->
+<div class="ov" id="ovCam">
+  <div class="modal" style="height:auto">
+    <div class="mh" style="background:#0f766e">📷 Foto do comprovante de entrega<button onclick="fecharCam()">✕</button></div>
+    <video id="camVid" playsinline muted></video>
+    <div class="camBar"><button class="btn" onclick="fecharCam()">Cancelar</button><button class="btn grn" onclick="capturarCam()">📸 Tirar foto</button></div>
+  </div>
+</div>
+
 <!-- MODAL VISUALIZAR (v1.2) -->
 <div class="ov" id="ovView">
   <div class="modal">
@@ -474,7 +488,7 @@ table.km td.n{min-width:70px}
 // ══════════════════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v2.3';
+const APP_VERSION = 'v2.4';
 const SB_URL = 'https://wureelywtpcdxbmyblqj.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const BUCKET = 'entregas-docs';
@@ -1420,21 +1434,43 @@ function renderFotos() {
   const tem = (_fotosExist.length + _fotosNovas.length) > 0;
   document.getElementById('volReq').style.display = tem ? '' : 'none';
   msg.innerHTML = tem ? '✔ Com foto anexada a entrega fica <b>Finalizada</b> — o volume entregue é obrigatório.'
-                      : 'Informe o <b>volume entregue</b> e depois anexe a foto do comprovante para <b>finalizar</b>. Toque em “+” para tirar foto ou escolher da galeria.';
+                      : 'Informe o <b>volume entregue</b> e depois anexe a foto do comprovante para <b>finalizar</b>. Use <b>📷 Câmera</b> para tirar a foto agora ou <b>🖼 Arquivo</b> para anexar uma foto já existente.';
   const fechada = _fotosExist.length > 0;   // v1.5: já finalizada com foto → não aceita nova foto
   const _ee = entregueEm({ fotos: _fotosExist });
   if (fechada) msg.innerHTML = '🔒 Entrega <b>finalizada</b>' + (_ee ? ` em <b>${_ee.data} às ${_ee.hora}</b>` : '') + ' — não é possível anexar nova foto.' + (isAdmin() ? ' Como administrador, você pode excluir a foto (✕) para reabrir.' : '');
   box.innerHTML = _fotosExist.map((f, i) => `<div class="ft"><img data-p="${esc(f.path)}" onclick="verFotosEntrega(null,${i})" alt="">${isAdmin() ? `<button title="Excluir foto (admin)" onclick="excluirFotoExist(${i})">✕</button>` : ''}</div>`).join('')
     + _fotosNovas.map((f, i) => `<div class="ft"><img src="${URL.createObjectURL(f)}" alt=""><button title="Remover" onclick="_fotosNovas.splice(${i},1);renderFotos()">✕</button></div>`).join('')
-    + (fechada ? '' : `<div class="fotoAdd" onclick="clicaFoto()"><b>+</b>Foto</div>`);
+    + (fechada ? '' : `<div class="fotoAdd cam" onclick="clicaFoto('cam')"><b>📷</b>Câmera</div><div class="fotoAdd" onclick="clicaFoto('arq')"><b>🖼</b>Arquivo</div>`);
   box.querySelectorAll('img[data-p]').forEach(async im => { const { data } = await db.storage.from(BUCKET).createSignedUrl(im.dataset.p, 600); if (data) im.src = data.signedUrl; });
 }
 let _fotosRemovidas = [];
 // v1.9: só permite anexar foto depois de informar o volume entregue
-function clicaFoto() {
+// v2.4: duas opções — 'cam' (tirar foto agora) ou 'arq' (escolher foto já existente)
+function clicaFoto(modo) {
   const v = document.getElementById('eVol');
   if (v.value === '') { toast('📦 Informe primeiro o VOLUME ENTREGUE para anexar a foto.', 3500); v.focus(); v.style.borderColor = '#d61f1f'; setTimeout(() => v.style.borderColor = '', 2500); return; }
-  document.getElementById('eFotoIn').click();
+  if (modo === 'arq') { document.getElementById('eFotoArq').click(); return; }
+  // celular/tablet: câmera nativa do aparelho · computador: câmera pelo navegador (webcam)
+  const touch = matchMedia('(pointer:coarse)').matches;
+  if (touch || !navigator.mediaDevices?.getUserMedia) { document.getElementById('eFotoIn').click(); return; }
+  abrirCam();
+}
+let _camStream = null;
+async function abrirCam() {
+  try {
+    _camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+    const vid = document.getElementById('camVid'); vid.srcObject = _camStream; abre('ovCam'); await vid.play();
+  } catch (e) { fecharCam(); toast('⚠ Não foi possível abrir a câmera — escolha um arquivo.', 3500); document.getElementById('eFotoArq').click(); }
+}
+function fecharCam() {
+  if (_camStream) { _camStream.getTracks().forEach(t => t.stop()); _camStream = null; }
+  document.getElementById('camVid').srcObject = null; fecha('ovCam');
+}
+function capturarCam() {
+  const vid = document.getElementById('camVid'); if (!vid.videoWidth) return;
+  const cv = document.createElement('canvas'); cv.width = vid.videoWidth; cv.height = vid.videoHeight;
+  cv.getContext('2d').drawImage(vid, 0, 0);
+  cv.toBlob(b => { if (!b) return; fecharCam(); addFotos([new File([b], `camera_${Date.now()}.jpg`, { type: 'image/jpeg' })]); }, 'image/jpeg', 0.9);
 }
 function excluirFotoExist(i) {
   if (!isAdmin()) return;
