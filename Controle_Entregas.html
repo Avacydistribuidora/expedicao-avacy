@@ -355,8 +355,8 @@ table.km td.n{min-width:70px}
       <div class="nfbox" id="entNF"></div>
       <div class="regpor" id="entReg" style="display:none"></div>
       <div class="fg">
-        <div class="f"><label>Data da entrega <span class="req">*</span></label><input type="date" id="eData"></div>
-        <div class="f"><label>Horário <span class="req">*</span></label><input type="time" id="eHora"></div>
+        <div class="f"><label>DT programada <span class="req">*</span></label><input type="date" id="eData"></div>
+        <div class="f"><label>Horário programado <span class="req">*</span></label><input type="time" id="eHora"></div>
         <div class="f"><label>Volume entregue <span class="req" id="volReq" style="display:none">*</span></label><input type="number" min="0" inputmode="numeric" id="eVol" oninput="checaVolume()"></div>
         <div class="f"><label>Volume da NF</label><input id="eVolNF" disabled></div>
         <div class="f w2"><label>Local <span class="req">*</span></label><input id="eLocal" list="dlLocal" placeholder="Ex.: Loja do cliente, Brás / Galpão / Rodoviária"></div>
@@ -472,7 +472,7 @@ table.km td.n{min-width:70px}
 // ══════════════════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v2.0';
+const APP_VERSION = 'v2.1';
 const SB_URL = 'https://wureelywtpcdxbmyblqj.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const BUCKET = 'entregas-docs';
@@ -580,6 +580,14 @@ function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt
 function brl(v) { return 'R$ ' + (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function int(v) { return (Number(v) || 0).toLocaleString('pt-BR'); }
 function num(s) { if (s == null || s === '') return 0; if (typeof s === 'number') return s; const t = String(s).trim(); return parseFloat(t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : t) || 0; }
+// v2.1: data/hora REAL da entrega = momento em que a foto do comprovante foi registrada (finalização)
+function entregueEm(x) {
+  const em = (Array.isArray(x?.fotos) ? x.fotos : []).map(f => f?.em).filter(Boolean).sort()[0];
+  if (!em) return null;
+  const d = new Date(em); if (isNaN(d)) return null;
+  const p = n => String(n).padStart(2, '0');
+  return { d, data: `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`, hora: `${p(d.getHours())}:${p(d.getMinutes())}` };
+}
 function dBR(iso) { if (!iso) return ''; const [y, m, d] = String(iso).slice(0, 10).split('-'); return `${d}/${m}/${y}`; }
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const MESES_L = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -755,11 +763,12 @@ function tabelaEntregas(E, comFrente) {
   if (!L.length) return `<div class="empty">${E.length ? 'Nenhuma entrega com esses filtros.' : 'Nenhuma entrega registrada neste mês.'}</div>`;
   const tv = L.reduce((s, x) => s + (x.volume || 0), 0), tvn = L.reduce((s, x) => s + (x.volume_nf || 0), 0), tval = L.reduce((s, x) => s + num(x.valor), 0);
   return `<div class="tw"><table><thead><tr>
-    ${comFrente ? '<th>Frente</th>' : ''}<th>Data</th><th>Hora</th><th>NF</th><th>Pedido</th><th>Cliente</th><th>Vendedor</th>
+    ${comFrente ? '<th>Frente</th>' : ''}<th>DT programada</th><th>Hora prog.</th><th>DT entrega</th><th>Hora entrega</th><th>NF</th><th>Pedido</th><th>Cliente</th><th>Vendedor</th>
     <th>Local</th><th>Endereço</th><th class="n">Vol entregue</th><th>Entregador</th><th class="n">Custo</th><th class="c">Status</th><th class="c">Fotos</th><th class="acoes">Ações</th>
   </tr></thead><tbody>${L.map(x => `<tr>
     ${comFrente ? `<td><span class="tag ${x.frente}">${nomeFrente(x.frente)}</span></td>` : ''}
     <td>${dBR(x.data_entrega)}</td><td>${esc(x.hora_entrega || '')}</td>
+    <td>${entregueEm(x)?.data || ''}</td><td>${entregueEm(x)?.hora || ''}</td>
     <td class="mono" title="${esc(x.chave || '')}">${esc(x.nota)}</td><td>${esc(x.loja || x.fat || '')}</td>
     <td><span class="clip" title="${esc(x.cliente)}">${esc(x.cliente || '')}</span></td><td><span class="clip" style="max-width:120px">${esc(x.vendedor || '')}</span></td>
     <td><span class="clip" style="max-width:150px" title="${esc(x.local)}">${esc(x.local || '')}</span></td>
@@ -772,7 +781,7 @@ function tabelaEntregas(E, comFrente) {
       <button class="btn sm" title="Editar / anexar foto" onclick="editarEntrega('${x.id}')">✏️</button>
       ${podeExcluir() ? `<button class="btn sm" title="Excluir" onclick="excluirEntrega('${x.id}')">🗑</button>` : ''}</td>
   </tr>`).join('')}</tbody>
-  <tfoot><tr><td colspan="${comFrente ? 9 : 8}">${L.length} entrega(s)</td><td class="n">${int(tv)}</td><td></td><td class="n">${brl(tval)}</td><td colspan="3"></td></tr></tfoot>
+  <tfoot><tr><td colspan="${comFrente ? 11 : 10}">${L.length} entrega(s)</td><td class="n">${int(tv)}</td><td></td><td class="n">${brl(tval)}</td><td colspan="3"></td></tr></tfoot>
   </table></div>`;
 }
 
@@ -816,7 +825,7 @@ function htmlOperador() {
   const card = (x, ok) => `<div class="opCard ${ok ? 'fin' : ''}">
       <div class="i"><div class="n">NF ${esc(x.nota)} <span class="tag ${x.frente} opTag">${nomeFrente(x.frente)}</span> ${ok ? '<span class="tag fin">✔ Finalizado</span>' : ''}</div>
         <div class="c">${esc(x.cliente || '')}</div>
-        <div class="m">${dBR(x.data_entrega)} ${esc(x.hora_entrega || '')} · ${esc(x.local || '')} · ${esc(x.endereco || '')}${x.volume_nf ? ' · ' + x.volume_nf + ' vol.' : ''}</div></div>
+        <div class="m">${ok && entregueEm(x) ? '✔ Entregue ' + entregueEm(x).data + ' ' + entregueEm(x).hora + ' · ' : ''}Prog. ${dBR(x.data_entrega)} ${esc(x.hora_entrega || '')} · ${esc(x.local || '')} · ${esc(x.endereco || '')}${x.volume_nf ? ' · ' + x.volume_nf + ' vol.' : ''}</div></div>
       ${ok ? `<button class="btn" onclick="verEntrega('${x.id}')">👁</button>` : `<button class="btn grn" onclick="editarEntrega('${x.id}')">📷 Anexar foto</button>`}
     </div>`;
   return `<div class="bipe" style="--fc:var(--navy)">
@@ -950,7 +959,7 @@ async function bipar() {
     abrirModalEntrega({ ...pend, nome_cliente: pend.cliente, volume: pend.volume_nf, chave_nfe: pend.chave }, pend, [], st); return;
   }
   const fin = (dup || []).find(finalizada);
-  if (fin && isOper()) { bmsg(`✔ NF ${rec.nota} já foi finalizada em ${dBR(fin.data_entrega)}${fin.responsavel ? ' por ' + fin.responsavel : ''}.`, 'ok'); verEntrega(fin.id, fin); return; }
+  if (fin && isOper()) { bmsg(`✔ NF ${rec.nota} já foi finalizada em ${entregueEm(fin) ? entregueEm(fin).data + ' ' + entregueEm(fin).hora : dBR(fin.data_entrega)}${fin.responsavel ? ' por ' + fin.responsavel : ''}.`, 'ok'); verEntrega(fin.id, fin); return; }
   if (isOper()) {
     bmsg(fin ? `✔ NF ${rec.nota} já está finalizada.` : `⚠ NF ${rec.nota} ainda não foi registrada para entrega. Peça ao administrador para registrar e atribuir o entregador.`, fin ? 'ok' : 'err');
     if (fin) verEntrega(fin.id, fin);
@@ -1049,7 +1058,7 @@ async function salvarEntrega() {
   const rec = _nfAtual, ent = _editEnt, fr = ent ? ent.frente : aba;
   const g = id => document.getElementById(id).value.trim();
   const data = g('eData'), hora = g('eHora'), local = g('eLocal'), end = g('eEnd'), volS = g('eVol');
-  if (!data || !hora || !local || !end) { toast('⚠ Preencha data, horário, local e endereço.'); return; }
+  if (!data || !hora || !local || !end) { toast('⚠ Preencha DT programada, horário programado, local e endereço.'); return; }
   const temFoto = (_fotosExist.length + _fotosNovas.length) > 0;
   if (temFoto && volS === '') { toast('⚠ Foto anexada: informe o volume entregue para finalizar.', 3500); document.getElementById('eVol').focus(); return; }
   const volNF = parseInt(g('eVolNF')) || null, vol = volS === '' ? null : parseInt(volS);
@@ -1096,7 +1105,7 @@ async function salvarEntrega() {
     fecha('ovEnt');
     if (_fotosRemovidas.length && isAdmin()) { await db.storage.from(BUCKET).remove(_fotosRemovidas).catch(() => {}); _fotosRemovidas = []; }
     _ultimo[fr] = { local, endereco: end };
-    toast(`✔ NF ${rec.nota} ${ent ? 'atualizada' : 'registrada'}${(row.fotos || []).length ? ' — FINALIZADA' : ''}${div ? ' (com divergência)' : ''}`);
+    toast(`✔ NF ${rec.nota} ${ent ? 'atualizada' : 'registrada'}${(row.fotos || []).length ? ' — FINALIZADA' + (entregueEm(row) ? ' em ' + entregueEm(row).data + ' ' + entregueEm(row).hora : '') : ''}${div ? ' (com divergência)' : ''}`);
     if (row.competencia !== mes) setMes(row.competencia); else await carregar();
     setTimeout(() => document.getElementById('bipeIn')?.focus(), 50);
   } catch (e) { toast('❌ Erro ao salvar: ' + (e.message || e), 4500); }
@@ -1411,7 +1420,8 @@ function renderFotos() {
   msg.innerHTML = tem ? '✔ Com foto anexada a entrega fica <b>Finalizada</b> — o volume entregue é obrigatório.'
                       : 'Informe o <b>volume entregue</b> e depois anexe a foto do comprovante para <b>finalizar</b>. Toque em “+” para tirar foto ou escolher da galeria.';
   const fechada = _fotosExist.length > 0;   // v1.5: já finalizada com foto → não aceita nova foto
-  if (fechada) msg.innerHTML = '🔒 Entrega <b>finalizada</b> — não é possível anexar nova foto.' + (isAdmin() ? ' Como administrador, você pode excluir a foto (✕) para reabrir.' : '');
+  const _ee = entregueEm({ fotos: _fotosExist });
+  if (fechada) msg.innerHTML = '🔒 Entrega <b>finalizada</b>' + (_ee ? ` em <b>${_ee.data} às ${_ee.hora}</b>` : '') + ' — não é possível anexar nova foto.' + (isAdmin() ? ' Como administrador, você pode excluir a foto (✕) para reabrir.' : '');
   box.innerHTML = _fotosExist.map((f, i) => `<div class="ft"><img data-p="${esc(f.path)}" onclick="verFotosEntrega(null,${i})" alt="">${isAdmin() ? `<button title="Excluir foto (admin)" onclick="excluirFotoExist(${i})">✕</button>` : ''}</div>`).join('')
     + _fotosNovas.map((f, i) => `<div class="ft"><img src="${URL.createObjectURL(f)}" alt=""><button title="Remover" onclick="_fotosNovas.splice(${i},1);renderFotos()">✕</button></div>`).join('')
     + (fechada ? '' : `<div class="fotoAdd" onclick="clicaFoto()"><b>+</b>Foto</div>`);
@@ -1512,7 +1522,7 @@ async function verEntrega(id, obj) {
     <div class="vgrid">
       ${c('Nota fiscal', esc(x.nota))}${c('Emissão', esc(x.data_emissao || ''))}${c('Pedido', esc(x.loja || x.fat || ''))}${c('Origem', esc(x.origem || ''))}
       ${c('Cliente', esc(x.cliente || ''), 'w2')}${c('Vendedor', esc(x.vendedor || ''))}${c('Transportadora NF', esc(x.transportadora || ''))}
-      ${c('Data da entrega', dBR(x.data_entrega))}${c('Horário', esc(x.hora_entrega || ''))}${c('Volume NF', x.volume_nf ?? '')}
+      ${c('DT programada', dBR(x.data_entrega))}${c('Horário programado', esc(x.hora_entrega || ''))}${c('Data da entrega', entregueEm(x)?.data || '')}${c('Horário da entrega', entregueEm(x)?.hora || '')}${c('Volume NF', x.volume_nf ?? '')}
       ${c('Volume entregue', x.volume == null ? '' : `<span class="${x.divergencia ? 'div-alert' : ''}">${x.volume}</span>`)}
       ${c('Local', esc(x.local || ''), 'w2')}${c(x.frente === 'agregados' ? 'Agregado' : 'Entregador', esc(x.responsavel || ''))}${isOper() ? '' : c('Custo', num(x.valor) ? brl(x.valor) : '')}
       ${c('Endereço', esc(x.endereco || ''), 'w4')}
@@ -1636,8 +1646,8 @@ function exportarExcel(fr) {
   const E = filtraEntregas(fr ? entregas.filter(x => x.frente === fr) : entregas);
   const C = fr ? custos.filter(x => x.frente === fr) : custos;
   const wb = XLSX.utils.book_new();
-  const ent = [['FRENTE','DATA ENTREGA','HORA','NF','CHAVE','PEDIDO','CLIENTE','VENDEDOR','TRANSPORTADORA NF','LOCAL','ENDEREÇO','VOL NF','VOL ENTREGUE','DIVERGÊNCIA','ENTREGADOR','CUSTO','STATUS','FOTOS','OBS','REGISTRADO POR']];
-  E.forEach(x => ent.push([nomeFrente(x.frente), x.data_entrega ? new Date(x.data_entrega + 'T12:00:00') : '', x.hora_entrega || '', x.nota, x.chave || '', x.loja || x.fat || '',
+  const ent = [['FRENTE','DT PROGRAMADA','HORA PROGRAMADA','DT ENTREGA','HORA ENTREGA','NF','CHAVE','PEDIDO','CLIENTE','VENDEDOR','TRANSPORTADORA NF','LOCAL','ENDEREÇO','VOL NF','VOL ENTREGUE','DIVERGÊNCIA','ENTREGADOR','CUSTO','STATUS','FOTOS','OBS','REGISTRADO POR']];
+  E.forEach(x => ent.push([nomeFrente(x.frente), x.data_entrega ? new Date(x.data_entrega + 'T12:00:00') : '', x.hora_entrega || '', entregueEm(x)?.data || '', entregueEm(x)?.hora || '', x.nota, x.chave || '', x.loja || x.fat || '',
     x.cliente || '', x.vendedor || '', x.transportadora || '', x.local || '', x.endereco || '', x.volume_nf ?? '', x.volume ?? '', x.divergencia ? 'SIM' : '', x.responsavel || '', num(x.valor), finalizada(x) ? 'Finalizado' : 'Pendente', x.fotos?.length || 0, x.obs || '', x.criado_por || '']));
   const ws1 = XLSX.utils.aoa_to_sheet(ent, { cellDates: true });
   ws1['!cols'] = [14, 12, 7, 12, 46, 10, 34, 18, 26, 22, 40, 8, 10, 10, 18, 12, 11, 7, 30, 14].map(w => ({ wch: w }));
