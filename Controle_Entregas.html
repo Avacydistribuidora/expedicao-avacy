@@ -224,6 +224,7 @@ body.sbMini .sbName,body.sbMini .nav-it .lb,body.sbMini .nav-it .pill,body.sbMin
 body.sbMini .sbTop{flex-direction:column;padding:12px 6px}body.sbMini .sbCol{margin:0;transform:rotate(180deg)}
 body.sbMini .nav-it{justify-content:center;padding:12px 0}body.sbMini .sbUser{flex-direction:column;padding:10px 4px}
 body.oper .adm-only{display:none!important}
+body.vend .mnav{display:none!important}
 .hamb{display:none;background:none;border:none;color:#fff;cursor:pointer;padding:2px}
 .hamb svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
 .sbBack{display:none}
@@ -615,15 +616,10 @@ function fecha(id) { document.getElementById(id).classList.remove('open'); }
 function isAdmin() { return usuario?.role === 'admin'; }
 // v1.3: perfil "Operador" do Dashboard de Expedição (role = user) → acesso resumido: bipar + anexar foto
 function isOper() { return !!usuario && usuario.role !== 'admin'; }
+// v2.6: perfil "Vendedor" → só consulta a NF e vê o comprovante (fotos), sem editar nada
+function isVend() { return String(usuario?.role || '').toLowerCase() === 'vendedor'; }
 function podeExcluir() { return !isOper(); }
 // v1.5: entrega "minha" = entregador igual ao usuário logado, ou registrada por ele
-// v2.6: link curto para vendedores consultarem as fotos pela NF (página nf.html, sem login)
-function linkNF(nota) { return new URL('nf.html', location.href).href.split('#')[0] + '?' + String(nota || '').replace(/\D/g, '').replace(/^0+/, ''); }
-async function copiarLinkNF(nota) {
-  const l = linkNF(nota);
-  try { await navigator.clipboard.writeText(l); toast('🔗 Link copiado: ' + l, 4000); }
-  catch { prompt('Copie o link da NF:', l); }
-}
 const up = v => String(v ?? '').toUpperCase();   // v2.3
 const _nrm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
 function minha(x) { const u = _nrm(usuario?.username); return !!u && (_nrm(x.responsavel) === u || _nrm(x.criado_por) === u); }
@@ -660,10 +656,11 @@ async function iniciar() {
   document.getElementById('uNome').textContent = usuario.username;
   document.getElementById('uAv').textContent = usuario.username.slice(0, 2).toUpperCase();
   document.getElementById('hUserNome').textContent = usuario.username;
-  const rb = document.getElementById('uRole'); rb.textContent = isOper() ? 'Operador' : 'Admin'; rb.className = 'rb' + (isOper() ? ' op' : '');
+  const rb = document.getElementById('uRole'); rb.textContent = isVend() ? 'Vendedor' : isOper() ? 'Operador' : 'Admin'; rb.className = 'rb' + (isOper() ? ' op' : '');
   document.getElementById('uSub').textContent = 'Controle de Entregas';
   try { if (localStorage.getItem('ent_sbmini') === '1') document.body.classList.add('sbMini'); } catch {}
   document.getElementById('mesSel').value = mes;
+  if (isVend()) { document.body.classList.add('vend'); const hb = document.querySelector('#hUser .rb'); if (hb) hb.textContent = 'Vendedor'; }
   if (isOper()) {
     document.body.classList.add('oper');
     try { const f = localStorage.getItem('ent_frente'); aba = FRENTES[f] ? f : 'avacy'; } catch { aba = 'avacy'; }
@@ -753,7 +750,7 @@ function render() {
   ['avacy', 'carrinho', 'agregados'].forEach(f => document.getElementById('pl-' + f).textContent =
     isOper() ? entregas.filter(x => x.frente === f && minha(x) && !finalizada(x)).length : entregas.filter(x => x.frente === f).length);
   document.getElementById('pl-geral').textContent = entregas.length;
-  document.getElementById('main').innerHTML = isOper() ? htmlOperador() : aba === 'geral' ? htmlGeral() : aba === 'veiculos' ? htmlVeiculos() : aba === 'custos' ? htmlCustosOper() : htmlFrente(aba);
+  document.getElementById('main').innerHTML = isVend() ? htmlVendedor() : isOper() ? htmlOperador() : aba === 'geral' ? htmlGeral() : aba === 'veiculos' ? htmlVeiculos() : aba === 'custos' ? htmlCustosOper() : htmlFrente(aba);
 }
 
 // v1.2: entrega finalizada = tem foto do comprovante de entrega
@@ -800,7 +797,6 @@ function tabelaEntregas(E, comFrente) {
     <td class="c">${finalizada(x) ? '<span class="tag fin">✔ Finalizado</span>' : '<span class="tag pend">Pendente</span>'}</td>
     <td class="c">${x.fotos?.length ? `<button class="btn sm" onclick="verFotosEntrega('${x.id}')">📷 ${x.fotos.length}</button>` : ''}</td>
     <td class="acoes"><button class="btn sm" title="Visualizar" onclick="verEntrega('${x.id}')">👁</button>
-      ${finalizada(x) ? `<button class="btn sm" title="Copiar link das fotos para o vendedor" onclick="copiarLinkNF('${esc(x.nota)}')">🔗</button>` : ''}
       <button class="btn sm" title="Editar / anexar foto" onclick="editarEntrega('${x.id}')">✏️</button>
       ${podeExcluir() ? `<button class="btn sm" title="Excluir" onclick="excluirEntrega('${x.id}')">🗑</button>` : ''}</td>
   </tr>`).join('')}</tbody>
@@ -837,6 +833,29 @@ function htmlBipe(fr) {
   <div class="bmsg" id="bmsg"></div>
   ${fr === 'agregados' && _agregadoAtual ? `<div class="agSel">🤝 Agregado atual: <b>${esc(_agregadoAtual)}</b><span style="flex:1"></span><button class="btn sm" onclick="_agregadoAtual='';render()">trocar</button></div>` : ''}
   ${!fotosOk && isAdmin() ? `<div class="alert warn">📷 Fotos das entregas desativadas: falta rodar o SQL da v1.1. <button class="btn sm" onclick="abre('ovSetup')">Ver SQL</button></div>` : ''}`;
+}
+
+// v2.6: tela do Vendedor — digita/bipa a NF e vê o comprovante da entrega
+function htmlVendedor() {
+  return `<div class="bipe" style="--fc:var(--navy)">
+    <div class="ico">🔎</div>
+    <div><div class="t">Consultar entrega</div><div class="d">Digite o <b>nº da NF</b> ou bipe a <b>chave de acesso</b> para ver o comprovante da entrega</div></div>
+    <input id="bipeIn" autocomplete="off" inputmode="numeric" placeholder="Nº da NF ou chave de acesso" onkeydown="if(event.key==='Enter')consultarNF()">
+    <button onclick="consultarNF()">🔍 Buscar</button>
+  </div>
+  <div class="bmsg" id="bmsg"></div>`;
+}
+async function consultarNF() {
+  const inp = document.getElementById('bipeIn'); const raw = (inp.value || '').trim(); inp.value = '';
+  const dig = raw.replace(/\D/g, ''); if (!dig) return;
+  const nota = (dig.length === 44 ? dig.substr(25, 9) : dig).replace(/^0+/, '').padStart(9, '0');
+  bmsg('🔍 Buscando…');
+  const { data, error } = await db.from('entregas').select('*').eq('nota', nota).order('criado_em', { ascending: false });
+  if (error) { bmsg('❌ Erro de conexão: ' + error.message, 'err'); return; }
+  const x = (data || []).find(finalizada) || (data || [])[0];
+  if (!x) { bmsg(`❌ NF ${nota} não tem entrega registrada.`, 'err'); inp.focus(); return; }
+  bmsg(finalizada(x) ? `✔ NF ${x.nota} entregue${entregueEm(x) ? ' em ' + entregueEm(x).data + ' ' + entregueEm(x).hora : ''}.` : `⏳ NF ${x.nota} ainda está pendente de entrega.`, finalizada(x) ? 'ok' : 'err');
+  verEntrega(x.id, x);
 }
 
 // v1.3: tela resumida do Operador — bipar a NF e anexar a foto da entrega
@@ -1578,8 +1597,7 @@ async function verEntrega(id, obj) {
     </div>
     <div class="f"><label>📷 Fotos da entrega</label><div class="gal" id="viewFotos">${x.fotos?.length ? 'Carregando…' : '<span style="color:var(--muted)">Nenhuma foto anexada.</span>'}</div></div>`;
   document.getElementById('viewFoot').innerHTML = `<button class="btn" onclick="fecha('ovView')">Fechar</button>
-    ${finalizada(x) ? `<button class="btn" onclick="copiarLinkNF('${esc(x.nota)}')">🔗 Copiar link p/ vendedor</button>` : ''}
-    ${entregas.some(e => e.id === x.id) && (!isOper() || !finalizada(x)) ? `<button class="btn pri" onclick="fecha('ovView');editarEntrega('${x.id}')">✏️ Editar${finalizada(x) ? '' : ' / anexar foto'}</button>` : ''}`;
+    ${!isVend() && entregas.some(e => e.id === x.id) && (!isOper() || !finalizada(x)) ? `<button class="btn pri" onclick="fecha('ovView');editarEntrega('${x.id}')">✏️ Editar${finalizada(x) ? '' : ' / anexar foto'}</button>` : ''}`;
   abre('ovView');
   if (x.fotos?.length) {
     const urls = await Promise.all(x.fotos.map(f => db.storage.from(BUCKET).createSignedUrl(f.path, 600).then(r => r.data?.signedUrl)));
