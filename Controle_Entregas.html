@@ -488,7 +488,7 @@ table.km td.n{min-width:70px}
 // ══════════════════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v2.5';
+const APP_VERSION = 'v2.6';
 const SB_URL = 'https://wureelywtpcdxbmyblqj.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const BUCKET = 'entregas-docs';
@@ -617,6 +617,13 @@ function isAdmin() { return usuario?.role === 'admin'; }
 function isOper() { return !!usuario && usuario.role !== 'admin'; }
 function podeExcluir() { return !isOper(); }
 // v1.5: entrega "minha" = entregador igual ao usuário logado, ou registrada por ele
+// v2.6: link curto para vendedores consultarem as fotos pela NF (página nf.html, sem login)
+function linkNF(nota) { return new URL('nf.html', location.href).href.split('#')[0] + '?' + String(nota || '').replace(/\D/g, '').replace(/^0+/, ''); }
+async function copiarLinkNF(nota) {
+  const l = linkNF(nota);
+  try { await navigator.clipboard.writeText(l); toast('🔗 Link copiado: ' + l, 4000); }
+  catch { prompt('Copie o link da NF:', l); }
+}
 const up = v => String(v ?? '').toUpperCase();   // v2.3
 const _nrm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
 function minha(x) { const u = _nrm(usuario?.username); return !!u && (_nrm(x.responsavel) === u || _nrm(x.criado_por) === u); }
@@ -793,6 +800,7 @@ function tabelaEntregas(E, comFrente) {
     <td class="c">${finalizada(x) ? '<span class="tag fin">✔ Finalizado</span>' : '<span class="tag pend">Pendente</span>'}</td>
     <td class="c">${x.fotos?.length ? `<button class="btn sm" onclick="verFotosEntrega('${x.id}')">📷 ${x.fotos.length}</button>` : ''}</td>
     <td class="acoes"><button class="btn sm" title="Visualizar" onclick="verEntrega('${x.id}')">👁</button>
+      ${finalizada(x) ? `<button class="btn sm" title="Copiar link das fotos para o vendedor" onclick="copiarLinkNF('${esc(x.nota)}')">🔗</button>` : ''}
       <button class="btn sm" title="Editar / anexar foto" onclick="editarEntrega('${x.id}')">✏️</button>
       ${podeExcluir() ? `<button class="btn sm" title="Excluir" onclick="excluirEntrega('${x.id}')">🗑</button>` : ''}</td>
   </tr>`).join('')}</tbody>
@@ -1570,6 +1578,7 @@ async function verEntrega(id, obj) {
     </div>
     <div class="f"><label>📷 Fotos da entrega</label><div class="gal" id="viewFotos">${x.fotos?.length ? 'Carregando…' : '<span style="color:var(--muted)">Nenhuma foto anexada.</span>'}</div></div>`;
   document.getElementById('viewFoot').innerHTML = `<button class="btn" onclick="fecha('ovView')">Fechar</button>
+    ${finalizada(x) ? `<button class="btn" onclick="copiarLinkNF('${esc(x.nota)}')">🔗 Copiar link p/ vendedor</button>` : ''}
     ${entregas.some(e => e.id === x.id) && (!isOper() || !finalizada(x)) ? `<button class="btn pri" onclick="fecha('ovView');editarEntrega('${x.id}')">✏️ Editar${finalizada(x) ? '' : ' / anexar foto'}</button>` : ''}`;
   abre('ovView');
   if (x.fotos?.length) {
