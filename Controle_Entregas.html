@@ -166,7 +166,7 @@ td.c,th.c{text-align:center}
 /* v1.2 */
 .tag.fin{background:#e3f6ea;color:#15803d}.tag.pend{background:#fff4e0;color:#b45309}
 .vgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 16px;margin-bottom:12px}
-.vgrid div{font-size:13px;font-weight:700;word-break:break-word}
+.vgrid div{font-size:13px;font-weight:400;word-break:break-word}
 .vgrid span{display:block;font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 .vgrid .w2{grid-column:span 2}.vgrid .w4{grid-column:span 4}
 .regpor{font-size:11.5px;color:var(--muted);margin:-6px 0 12px;padding:6px 10px;background:#f6f8fc;border-radius:7px}
@@ -489,7 +489,7 @@ table.km td.n{min-width:70px}
 // ══════════════════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v2.6';
+const APP_VERSION = 'v2.7';
 const SB_URL = 'https://wureelywtpcdxbmyblqj.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const BUCKET = 'entregas-docs';
@@ -620,6 +620,8 @@ function isOper() { return !!usuario && usuario.role !== 'admin'; }
 function isVend() { return String(usuario?.role || '').toLowerCase() === 'vendedor'; }
 function podeExcluir() { return !isOper(); }
 // v1.5: entrega "minha" = entregador igual ao usuário logado, ou registrada por ele
+// v2.7: observação mostra só o que foi digitado — remove as notas automáticas antigas de troca de entregador
+const obsManual = o => String(o || '').replace(/\s*\|?\s*ENTREGADOR ALTERADO DE .*? PARA .*? AO FINALIZAR\.?\s*/gi, ' | ').split('|').map(t => t.trim()).filter(Boolean).join(' | ');
 const up = v => String(v ?? '').toUpperCase();   // v2.3
 const _nrm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
 function minha(x) { const u = _nrm(usuario?.username); return !!u && (_nrm(x.responsavel) === u || _nrm(x.criado_por) === u); }
@@ -792,7 +794,7 @@ function tabelaEntregas(E, comFrente) {
     <td class="mono" title="${esc(x.chave || '')}">${esc(x.nota)}</td><td>${esc(x.loja || x.fat || '')}</td>
     <td><span class="clip" title="${esc(x.cliente)}">${esc(x.cliente || '')}</span></td><td><span class="clip" style="max-width:120px">${esc(x.vendedor || '')}</span></td>
     <td><span class="clip" style="max-width:150px" title="${esc(x.local)}">${esc(x.local || '')}</span></td>
-    <td class="n ${x.divergencia ? 'div-alert' : ''}" title="${x.divergencia ? 'Volume diferente da NF (' + (x.volume_nf ?? '?') + ')' + (x.obs ? ' — ' + esc(x.obs) : '') : 'Volume da NF: ' + (x.volume_nf ?? '—')}">${x.divergencia ? '⚠ ' : ''}${x.volume ?? ''}</td>
+    <td class="n ${x.divergencia ? 'div-alert' : ''}" title="${x.divergencia ? 'Volume diferente da NF (' + (x.volume_nf ?? '?') + ')' + (obsManual(x.obs) ? ' — ' + esc(obsManual(x.obs)) : '') : 'Volume da NF: ' + (x.volume_nf ?? '—')}">${x.divergencia ? '⚠ ' : ''}${x.volume ?? ''}</td>
     <td>${esc(x.responsavel || '')}</td><td>${entregueEm(x)?.data || ''}</td><td>${entregueEm(x)?.hora || ''}</td>
     <td class="c">${finalizada(x) ? '<span class="tag fin">✔ Finalizado</span>' : '<span class="tag pend">Pendente</span>'}</td>
     <td class="c">${x.fotos?.length ? `<button class="btn sm" onclick="verFotosEntrega('${x.id}')">📷 ${x.fotos.length}</button>` : ''}</td>
@@ -1076,7 +1078,7 @@ function abrirModalEntrega(rec, ent, dups, status) {
   _fotosNovas = []; _fotosRemovidas = []; _fotosExist = Array.isArray(ent?.fotos) ? [...ent.fotos] : [];
   renderFotos();
   document.getElementById('eValor').value = ent && num(ent.valor) ? String(ent.valor).replace('.', ',') : '';
-  document.getElementById('eObs').value = ent?.obs || '';
+  document.getElementById('eObs').value = obsManual(ent?.obs);
   // sugestões (datalist) a partir dos registros do mês
   const uniq = k => [...new Set(entregas.map(x => x[k]).filter(Boolean))].slice(0, 200).map(v => `<option value="${esc(v)}">`).join('');
   document.getElementById('dlLocal').innerHTML = uniq('local');
@@ -1137,7 +1139,6 @@ async function salvarEntrega() {
       const ant = ent ? ent.responsavel : row.responsavel;
       if (row.frente !== 'agregados' && _fotosNovas.length && !_fotosExist.length && _nrm(ant) !== _nrm(usuario.username)) {
         row.responsavel = up(usuario.username);
-        row.obs = [row.obs, up(`Entregador alterado de ${ant || '—'} para ${usuario.username} ao finalizar.`)].filter(Boolean).join(' | ');
       }
     }
     let r;
@@ -1581,8 +1582,8 @@ async function verEntrega(id, obj) {
   document.getElementById('viewTit').textContent = `👁 NF ${x.nota} — ${F.nome || x.frente}`;
   const c = (l, v, cls = '') => `<div class="${cls}"><span>${l}</span>${v === '' || v == null ? '—' : v}</div>`;
   document.getElementById('viewBody').innerHTML = `
-    <div style="margin-bottom:12px">${finalizada(x) ? '<span class="tag fin" style="font-size:12px">✔ Finalizado</span>' : '<span class="tag pend" style="font-size:12px">⏳ Pendente — aguardando foto da entrega</span>'}
-      ${x.divergencia ? ' <span class="tag" style="background:#fdecea;color:#c0392b;font-size:12px">⚠ Divergência de volume</span>' : ''}</div>
+    <div style="margin-bottom:12px">${finalizada(x) ? '<span class="tag fin" style="font-size:16px;padding:6px 14px">✔ Finalizado</span>' : '<span class="tag pend" style="font-size:16px;padding:6px 14px">⏳ Pendente — aguardando foto da entrega</span>'}
+      ${x.divergencia ? ' <span class="tag" style="background:#fdecea;color:#c0392b;font-size:16px;padding:6px 14px">⚠ Divergência de volume</span>' : ''}</div>
     <div class="vgrid">
       ${c('Nota fiscal', esc(x.nota))}${c('Emissão', esc(x.data_emissao || ''))}${c('Pedido', esc(x.loja || x.fat || ''))}${c('Origem', esc(x.origem || ''))}
       ${c('Cliente', esc(x.cliente || ''), 'w2')}${c('Vendedor', esc(x.vendedor || ''))}${c('Transportadora NF', esc(x.transportadora || ''))}
@@ -1590,7 +1591,7 @@ async function verEntrega(id, obj) {
       ${c('Volume entregue', x.volume == null ? '' : `<span class="${x.divergencia ? 'div-alert' : ''}">${x.volume}</span>`)}
       ${c('Local', esc(x.local || ''), 'w2')}${c(x.frente === 'agregados' ? 'Agregado' : 'Entregador', esc(x.responsavel || ''))}${isOper() ? '' : c('Custo', num(x.valor) ? brl(x.valor) : '')}
       ${c('Endereço', esc(x.endereco || ''), 'w4')}
-      ${x.obs ? c('Observação', esc(x.obs), 'w4') : ''}
+      ${obsManual(x.obs) ? c('Observação', esc(obsManual(x.obs)), 'w4') : ''}
       ${x.chave ? c('Chave de acesso', `<span class="mono" style="font-size:12px">${esc(x.chave)}</span>`, 'w4') : ''}
       ${x.fotos?.[0]?.por ? c('Finalizado por', esc(x.fotos[0].por) + (x.fotos[0].em ? ' — ' + dt(x.fotos[0].em) : ''), 'w2') : ''}
       ${c('Registrado por', esc(x.criado_por || ''))}${c('Registrado em', dt(x.criado_em))}${c('Última alteração', dt(x.atualizado_em), 'w2')}
@@ -1712,7 +1713,7 @@ function exportarExcel(fr) {
   const wb = XLSX.utils.book_new();
   const ent = [['FRENTE','DT PROGRAMADA','HORA PROGRAMADA','DT ENTREGA','HORA ENTREGA','NF','CHAVE','PEDIDO','CLIENTE','VENDEDOR','TRANSPORTADORA NF','LOCAL','ENDEREÇO','VOL NF','VOL ENTREGUE','DIVERGÊNCIA','ENTREGADOR','CUSTO','STATUS','FOTOS','OBS','REGISTRADO POR']];
   E.forEach(x => ent.push([nomeFrente(x.frente), x.data_entrega ? new Date(x.data_entrega + 'T12:00:00') : '', x.hora_entrega || '', entregueEm(x)?.data || '', entregueEm(x)?.hora || '', x.nota, x.chave || '', x.loja || x.fat || '',
-    x.cliente || '', x.vendedor || '', x.transportadora || '', x.local || '', x.endereco || '', x.volume_nf ?? '', x.volume ?? '', x.divergencia ? 'SIM' : '', x.responsavel || '', num(x.valor), finalizada(x) ? 'Finalizado' : 'Pendente', x.fotos?.length || 0, x.obs || '', x.criado_por || '']));
+    x.cliente || '', x.vendedor || '', x.transportadora || '', x.local || '', x.endereco || '', x.volume_nf ?? '', x.volume ?? '', x.divergencia ? 'SIM' : '', x.responsavel || '', num(x.valor), finalizada(x) ? 'Finalizado' : 'Pendente', x.fotos?.length || 0, obsManual(x.obs), x.criado_por || '']));
   for (let i = 1; i < ent.length; i++) ent[i] = ent[i].map(v => typeof v === 'string' ? v.toUpperCase() : v);   // v2.3
   const ws1 = XLSX.utils.aoa_to_sheet(ent, { cellDates: true });
   ws1['!cols'] = [14, 12, 7, 12, 46, 10, 34, 18, 26, 22, 40, 8, 10, 10, 18, 12, 11, 7, 30, 14].map(w => ({ wch: w }));
