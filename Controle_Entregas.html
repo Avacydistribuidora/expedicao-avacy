@@ -402,8 +402,8 @@ table.km td.n{min-width:70px}
         <div class="f w2"><label>Data <span class="req">*</span></label><input type="date" id="cData"></div>
         <div class="f w2"><label>Valor (R$) <span class="req">*</span></label><input id="cValor" inputmode="decimal" placeholder="0,00"></div>
         <div class="f w4"><label>Descrição</label><input id="cDesc" placeholder="Ex.: Posto Shell — placa ABC1D23 / Pedágio Rod. Anhanguera"></div>
-        <div class="f w4"><label>Comprovante (PDF ou imagem)</label><input type="file" id="cArq" accept=".pdf,image/*">
-          <div id="cArqAtual" style="font-size:11.5px;color:var(--muted)"></div></div>
+        <div class="f w4"><label>Comprovantes (PDF ou imagem) — pode selecionar vários</label><input type="file" id="cArq" accept=".pdf,image/*" multiple onchange="renderDocsKeep()">
+          <div id="cArqAtual" style="font-size:11.5px;color:var(--muted);display:flex;flex-direction:column;gap:3px;margin-top:4px"></div></div>
       </div>
     </div>
     <div class="mf">
@@ -490,7 +490,7 @@ table.km td.n{min-width:70px}
 // ══════════════════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v2.8';
+const APP_VERSION = 'v2.9';
 const SB_URL = 'https://wureelywtpcdxbmyblqj.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const BUCKET = 'entregas-docs';
@@ -550,6 +550,10 @@ create table if not exists entregas_rateios (
 );
 alter table entregas_rateios enable row level security;
 create policy "allow_all" on entregas_rateios for all using (true) with check (true);`;
+const DOCS_SQL = `-- v2.9: vários comprovantes por lançamento — rode UMA vez no Supabase → SQL Editor
+alter table veiculos_diario  add column if not exists comprovantes jsonb default '[]'::jsonb;
+alter table entregas_custos  add column if not exists comprovantes jsonb default '[]'::jsonb;
+alter table if exists entregas_rateios add column if not exists comprovantes jsonb default '[]'::jsonb;`;
 const CATS_RAT = ['Seguro do veículo', 'IPVA / Licenciamento', 'Rastreador / Telemetria', '13º / Férias / Benefício anual', 'Outros'];
 const FUNCOES = ['Motorista', 'Ajudante', 'Conferente', 'Entregador', 'Outro'];
 const FOTOS_SQL = `-- v1.1: fotos nas entregas — rode uma vez no Supabase → SQL Editor
@@ -604,7 +608,7 @@ let entregas = [], custos = [], contagemMeses = {};
 let filtros = { busca: '', so: '', resp: '' };
 let _nfAtual = null, _editEnt = null, _editCus = null, _cusFrente = null;
 let veiculos = [], vdiario = [], veicOk = true, _veicSel = null, _editVd = null, _editV = null, _editOp = null, operFiltro = '';
-let rateios = [], ratOk = true, _editRat = null;
+let rateios = [], ratOk = true, _editRat = null, docsOk = true, _docsKeep = [], _docsBox = '';
 let fotosOk = true, _fotosNovas = [], _fotosExist = [], agregadosLista = [], _agregadoAtual = '', _pendRec = null;
 
 // ══════════════════════════════════════════════════════════════
@@ -698,6 +702,10 @@ async function iniciar() {
   const tf = await db.from('entregas').select('fotos').limit(1);
   fotosOk = !tf.error;
   if (!fotosOk) { document.getElementById('sqlTxt').textContent = FOTOS_SQL; if (isAdmin()) toast('⚙️ Para usar fotos, rode o SQL da v1.1 (botão no topo da aba).', 5000); }
+  // v2.9: vários comprovantes por lançamento
+  const tc = await db.from('entregas_custos').select('comprovantes').limit(1);
+  docsOk = !tc.error;
+  if (!docsOk && isAdmin()) toast('⚙️ Para anexar vários comprovantes, rode o SQL da v2.9 (Configurações).', 6000);
   await carregarAgregados();
   await carregar();
   setTab(aba);
@@ -843,7 +851,7 @@ function tabelaCustos(C, comFrente) {
     ${comFrente ? `<td><span class="tag ${x.frente}">${nomeFrente(x.frente)}</span></td>` : ''}
     <td><span class="tag ${x.tipo}">${x.tipo === 'fixo' ? 'Fixo' : 'Despesa'}</span></td><td>${esc(x.categoria || '')}</td><td>${dBR(x.data)}</td>
     <td><span class="clip" style="max-width:280px" title="${esc(x.descricao)}">${esc(x.descricao || '')}</span></td><td class="n">${brl(x.valor)}</td>
-    <td class="c">${x.comprovante_path ? `<button class="btn sm" title="${esc(x.comprovante_nome || '')}" onclick="abrirComprovante('${x.id}')">📎 Abrir</button>` : (x.tipo === 'despesa' ? '<span style="color:#c0392b;font-size:11px;font-weight:700">sem comprovante</span>' : '')}</td>
+    <td class="c">${x.comprovante_path ? `<button class="btn sm" title="${esc(x.comprovante_nome || '')}" onclick="verDocs('entregas_custos','${x.id}')">📎 ${docsDe(x).length > 1 ? docsDe(x).length + ' arquivos' : 'Abrir'}</button>` : (x.tipo === 'despesa' ? '<span style="color:#c0392b;font-size:11px;font-weight:700">sem comprovante</span>' : '')}</td>
     <td style="font-size:11px;color:var(--muted)">${esc(x.criado_por || '')}</td>
     <td class="c" style="white-space:nowrap"><button class="btn sm" onclick="editarCusto('${x.id}')">✏️</button>
       ${podeExcluir() ? `<button class="btn sm" title="Excluir" onclick="excluirCusto('${x.id}')">🗑</button>` : ''}</td>
@@ -1190,7 +1198,7 @@ async function salvarEntrega() {
 // ══════════════════════════════════════════════════════════════
 function custoDia(d) { return num(d.diesel) + num(d.pedagio) + num(d.estacionamento) + num(d.servico) + num(d.lavagem); }
 function kmDia(d) { const a = num(d.km_inicio), b = num(d.km_fim); return b > a ? b - a : 0; }
-function km(v) { return v ? Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 0 }) : ''; }
+function km(v) { return v ? Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 3 }) : ''; }   // v2.9: até 3 casas decimais
 function avisoV2() {
   return `<div class="card"><div class="alert warn">⚙️ Para usar <b>Veículos</b> e <b>Custos</b> é preciso rodar o SQL da v2.0 uma vez no Supabase.</div>
     <div class="sql" id="v2sql"></div><div style="margin-top:10px"><button class="btn pri" onclick="navigator.clipboard.writeText(V2_SQL).then(()=>toast('✔ SQL copiado'))">📋 Copiar SQL</button></div></div>`;
@@ -1232,7 +1240,7 @@ function htmlVeiculos() {
     <td class="n">${num(d.pedagio) ? brl(d.pedagio) : ''}</td><td class="n">${num(d.estacionamento) ? brl(d.estacionamento) : ''}</td>
     <td class="n">${num(d.servico) ? brl(d.servico) : ''}</td><td class="n">${num(d.lavagem) ? brl(d.lavagem) : ''}</td>
     <td>${esc(d.motorista || '')}</td>
-    <td class="c">${d.comprovante_path ? `<button class="btn sm" title="${esc(d.comprovante_nome || '')}" onclick="abrirDoc('${esc(d.comprovante_path)}')">📎</button>` : ''}</td>
+    <td class="c">${docsCell('veiculos_diario', d)}</td>
     <td class="acoes"><button class="btn sm" onclick="editarDia('${d.id}')">✏️</button><button class="btn sm" onclick="excluirDia('${d.id}')">🗑</button></td></tr>`).join('');
   return `${head}${kpi}
   <div class="card"><h3>📒 KM e custos — ${esc(V.placa)} ${esc(V.modelo || '')} · ${mesNome(mes)}<span class="sp"></span>
@@ -1298,8 +1306,7 @@ function editarDia(id) {
       ${f('dServ', 'Serviço (R$)', money(d?.servico))}${f('dLav', 'Lavagem (R$)', money(d?.lavagem))}
       <div class="f w2"><label>Motorista</label><input id="dMot" value="${esc(d?.motorista || '')}" list="dlResp"></div>
       <div class="f w4"><label>Observação</label><input id="dObs" value="${esc(d?.obs || '')}"></div>
-      <div class="f w4"><label>Comprovante (opcional)</label><input type="file" id="dArq" accept=".pdf,image/*">
-        <div style="font-size:11px;color:var(--muted)">${d?.comprovante_nome ? 'Atual: ' + esc(d.comprovante_nome) : ''}</div></div>
+      ${docsEditor('dArq', d)}
     </div><div id="dAlert" style="margin-top:10px"></div>`, salvarDia);
   calcKmDia();
 }
@@ -1317,13 +1324,7 @@ async function salvarDia() {
   const row = { veiculo_id: _veicSel, competencia: data.slice(0, 7), data, km_inicio: ki, km_fim: kf,
     diesel: num(g('dDiesel')), litros: num(g('dLitros')), pedagio: num(g('dPed')), estacionamento: num(g('dEst')),
     servico: num(g('dServ')), lavagem: num(g('dLav')), motorista: g('dMot') || null, obs: g('dObs') || null };
-  const file = document.getElementById('dArq').files[0];
-  if (file) {
-    const path = `veiculos/${row.competencia}/${Date.now()}_${file.name.normalize('NFD').replace(/[^\w.\-]+/g, '_')}`;
-    const up = await db.storage.from(BUCKET).upload(path, file, { upsert: true, contentType: file.type || undefined });
-    if (up.error) { toast('❌ ' + up.error.message); return false; }
-    row.comprovante_path = path; row.comprovante_nome = file.name;
-  }
+  try { await docsSalvar('dArq', `veiculos/${row.competencia}`, row); } catch (e) { toast('❌ ' + (e.message || e)); return false; }
   const r = _editVd ? await db.from('veiculos_diario').update(row).eq('id', _editVd.id) : await db.from('veiculos_diario').insert({ ...row, criado_por: usuario.username });
   if (r.error) { toast('❌ ' + r.error.message, 4000); return false; }
   toast('✔ Lançamento salvo');
@@ -1349,7 +1350,7 @@ function exportarVeiculo() {
   rows.push(['TOTAL', '', '', tkm, ref ? tkm / ref : '', S('litros') ? tkm / S('litros') : '', S('diesel'), S('litros'), S('pedagio'), S('estacionamento'), S('servico'), S('lavagem')]);
   const ws = XLSX.utils.aoa_to_sheet(rows, { cellDates: true });
   for (let r = 3; r < rows.length; r++) { const fz = (c, z) => { const a = XLSX.utils.encode_cell({ r, c }); if (ws[a] && ws[a].t !== 's') ws[a].z = z; };
-    fz(0, 'dd/mm/yyyy'); [1, 2, 3].forEach(c => fz(c, '#,##0')); fz(4, '0.0'); fz(5, '0.00'); [6, 8, 9, 10, 11].forEach(c => fz(c, '"R$" #,##0.00')); fz(7, '0.00'); }
+    fz(0, 'dd/mm/yyyy'); [1, 2, 3].forEach(c => fz(c, '#,##0.0##')); fz(4, '0.0'); fz(5, '0.00'); [6, 8, 9, 10, 11].forEach(c => fz(c, '"R$" #,##0.00')); fz(7, '0.00'); }
   ws['!cols'] = [11, 10, 10, 9, 11, 10, 12, 8, 11, 10, 11, 11, 16, 30].map(w => ({ wch: w }));
   const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'KM e Custos');
   XLSX.writeFile(wb, `Veiculo_${V.placa}_${mes}.xlsx`);
@@ -1388,7 +1389,7 @@ function htmlCustosOper() {
         <tbody>${L.map(c => `<tr><td>${dBR(c.data)}</td><td><span class="tag ${c.tipo}">${grupoOper(c.categoria)}</span></td><td>${esc(c.categoria || '')}</td>
           <td><span class="clip" style="max-width:240px" title="${esc(c.descricao || '')}">${esc(c.descricao || '')}</span></td><td>${esc(c.fornecedor || '')}</td>
           <td class="n">${c.quantidade != null ? num(c.quantidade).toLocaleString('pt-BR') : ''}</td><td>${esc(c.unidade || '')}</td><td class="n">${c.valor_unit != null ? brl(c.valor_unit) : ''}</td>
-          <td class="n"><b>${brl(c.valor)}</b></td><td class="c">${c.comprovante_path ? `<button class="btn sm" onclick="abrirDoc('${esc(c.comprovante_path)}')">📎</button>` : ''}</td>
+          <td class="n"><b>${brl(c.valor)}</b></td><td class="c">${docsCell('entregas_custos', c)}</td>
           <td style="font-size:11px;color:var(--muted)">${esc(c.criado_por || '')}</td>
           <td class="acoes"><button class="btn sm" onclick="editarOper('${c.id}')">✏️</button><button class="btn sm" onclick="excluirCusto('${c.id}')">🗑</button></td></tr>`).join('')}</tbody>
         <tfoot><tr><td colspan="8">${L.length} lançamento(s)</td><td class="n">${brl(L.reduce((s, c) => s + num(c.valor), 0))}</td><td colspan="3"></td></tr></tfoot></table></div>`
@@ -1415,8 +1416,7 @@ function editarOper(id) {
       <div class="f"><label>Unidade</label><input id="oUn" value="${esc(c?.unidade || '')}" list="dlUn" placeholder="rolo, cx, un, mês"></div>
       <div class="f"><label>Valor unitário (R$)</label><input id="oUnit" inputmode="decimal" value="${m(c?.valor_unit)}" oninput="calcOper()"></div>
       <div class="f"><label>Valor total (R$) <span class="req">*</span></label><input id="oVal" inputmode="decimal" value="${m(c?.valor)}"></div>
-      <div class="f w4"><label>Comprovante / nota (opcional)</label><input type="file" id="oArq" accept=".pdf,image/*">
-        <div style="font-size:11px;color:var(--muted)">${c?.comprovante_nome ? 'Atual: ' + esc(c.comprovante_nome) : ''}</div></div>
+      ${docsEditor('oArq', c, 'Comprovantes / notas (opcional) — pode selecionar vários')}
     </div>
     <datalist id="dlUn"><option value="un"><option value="rolo"><option value="cx"><option value="pct"><option value="fardo"><option value="milheiro"><option value="mês"><option value="diária"></datalist>`, salvarOper);
 }
@@ -1432,13 +1432,7 @@ async function salvarOper() {
   const row = { frente: 'operacao', competencia: data.slice(0, 7), tipo: (grp === 'Mão de obra' || grp === 'Aluguel') ? 'fixo' : 'despesa',
     categoria: cat, data, valor, descricao: g('oDesc') || null, fornecedor: g('oForn') || null,
     quantidade: g('oQtd') ? num(g('oQtd')) : null, unidade: g('oUn') || null, valor_unit: g('oUnit') ? num(g('oUnit')) : null };
-  const file = document.getElementById('oArq').files[0];
-  if (file) {
-    const path = `operacao/${row.competencia}/${Date.now()}_${file.name.normalize('NFD').replace(/[^\w.\-]+/g, '_')}`;
-    const up = await db.storage.from(BUCKET).upload(path, file, { upsert: true, contentType: file.type || undefined });
-    if (up.error) { toast('❌ ' + up.error.message); return false; }
-    row.comprovante_path = path; row.comprovante_nome = file.name;
-  }
+  try { await docsSalvar('oArq', `operacao/${row.competencia}`, row); } catch (e) { toast('❌ ' + (e.message || e)); return false; }
   const r = _editOp ? await db.from('entregas_custos').update(row).eq('id', _editOp.id) : await db.from('entregas_custos').insert({ ...row, criado_por: usuario.username });
   if (r.error) { toast('❌ ' + r.error.message, 4000); return false; }
   toast('✔ Custo salvo');
@@ -1533,7 +1527,7 @@ function htmlRateios() {
       <tbody>${S.map(x => { const nM = ratMeses(x); return `<tr><td>${esc(x.categoria || '')}</td><td><b>${esc(ratPlaca(x))}</b></td><td>${opF(x)}</td><td>${esc(x.fornecedor || '')}</td><td>${esc(x.apolice || '')}</td>
         <td>${dBR(x.inicio)} → ${dBR(x.fim)}</td><td class="n">${nM}</td><td class="n">${brl(x.valor_total)}</td><td class="n" style="color:var(--muted)">${nM ? brl(num(x.valor_total) / nM) : ''}</td>
         <td>${ratStatus(x)}</td><td class="n"><b>${brl(ratMes(x, mes))}</b></td>
-        <td class="c">${x.comprovante_path ? `<button class="btn sm" title="${esc(x.comprovante_nome || '')}" onclick="abrirDoc('${esc(x.comprovante_path)}')">📎</button>` : ''}</td>${acoes(x)}</tr>`; }).join('')}</tbody>
+        <td class="c">${docsCell('entregas_rateios', x)}</td>${acoes(x)}</tr>`; }).join('')}</tbody>
       <tfoot><tr><td colspan="10">${S.length} cadastro(s)</td><td class="n">${brl(totS)}</td><td colspan="2"></td></tr></tfoot></table></div>`
       : '<div class="empty">Nenhum seguro/rateio cadastrado. Clique em “+ Cadastrar seguro / rateio”.</div>'}
     <div style="font-size:11px;color:var(--muted);margin-top:8px">ℹ️ O valor total é dividido pelos dias da vigência — cada mês recebe a parte proporcional aos dias que estão dentro dele. Pessoal: valor mensal cheio, proporcional só no mês de início/fim.</div>
@@ -1574,8 +1568,7 @@ function editarRat(id, tipo) {
         <div class="f"><label>Início vigência <span class="req">*</span></label><input type="date" id="rIni" value="${x?.inicio || ''}" oninput="prevRat()"></div>
         <div class="f"><label>Fim vigência <span class="req">*</span></label><input type="date" id="rFim" value="${x?.fim || ''}" oninput="prevRat()"></div>
         <div class="f"><label>Observação</label><input id="rObs" value="${esc(x?.obs || '')}"></div>
-        <div class="f w4"><label>Apólice / comprovante (opcional)</label><input type="file" id="rArq" accept=".pdf,image/*">
-          <div style="font-size:11px;color:var(--muted)">${x?.comprovante_nome ? 'Atual: ' + esc(x.comprovante_nome) : ''}</div></div>
+          ${docsEditor('rArq', x, 'Apólice / comprovantes (opcional) — pode selecionar vários')}
       </div>
       <div class="alert info" id="rPrev" style="margin-top:10px"></div>`, salvarRat, del);
   }
@@ -1612,13 +1605,7 @@ async function salvarRat() {
   if (!row.inicio) { toast('⚠ Informe a data de início.'); return false; }
   if (row.fim && row.fim < row.inicio) { toast('⚠ O fim é anterior ao início.'); return false; }
   if (row.categoria === 'Seguro do veículo' && !row.veiculo_id) { toast('⚠ Selecione o veículo do seguro.'); return false; }
-  const file = document.getElementById('rArq')?.files[0];
-  if (file) {
-    const path = `rateios/${row.inicio.slice(0, 7)}/${Date.now()}_${file.name.normalize('NFD').replace(/[^\w.\-]+/g, '_')}`;
-    const up = await db.storage.from(BUCKET).upload(path, file, { upsert: true, contentType: file.type || undefined });
-    if (up.error) { toast('❌ ' + up.error.message); return false; }
-    row.comprovante_path = path; row.comprovante_nome = file.name;
-  }
+  if (document.getElementById('rArq')) { try { await docsSalvar('rArq', `rateios/${row.inicio.slice(0, 7)}`, row); } catch (e) { toast('❌ ' + (e.message || e)); return false; } }
   const r = _editRat ? await db.from('entregas_rateios').update(row).eq('id', _editRat.id) : await db.from('entregas_rateios').insert({ ...row, criado_por: usuario.username });
   if (r.error) { toast('❌ ' + r.error.message, 4000); return false; }
   toast('✔ Cadastro salvo'); carregar(); return true;
@@ -1629,6 +1616,58 @@ async function excluirRat(id, doModal) {
   if (error) { toast('❌ ' + error.message); return; }
   if (doModal) fecha('ovForm');
   toast('🗑 Excluído'); carregar();
+}
+
+// ══════════════════════════════════════════════════════════════
+// v2.9: VÁRIOS COMPROVANTES por lançamento
+// ══════════════════════════════════════════════════════════════
+function docsDe(x) {
+  const L = Array.isArray(x?.comprovantes) ? x.comprovantes.filter(d => d?.path) : [];
+  if (x?.comprovante_path && !L.some(d => d.path === x.comprovante_path)) L.unshift({ path: x.comprovante_path, nome: x.comprovante_nome || 'comprovante' });
+  return L;
+}
+const _docsFonte = { veiculos_diario: () => vdiario, entregas_custos: () => custos, entregas_rateios: () => rateios };
+function docsCell(tab, x) {
+  const n = docsDe(x).length; if (!n) return '';
+  return `<button class="btn sm" title="${esc(docsDe(x).map(d => d.nome).join('\n'))}" onclick="verDocs('${tab}','${x.id}')">📎${n > 1 ? ' ' + n : ''}</button>`;
+}
+function verDocs(tab, id) {
+  const x = (_docsFonte[tab]?.() || []).find(r => r.id === id); const L = docsDe(x);
+  if (!L.length) return;
+  if (L.length === 1) return abrirDoc(L[0].path);
+  formModal(`📎 Comprovantes (${L.length})`, `<div style="display:flex;flex-direction:column;gap:8px">${L.map(d =>
+    `<button class="btn" style="justify-content:flex-start;text-align:left" onclick="abrirDoc('${esc(d.path)}')">📄 ${esc(d.nome)}</button>`).join('')}</div>`, async () => true);
+}
+// editor: input múltiplo + lista dos já anexados (com ✕ para remover)
+function docsEditor(inputId, x, label = 'Comprovantes (opcional) — pode selecionar vários') {
+  _docsKeep = docsDe(x); _docsBox = inputId + 'Lista';
+  setTimeout(renderDocsKeep, 0);
+  return `<div class="f w4"><label>${label}</label><input type="file" id="${inputId}" accept=".pdf,image/*" multiple onchange="renderDocsKeep()">
+    <div id="${_docsBox}" style="font-size:11.5px;color:var(--muted);display:flex;flex-direction:column;gap:3px;margin-top:4px"></div></div>`;
+}
+function docsPrep(boxId, x) { _docsKeep = docsDe(x); _docsBox = boxId; renderDocsKeep(); }
+function renderDocsKeep() {
+  const el = document.getElementById(_docsBox); if (!el) return;
+  const inp = document.getElementById(_docsBox.replace(/Lista$|Atual$/, ''));
+  const novos = inp?.files ? [...inp.files] : [];
+  el.innerHTML = _docsKeep.map((d, i) => `<span>📄 <a href="#" onclick="abrirDoc('${esc(d.path)}');return false">${esc(d.nome)}</a>
+      <button type="button" class="btn sm" style="padding:0 6px;margin-left:6px;color:#c0392b" title="Remover este anexo" onclick="_docsKeep.splice(${i},1);renderDocsKeep()">✕</button></span>`).join('')
+    + novos.map(f => `<span style="color:var(--teal)">➕ ${esc(f.name)} <i>(novo)</i></span>`).join('')
+    + (!docsOk && _docsKeep.length + novos.length > 1 ? '<span style="color:#c0392b">⚠ Rode o SQL da v2.9 para salvar mais de um comprovante — só o primeiro será mantido.</span>' : '');
+}
+// envia os novos arquivos e grava a lista no row (mantém comprovante_path = 1º para compatibilidade)
+async function docsSalvar(inputId, pasta, row) {
+  const files = [...(document.getElementById(inputId)?.files || [])];
+  const L = [..._docsKeep];
+  for (const file of files) {
+    const path = `${pasta}/${Date.now()}_${Math.random().toString(36).slice(2, 6)}_${file.name.normalize('NFD').replace(/[^\w.\-]+/g, '_')}`;
+    const up = await db.storage.from(BUCKET).upload(path, file, { upsert: true, contentType: file.type || undefined });
+    if (up.error) throw up.error;
+    L.push({ path, nome: file.name });
+  }
+  row.comprovante_path = L[0]?.path || null; row.comprovante_nome = L[0]?.nome || null;
+  if (docsOk) row.comprovantes = L;
+  return L.length;
 }
 
 // Modal genérico de formulário (veículos / KM / custos operacionais)
@@ -1830,7 +1869,7 @@ function novoCusto(fr, tipo) {
   const hoje = hojeISO();
   document.getElementById('cData').value = hoje.slice(0, 7) === mes ? hoje : mes + '-01';
   ['cValor', 'cDesc'].forEach(i => document.getElementById(i).value = '');
-  document.getElementById('cArq').value = ''; document.getElementById('cArqAtual').textContent = '';
+  document.getElementById('cArq').value = ''; docsPrep('cArqAtual', null);
   abre('ovCus');
 }
 function editarCusto(id) {
@@ -1843,25 +1882,19 @@ function editarCusto(id) {
   document.getElementById('cValor').value = String(x.valor ?? '').replace('.', ',');
   document.getElementById('cDesc').value = x.descricao || '';
   document.getElementById('cArq').value = '';
-  document.getElementById('cArqAtual').textContent = x.comprovante_nome ? `Atual: ${x.comprovante_nome} (envie outro arquivo para substituir)` : '';
+  docsPrep('cArqAtual', x);
   abre('ovCus');
 }
 async function salvarCusto() {
   const tipo = document.getElementById('cTipo').value, cat = document.getElementById('cCat').value;
   const data = document.getElementById('cData').value, valor = num(document.getElementById('cValor').value);
-  const desc = document.getElementById('cDesc').value.trim(), file = document.getElementById('cArq').files[0];
+  const desc = document.getElementById('cDesc').value.trim(), nArq = document.getElementById('cArq').files.length;
   if (!data || !valor) { toast('⚠ Informe data e valor.'); return; }
-  if (tipo === 'despesa' && !file && !_editCus?.comprovante_path && !confirm('Despesa sem comprovante. Salvar mesmo assim?')) return;
+  if (tipo === 'despesa' && !nArq && !_docsKeep.length && !confirm('Despesa sem comprovante. Salvar mesmo assim?')) return;
   const btn = document.getElementById('cSalvar'); btn.disabled = true;
   try {
     const row = { frente: _cusFrente, competencia: data.slice(0, 7), tipo, categoria: cat, descricao: desc || null, data, valor };
-    if (file) {
-      const nome = file.name.normalize('NFD').replace(/[^\w.\-]+/g, '_');
-      const path = `${row.competencia}/${_cusFrente}/${Date.now()}_${nome}`;
-      const up = await db.storage.from(BUCKET).upload(path, file, { upsert: true, contentType: file.type || undefined });
-      if (up.error) throw up.error;
-      row.comprovante_path = path; row.comprovante_nome = file.name;
-    }
+    await docsSalvar('cArq', `${row.competencia}/${_cusFrente}`, row);
     const r = _editCus ? await db.from('entregas_custos').update(row).eq('id', _editCus.id)
                        : await db.from('entregas_custos').insert({ ...row, criado_por: usuario.username });
     if (r.error) throw r.error;
@@ -1873,7 +1906,7 @@ async function salvarCusto() {
 async function excluirCusto(id) {
   const x = custos.find(c => c.id === id); if (!x || !podeExcluir()) return;
   if (!confirm(`Excluir ${x.categoria} de ${brl(x.valor)}?`)) return;
-  if (x.comprovante_path) await db.storage.from(BUCKET).remove([x.comprovante_path]);
+  const _dp = docsDe(x).map(d => d.path); if (_dp.length) await db.storage.from(BUCKET).remove(_dp);
   const { error } = await db.from('entregas_custos').delete().eq('id', id);
   if (error) { toast('❌ ' + error.message); return; }
   toast('🗑 Lançamento excluído'); carregar();
@@ -1954,7 +1987,7 @@ document.getElementById('hVer').textContent = APP_VERSION;
 document.getElementById('sbVer').textContent = APP_VERSION;
 function toggleSb(on) { document.body.classList.toggle('sbOpen', on); }
 function colapsaSb() { const m = document.body.classList.toggle('sbMini'); try { localStorage.setItem('ent_sbmini', m ? '1' : '0'); } catch {} }
-function abrirConfig() { document.body.classList.remove('sbOpen'); document.getElementById('sqlTxt').textContent = !fotosOk ? FOTOS_SQL : !veicOk ? V2_SQL : !ratOk ? RAT_SQL : SETUP_SQL; abre('ovSetup'); }
+function abrirConfig() { document.body.classList.remove('sbOpen'); document.getElementById('sqlTxt').textContent = !fotosOk ? FOTOS_SQL : !veicOk ? V2_SQL : !ratOk ? RAT_SQL : !docsOk ? DOCS_SQL : SETUP_SQL; abre('ovSetup'); }
 function abrirSobre() {
   document.body.classList.remove('sbOpen');
   alert(`Controle de Entregas AVACY — ${APP_VERSION}\n\nFrentes: Transporte Avacy, Carrinho e Agregados.\nBase de notas e usuários compartilhada com o Dashboard de Expedição.`);
