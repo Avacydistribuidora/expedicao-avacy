@@ -454,6 +454,13 @@ tr.nf-hl td { background:#fff6c7 !important; transition:background .3s; }
 .alt-status.err  { background: #f8d7da; color: #721c24; display: block; }
 .alt-status.ok   { background: #d4edda; color: #155724; display: block; }
 .alt-status.info { background: #cce5ff; color: #004085; display: block; }
+/* V3.3 — Editar cabeçalho da carreta */
+.ed-modal { width: 640px !important; }
+.ed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.ed-grid .fg label { margin-bottom: 4px; font-size: 11px; }
+.ed-grid input { width: 100%; padding: 8px 10px; font-size: 13px; border: 1px solid var(--borda); border-radius: 6px; font-family: inherit; }
+.ed-grid input:focus { outline: none; border-color: var(--azul-medio); box-shadow: 0 0 0 3px rgba(46,117,182,.15); }
+.ed-grid input.changed { border-color: #e67e22; background: #fff8ef; }
 </style>
 </head>
 <body>
@@ -646,6 +653,37 @@ tr.nf-hl td { background:#fff6c7 !important; transition:background .3s; }
   </div>
 </div>
 
+<!-- MODAL EDITAR CABEÇALHO DA CARRETA (V3.3) -->
+<div class="alt-overlay" id="edOverlay">
+  <div class="alt-modal ed-modal">
+    <div class="alt-modal-header">
+      📝 Editar Cabeçalho — <span id="edTitulo"></span>
+      <button class="close-btn" onclick="fecharModalEditar()">✕</button>
+    </div>
+    <div class="alt-modal-body">
+      <div class="ed-grid" oninput="if(event.target.tagName==='INPUT')edMarcar(event.target)">
+        <div class="fg"><label>Nº da Carreta</label><input type="number" id="ed_num" min="1"></div>
+        <div class="fg"><label>Data da Programação</label><input type="date" id="ed_data"></div>
+        <div class="fg"><label>Transportadora</label><input type="text" id="ed_transportadora"></div>
+        <div class="fg"><label>Frete (R$)</label><input type="text" id="ed_frete" placeholder="Ex: 15.300,00"></div>
+        <div class="fg"><label>DT Coleta</label><input type="date" id="ed_dtColeta"></div>
+        <div class="fg"><label>DT Entrega</label><input type="date" id="ed_dtEntrega"></div>
+        <div class="fg"><label>DT Sistema</label><input type="date" id="ed_dtSistema"></div>
+        <div class="fg"><label>Seguiu Viagem</label><input type="date" id="ed_seguiuViagem"></div>
+        <div class="fg"><label>Shipment</label><input type="text" id="ed_shipment"></div>
+        <div class="fg"><label>Placa</label><input type="text" id="ed_placa"></div>
+        <div class="fg"><label>Vol M³</label><input type="text" id="ed_volM3" placeholder="Ex: 42,50"></div>
+      </div>
+      <div class="alt-modal-info">ℹ️ Altera apenas os dados do cabeçalho. As NFs da carreta não são modificadas.</div>
+      <div class="alt-status" id="edStatus"></div>
+    </div>
+    <div class="alt-modal-footer">
+      <button class="btn btn-ghost" onclick="fecharModalEditar()">Cancelar</button>
+      <button class="btn btn-primary" id="btnConfirmarEd" onclick="confirmarEditar()">💾 Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL ALTERAR Nº CARRETA -->
 <div class="alt-overlay" id="altOverlay">
   <div class="alt-modal">
@@ -678,7 +716,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 // ════════════════════════════════════════════════════════════════════════════
 // ── VERSÃO — atualizar a cada deploy no GitHub ─────────────────────────────
 // ════════════════════════════════════════════════════════════════════════════
-const APP_VERSION     = 'V3.2';               // ← atualizar a cada deploy
+const APP_VERSION     = 'V3.3';               // ← atualizar a cada deploy
 const GITHUB_REPO     = 'Avacydistribuidora/expedicao-avacy';
 const GITHUB_FILE     = 'Extrator_DANFE.html';
 
@@ -1018,6 +1056,7 @@ function renderDetalheCarreta(c) {
       <button class="btn btn-ghost" onclick="toggleAcoes(event)">⚙️ Mais ações ▾</button>
       <div class="acoes-menu" id="acoesMenu">
         <button onclick="fecharAcoes();copiarCarreta('${c.id}')">📋 Copiar p/ Planilha</button>
+        <button onclick="fecharAcoes();abrirModalEditar('${c.id}')">📝 Editar cabeçalho (frete, datas…)</button>
         <button onclick="fecharAcoes();abrirModalAlterar('${c.id}')">✏️ Alterar Nº da carreta</button>
         <button onclick="fecharAcoes();abrirModalDocs()">📎 Importar XML / DANFE</button>
         <button onclick="fecharAcoes();preencherRemessasCarreta()">🔄 Preencher Remessas</button>
@@ -1049,6 +1088,124 @@ async function excluirCarreta(id) {
   showTab('tab-carregar');
   renderSidebar();
 }
+
+// ── EDITAR CABEÇALHO DA CARRETA (V3.3) ────────────────────────────────────────
+let _edId = null, _edOrig = {};
+const ED_CAMPOS = ['num','data','transportadora','frete','dtColeta','dtEntrega','dtSistema','seguiuViagem','shipment','placa','volM3'];
+
+function edFmtFrete(v) {
+  return (parseFloat(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function edMarcar(inp) {
+  const k = inp.id.replace('ed_', '');
+  inp.classList.toggle('changed', (inp.value || '') !== (_edOrig[k] || ''));
+}
+
+function abrirModalEditar(id) {
+  const c = getCarretas().find(x => x.id === id);
+  if (!c) return;
+  _edId = id;
+  _edOrig = {};
+  ED_CAMPOS.forEach(k => {
+    let v = c[k];
+    if (k === 'frete') v = edFmtFrete(v);
+    v = (v === null || v === undefined) ? '' : String(v);
+    if (['data','dtColeta','dtEntrega','dtSistema','seguiuViagem'].includes(k)) v = v.slice(0, 10);
+    _edOrig[k] = v;
+    const inp = document.getElementById('ed_' + k);
+    inp.value = v; inp.classList.remove('changed');
+  });
+  document.getElementById('edTitulo').textContent = c.num + 'ª Carreta';
+  const st = document.getElementById('edStatus');
+  st.className = 'alt-status'; st.textContent = '';
+  document.getElementById('btnConfirmarEd').disabled = false;
+  document.getElementById('edOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('ed_frete').focus(), 80);
+}
+
+function fecharModalEditar() {
+  document.getElementById('edOverlay').classList.remove('open');
+  _edId = null;
+}
+
+async function confirmarEditar() {
+  const st = document.getElementById('edStatus');
+  st.className = 'alt-status'; st.textContent = '';
+  const c = getCarretas().find(x => x.id === _edId);
+  if (!c) { fecharModalEditar(); return; }
+
+  const g = k => document.getElementById('ed_' + k).value.trim();
+  const novo = {
+    num:            parseInt(g('num')),
+    data:           g('data'),
+    transportadora: g('transportadora'),
+    frete:          parseBR(g('frete').replace(/[^\d,]/g, '')),
+    dtColeta:       g('dtColeta'),
+    dtEntrega:      g('dtEntrega'),
+    dtSistema:      g('dtSistema'),
+    seguiuViagem:   g('seguiuViagem'),
+    shipment:       g('shipment'),
+    placa:          g('placa'),
+    volM3:          g('volM3'),
+  };
+
+  if (!novo.num || novo.num < 1) { st.className = 'alt-status err'; st.textContent = '⚠️ Informe um Nº de carreta válido.'; return; }
+  if (!novo.data) { st.className = 'alt-status err'; st.textContent = '⚠️ A Data da Programação é obrigatória.'; return; }
+  const dup = getCarretas().find(x => x.num === novo.num && x.id !== _edId);
+  if (dup) { st.className = 'alt-status err'; st.textContent = `⚠️ Já existe a ${novo.num}ª Carreta cadastrada (${fmtData(dup.data)}).`; return; }
+
+  document.getElementById('btnConfirmarEd').disabled = true;
+  st.className = 'alt-status info'; st.textContent = '⏳ Salvando…';
+
+  try {
+    if (db) {
+      const { error } = await db.from('carretas').update({
+        num: novo.num, data: novo.data,
+        transportadora: novo.transportadora || null, frete: novo.frete || 0,
+        dt_coleta:     novo.dtColeta     || null, dt_entrega: novo.dtEntrega || null,
+        dt_sistema:    novo.dtSistema    || null, seguiu_viagem: novo.seguiuViagem || null,
+        shipment: novo.shipment || null, placa: novo.placa || null, vol_m3: novo.volM3 || null,
+      }).eq('id', _edId);
+      if (error) throw error;
+    }
+    const idx = carretasCache.findIndex(x => x.id === _edId);
+    if (idx !== -1) {
+      carretasCache[idx] = { ...carretasCache[idx], ...novo };
+      carretasCache.sort((a, b) => a.num - b.num);
+    }
+    if (!db) localStorage.setItem('fob_carretas', JSON.stringify(carretasCache));
+
+    st.className = 'alt-status ok';
+    st.textContent = '✅ Cabeçalho atualizado com sucesso!';
+
+    const id = _edId;
+    renderSidebar();
+    const cAtual = carretasCache.find(x => x.id === id);
+    if (cAtual) {
+      document.getElementById('tab-carreta-label').textContent = `${cAtual.num}ª Carreta`;
+      renderDetalheCarreta(cAtual);
+      document.querySelectorAll('.carreta-item').forEach(el => el.classList.remove('active'));
+      const el = document.querySelector(`.carreta-item[data-id="${id}"]`);
+      if (el) el.classList.add('active');
+    }
+    setTimeout(fecharModalEditar, 1000);
+  } catch(e) {
+    document.getElementById('btnConfirmarEd').disabled = false;
+    st.className = 'alt-status err';
+    st.textContent = '❌ Erro ao salvar: ' + (e.message || e);
+  }
+}
+
+document.addEventListener('click', e => {
+  const ov = document.getElementById('edOverlay');
+  if (ov && ov.classList.contains('open') && e.target === ov) fecharModalEditar();
+});
+document.addEventListener('keydown', e => {
+  const ov = document.getElementById('edOverlay');
+  if (!ov || !ov.classList.contains('open')) return;
+  if (e.key === 'Escape') fecharModalEditar();
+  if (e.key === 'Enter' && e.target.tagName === 'INPUT') confirmarEditar();
+});
 
 // ── ALTERAR Nº DA CARRETA ─────────────────────────────────────────────────────
 let _altId = null;
