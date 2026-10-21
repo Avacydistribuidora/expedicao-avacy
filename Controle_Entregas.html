@@ -163,6 +163,19 @@ td.c,th.c{text-align:center}
 #ovGal .modal{width:900px}
 .gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
 .gal img{width:100%;border-radius:8px;cursor:zoom-in}
+/* v3.0: anexos sem limite + pré-visualização em galeria */
+#ovGal,#ovCam{z-index:260}
+.gal>a{display:block;align-self:start}
+.galDoc{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#f6f8fc;text-decoration:none;color:var(--text);align-self:start}
+.galDoc iframe{width:100%;height:260px;border:0;background:#fff;pointer-events:none}
+.galDoc .gi{height:180px;display:flex;align-items:center;justify-content:center;font-size:54px}
+.galDoc .gn{padding:7px 9px;font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-top:1px solid var(--border);background:#fff}
+.galDoc .gn small{display:block;font-weight:400;color:var(--muted)}
+.fotos .ft.doc{display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;padding:4px;text-align:center}
+.fotos .ft.doc i{font-style:normal;font-size:26px}
+.fotos .ft.doc em{font-style:normal;font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase}
+.fotos .ft.doc span{font-size:9px;color:var(--muted);width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fotos .ft.novo{outline:2px solid var(--teal);outline-offset:-2px}
 /* v1.2 */
 .tag.fin{background:#e3f6ea;color:#15803d}.tag.pend{background:#fff4e0;color:#b45309}
 .vgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 16px;margin-bottom:12px}
@@ -402,8 +415,7 @@ table.km td.n{min-width:70px}
         <div class="f w2"><label>Data <span class="req">*</span></label><input type="date" id="cData"></div>
         <div class="f w2"><label>Valor (R$) <span class="req">*</span></label><input id="cValor" inputmode="decimal" placeholder="0,00"></div>
         <div class="f w4"><label>Descrição</label><input id="cDesc" placeholder="Ex.: Posto Shell — placa ABC1D23 / Pedágio Rod. Anhanguera"></div>
-        <div class="f w4"><label>Comprovantes (PDF ou imagem) — pode selecionar vários</label><input type="file" id="cArq" accept=".pdf,image/*" multiple onchange="renderDocsKeep()">
-          <div id="cArqAtual" style="font-size:11.5px;color:var(--muted);display:flex;flex-direction:column;gap:3px;margin-top:4px"></div></div>
+        <div class="f w4" id="cArqWrap"></div>
       </div>
     </div>
     <div class="mf">
@@ -490,7 +502,7 @@ table.km td.n{min-width:70px}
 // ══════════════════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v2.9';
+const APP_VERSION = 'v3.0';
 const SB_URL = 'https://wureelywtpcdxbmyblqj.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const BUCKET = 'entregas-docs';
@@ -1631,40 +1643,101 @@ function docsCell(tab, x) {
   const n = docsDe(x).length; if (!n) return '';
   return `<button class="btn sm" title="${esc(docsDe(x).map(d => d.nome).join('\n'))}" onclick="verDocs('${tab}','${x.id}')">📎${n > 1 ? ' ' + n : ''}</button>`;
 }
+// v3.0: tipo do anexo pela extensão/mime
+const _IMG_RE = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
+function docEhImg(d) { return /^image\/(jpeg|png|gif|webp|bmp|avif)/.test(d?.tipo || d?.type || '') || _IMG_RE.test(d?.nome || d?.name || d?.path || ''); }
+function docEhPdf(d) { return /pdf/.test(d?.tipo || d?.type || '') || /\.pdf$/i.test(d?.nome || d?.name || d?.path || ''); }
+function docExt(d) { const m = String(d?.nome || d?.name || d?.path || '').match(/\.([a-z0-9]{1,5})$/i); return m ? m[1].toUpperCase() : 'ARQ'; }
+function docIco(d) { const e = docExt(d); return docEhPdf(d) ? '📕' : /XLSX?|CSV|ODS/.test(e) ? '📊' : /DOCX?|ODT|TXT|RTF/.test(e) ? '📝' : /ZIP|RAR|7Z/.test(e) ? '🗜' : /MP4|MOV|AVI|3GP|WEBM/.test(e) ? '🎬' : /HEIC|HEIF/.test(e) ? '🖼' : '📄'; }
+// v3.0: pré-visualização em galeria (mesmo visual das fotos da entrega)
+async function docsGaleria(titulo, L) {
+  if (!L?.length) return;
+  document.getElementById('galTit').textContent = titulo;
+  const box = document.getElementById('galBox'); box.innerHTML = 'Carregando…'; abre('ovGal');
+  const urls = await Promise.all(L.map(d => d.file ? Promise.resolve(URL.createObjectURL(d.file))
+    : db.storage.from(BUCKET).createSignedUrl(d.path, 600).then(r => r.data?.signedUrl)));
+  box.innerHTML = L.map((d, i) => {
+    const u = urls[i]; if (!u) return '';
+    if (docEhImg(d)) return `<a href="${u}" target="_blank" title="${esc(d.nome || d.name || '')}"><img src="${u}" alt=""></a>`;
+    const nome = esc(d.nome || d.name || 'arquivo');
+    const prev = docEhPdf(d) ? `<iframe src="${u}#toolbar=0&navpanes=0&view=FitH" loading="lazy"></iframe>` : `<div class="gi">${docIco(d)}</div>`;
+    return `<a class="galDoc" href="${u}" target="_blank" title="Abrir ${nome}">${prev}<div class="gn">${nome}<small>${docExt(d)} · clique para abrir</small></div></a>`;
+  }).join('');
+}
 function verDocs(tab, id) {
   const x = (_docsFonte[tab]?.() || []).find(r => r.id === id); const L = docsDe(x);
   if (!L.length) return;
-  if (L.length === 1) return abrirDoc(L[0].path);
-  formModal(`📎 Comprovantes (${L.length})`, `<div style="display:flex;flex-direction:column;gap:8px">${L.map(d =>
-    `<button class="btn" style="justify-content:flex-start;text-align:left" onclick="abrirDoc('${esc(d.path)}')">📄 ${esc(d.nome)}</button>`).join('')}</div>`, async () => true);
+  let t = `📎 Anexos (${L.length})`;
+  if (tab === 'veiculos_diario') { const V = veiculos.find(v => v.id === x.veiculo_id); t = `📎 Anexos — ${V?.placa || 'Veículo'}${x.data ? ' · ' + x.data.split('-').reverse().join('/') : ''}`; }
+  else if (x?.descricao || x?.categoria) t = `📎 Anexos — ${x.categoria || ''}${x.descricao ? ' · ' + x.descricao : ''}`;
+  docsGaleria(t, L);
 }
-// editor: input múltiplo + lista dos já anexados (com ✕ para remover)
-function docsEditor(inputId, x, label = 'Comprovantes (opcional) — pode selecionar vários') {
-  _docsKeep = docsDe(x); _docsBox = inputId + 'Lista';
+// v3.0: editor SEM LIMITE — qualquer tipo de arquivo, quantos quiser, em várias rodadas (câmera ou arquivo)
+let _docsNovos = [], _docsInput = '';
+function docsEditorInner(inputId, label) {
+  return `<label>${label}</label>
+    <input type="file" id="${inputId}" multiple style="display:none" onchange="docsAdd(this.files);this.value=''">
+    <input type="file" id="${inputId}Cam" accept="image/*" capture="environment" style="display:none" onchange="docsAdd(this.files);this.value=''">
+    <div class="fotos" id="${inputId}Lista"></div>
+    <div id="${inputId}Msg" style="font-size:11px;color:var(--muted);margin-top:4px"></div>`;
+}
+function docsEditor(inputId, x, label = 'Comprovantes / fotos (opcional) — sem limite de arquivos') {
+  _docsKeep = docsDe(x); _docsNovos = []; _docsInput = inputId; _docsBox = inputId + 'Lista';
   setTimeout(renderDocsKeep, 0);
-  return `<div class="f w4"><label>${label}</label><input type="file" id="${inputId}" accept=".pdf,image/*" multiple onchange="renderDocsKeep()">
-    <div id="${_docsBox}" style="font-size:11.5px;color:var(--muted);display:flex;flex-direction:column;gap:3px;margin-top:4px"></div></div>`;
+  return `<div class="f w4" id="${inputId}Wrap">${docsEditorInner(inputId, label)}</div>`;
 }
-function docsPrep(boxId, x) { _docsKeep = docsDe(x); _docsBox = boxId; renderDocsKeep(); }
+function docsMontar(inputId, x, label = 'Comprovantes / fotos — sem limite de arquivos') {
+  document.getElementById(inputId + 'Wrap').innerHTML = docsEditorInner(inputId, label);
+  _docsKeep = docsDe(x); _docsNovos = []; _docsInput = inputId; _docsBox = inputId + 'Lista'; renderDocsKeep();
+}
+function docsPrep(boxId, x) { _docsKeep = docsDe(x); _docsNovos = []; _docsBox = boxId; renderDocsKeep(); }
+function docsAdd(files) { _docsNovos.push(...Array.from(files || [])); renderDocsKeep(); }
+function docsClica(modo) {
+  if (modo === 'arq') { document.getElementById(_docsInput)?.click(); return; }
+  const touch = matchMedia('(pointer:coarse)').matches;
+  if (touch || !navigator.mediaDevices?.getUserMedia) { document.getElementById(_docsInput + 'Cam')?.click(); return; }
+  _camCb = f => docsAdd(f); abrirCam();
+}
+function docsVerTodos(i) {
+  const L = [..._docsKeep, ..._docsNovos.map(f => ({ file: f, name: f.name, type: f.type }))];
+  const k = L.splice(i, 1); docsGaleria(`📎 Anexos (${L.length + 1})`, [...k, ...L]);
+}
+function _tileDoc(d, i, novo) {
+  const nome = esc(d.nome || d.name || 'arquivo');
+  const rm = novo ? `_docsNovos.splice(${i - _docsKeep.length},1)` : `_docsKeep.splice(${i},1)`;
+  const x = `<button type="button" title="Remover este anexo" onclick="event.stopPropagation();${rm};renderDocsKeep()">✕</button>`;
+  if (docEhImg(d)) return `<div class="ft${novo ? ' novo' : ''}" title="${nome}"><img ${novo ? `src="${URL.createObjectURL(d)}"` : `data-p="${esc(d.path)}"`} onclick="docsVerTodos(${i})" alt="">${x}</div>`;
+  return `<div class="ft doc${novo ? ' novo' : ''}" title="${nome}" onclick="docsVerTodos(${i})"><i>${docIco(d)}</i><em>${docExt(d)}</em><span>${nome}</span>${x}</div>`;
+}
 function renderDocsKeep() {
   const el = document.getElementById(_docsBox); if (!el) return;
-  const inp = document.getElementById(_docsBox.replace(/Lista$|Atual$/, ''));
-  const novos = inp?.files ? [...inp.files] : [];
-  el.innerHTML = _docsKeep.map((d, i) => `<span>📄 <a href="#" onclick="abrirDoc('${esc(d.path)}');return false">${esc(d.nome)}</a>
-      <button type="button" class="btn sm" style="padding:0 6px;margin-left:6px;color:#c0392b" title="Remover este anexo" onclick="_docsKeep.splice(${i},1);renderDocsKeep()">✕</button></span>`).join('')
-    + novos.map(f => `<span style="color:var(--teal)">➕ ${esc(f.name)} <i>(novo)</i></span>`).join('')
-    + (!docsOk && _docsKeep.length + novos.length > 1 ? '<span style="color:#c0392b">⚠ Rode o SQL da v2.9 para salvar mais de um comprovante — só o primeiro será mantido.</span>' : '');
+  const k = _docsKeep.length;
+  el.innerHTML = _docsKeep.map((d, i) => _tileDoc(d, i, false)).join('')
+    + _docsNovos.map((f, j) => _tileDoc(f, k + j, true)).join('')
+    + `<div class="fotoAdd cam" onclick="docsClica('cam')"><b>📷</b>Câmera</div><div class="fotoAdd" onclick="docsClica('arq')"><b>📎</b>Arquivo</div>`;
+  el.querySelectorAll('img[data-p]').forEach(async im => { const { data } = await db.storage.from(BUCKET).createSignedUrl(im.dataset.p, 600); if (data) im.src = data.signedUrl; });
+  const msg = document.getElementById(_docsBox.replace(/Lista$/, 'Msg'));
+  if (msg) msg.innerHTML = (k + _docsNovos.length ? `${k + _docsNovos.length} anexo(s)${_docsNovos.length ? ` — <b style="color:var(--teal)">${_docsNovos.length} novo(s)</b>, enviados ao confirmar` : ''}. ` : '')
+    + 'Fotos, PDF, planilhas ou qualquer arquivo — pode adicionar quantos quiser, em várias vezes. Clique na miniatura para ver.'
+    + (!docsOk && k + _docsNovos.length > 1 ? '<br><span style="color:#c0392b">⚠ Rode o SQL da v2.9 para salvar mais de um comprovante — só o primeiro será mantido.</span>' : '');
 }
 // envia os novos arquivos e grava a lista no row (mantém comprovante_path = 1º para compatibilidade)
 async function docsSalvar(inputId, pasta, row) {
-  const files = [...(document.getElementById(inputId)?.files || [])];
+  const files = [..._docsNovos];
   const L = [..._docsKeep];
   for (const file of files) {
-    const path = `${pasta}/${Date.now()}_${Math.random().toString(36).slice(2, 6)}_${file.name.normalize('NFD').replace(/[^\w.\-]+/g, '_')}`;
-    const up = await db.storage.from(BUCKET).upload(path, file, { upsert: true, contentType: file.type || undefined });
-    if (up.error) throw up.error;
-    L.push({ path, nome: file.name });
+    let blob = file, nome = file.name || 'arquivo';
+    // fotos grandes são reduzidas (1600px) só para acelerar o envio — PDFs e demais arquivos vão como estão
+    if (/^image\/(jpeg|png|webp|bmp)$/.test(file.type) && file.size > 600 * 1024) {
+      blob = await comprimirFoto(file); if (blob !== file) nome = nome.replace(/\.[^.]+$/, '') + '.jpg';
+    }
+    const path = `${pasta}/${Date.now()}_${Math.random().toString(36).slice(2, 6)}_${nome.normalize('NFD').replace(/[^\w.\-]+/g, '_')}`;
+    const tipo = blob.type || file.type || 'application/octet-stream';
+    const up = await db.storage.from(BUCKET).upload(path, blob, { upsert: true, contentType: tipo });
+    if (up.error) throw new Error(`${nome}: ${up.error.message}`);
+    L.push({ path, nome, tipo });
   }
+  _docsNovos = [];
   row.comprovante_path = L[0]?.path || null; row.comprovante_nome = L[0]?.nome || null;
   if (docsOk) row.comprovantes = L;
   return L.length;
@@ -1720,22 +1793,22 @@ function clicaFoto(modo) {
   if (touch || !navigator.mediaDevices?.getUserMedia) { document.getElementById('eFotoIn').click(); return; }
   abrirCam();
 }
-let _camStream = null;
+let _camStream = null, _camCb = null;   // v3.0: _camCb = destino da foto (anexos); padrão = fotos da entrega
 async function abrirCam() {
   try {
     _camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
     const vid = document.getElementById('camVid'); vid.srcObject = _camStream; abre('ovCam'); await vid.play();
-  } catch (e) { fecharCam(); toast('⚠ Não foi possível abrir a câmera — escolha um arquivo.', 3500); document.getElementById('eFotoArq').click(); }
+  } catch (e) { const cb = _camCb; fecharCam(); _camCb = null; toast('⚠ Não foi possível abrir a câmera — escolha um arquivo.', 3500); document.getElementById(cb ? _docsInput : 'eFotoArq')?.click(); }
 }
 function fecharCam() {
   if (_camStream) { _camStream.getTracks().forEach(t => t.stop()); _camStream = null; }
-  document.getElementById('camVid').srcObject = null; fecha('ovCam');
+  document.getElementById('camVid').srcObject = null; fecha('ovCam'); _camCb = null;
 }
 function capturarCam() {
   const vid = document.getElementById('camVid'); if (!vid.videoWidth) return;
   const cv = document.createElement('canvas'); cv.width = vid.videoWidth; cv.height = vid.videoHeight;
   cv.getContext('2d').drawImage(vid, 0, 0);
-  cv.toBlob(b => { if (!b) return; fecharCam(); addFotos([new File([b], `camera_${Date.now()}.jpg`, { type: 'image/jpeg' })]); }, 'image/jpeg', 0.9);
+  cv.toBlob(b => { if (!b) return; const cb = _camCb || addFotos; _camCb = null; fecharCam(); cb([new File([b], `camera_${Date.now()}.jpg`, { type: 'image/jpeg' })]); }, 'image/jpeg', 0.9);
 }
 function excluirFotoExist(i) {
   if (!isAdmin()) return;
@@ -1869,7 +1942,7 @@ function novoCusto(fr, tipo) {
   const hoje = hojeISO();
   document.getElementById('cData').value = hoje.slice(0, 7) === mes ? hoje : mes + '-01';
   ['cValor', 'cDesc'].forEach(i => document.getElementById(i).value = '');
-  document.getElementById('cArq').value = ''; docsPrep('cArqAtual', null);
+  docsMontar('cArq', null);
   abre('ovCus');
 }
 function editarCusto(id) {
@@ -1881,14 +1954,13 @@ function editarCusto(id) {
   document.getElementById('cData').value = x.data || mes + '-01';
   document.getElementById('cValor').value = String(x.valor ?? '').replace('.', ',');
   document.getElementById('cDesc').value = x.descricao || '';
-  document.getElementById('cArq').value = '';
-  docsPrep('cArqAtual', x);
+  docsMontar('cArq', x);
   abre('ovCus');
 }
 async function salvarCusto() {
   const tipo = document.getElementById('cTipo').value, cat = document.getElementById('cCat').value;
   const data = document.getElementById('cData').value, valor = num(document.getElementById('cValor').value);
-  const desc = document.getElementById('cDesc').value.trim(), nArq = document.getElementById('cArq').files.length;
+  const desc = document.getElementById('cDesc').value.trim(), nArq = _docsNovos.length;
   if (!data || !valor) { toast('⚠ Informe data e valor.'); return; }
   if (tipo === 'despesa' && !nArq && !_docsKeep.length && !confirm('Despesa sem comprovante. Salvar mesmo assim?')) return;
   const btn = document.getElementById('cSalvar'); btn.disabled = true;
