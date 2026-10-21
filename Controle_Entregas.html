@@ -318,6 +318,7 @@ table.km td.n{min-width:70px}
     <div class="sbSec adm-only">Administração</div>
     <button class="nav-it adm-only" data-t="veiculos" onclick="setTab('veiculos')"><i><svg viewBox="0 0 24 24"><path d="M5 17h14M5 17a2 2 0 1 0 4 0M15 17a2 2 0 1 0 4 0M3 17V11l2-5h11l3 5h2v6"/><path d="M8 6v5M3 11h18"/></svg></i><span class="lb">Veículos</span></button>
     <button class="nav-it adm-only" data-t="custos" onclick="setTab('custos')"><i><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="13" rx="2"/><circle cx="12" cy="12.5" r="3"/><path d="M6 6V4h12v2"/></svg></i><span class="lb">Custos</span></button>
+    <button class="nav-it adm-only" data-t="rateios" onclick="setTab('rateios')"><i><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a5 5 0 0 1 5-5h4"/><path d="M18 13l4 1.5v3c0 2.5-4 4-4 4s-4-1.5-4-4v-3z"/></svg></i><span class="lb">Pessoal &amp; Seguros</span></button>
     <button class="nav-it adm-only" onclick="abrirConfig()"><i><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></i><span class="lb">Configurações</span></button>
     <button class="nav-it" onclick="abrirSobre()"><i><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></i><span class="lb">Sobre</span></button>
   </nav>
@@ -489,7 +490,7 @@ table.km td.n{min-width:70px}
 // ══════════════════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v2.7';
+const APP_VERSION = 'v2.8';
 const SB_URL = 'https://wureelywtpcdxbmyblqj.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const BUCKET = 'entregas-docs';
@@ -534,6 +535,23 @@ alter table veiculos enable row level security;
 alter table veiculos_diario enable row level security;
 create policy "allow_all" on veiculos for all using (true) with check (true);
 create policy "allow_all" on veiculos_diario for all using (true) with check (true);`;
+const RAT_SQL = `-- v2.8: Pessoal (salários + benefícios) e Seguros/rateios com vigência — rode UMA vez no Supabase → SQL Editor
+create table if not exists entregas_rateios (
+  id uuid primary key default gen_random_uuid(),
+  tipo text not null,                   -- pessoal | rateio
+  frente text default 'avacy',          -- avacy | carrinho | agregados | operacao
+  veiculo_id uuid references veiculos(id) on delete set null,
+  nome text, funcao text, categoria text, fornecedor text, apolice text,
+  salario numeric default 0, beneficios numeric default 0,   -- pessoal: valores mensais
+  valor_total numeric default 0,                             -- rateio: valor total da vigência
+  inicio date not null, fim date,                            -- vigência (fim vazio = ativo)
+  obs text, comprovante_path text, comprovante_nome text,
+  criado_por text, criado_em timestamptz default now()
+);
+alter table entregas_rateios enable row level security;
+create policy "allow_all" on entregas_rateios for all using (true) with check (true);`;
+const CATS_RAT = ['Seguro do veículo', 'IPVA / Licenciamento', 'Rastreador / Telemetria', '13º / Férias / Benefício anual', 'Outros'];
+const FUNCOES = ['Motorista', 'Ajudante', 'Conferente', 'Entregador', 'Outro'];
 const FOTOS_SQL = `-- v1.1: fotos nas entregas — rode uma vez no Supabase → SQL Editor
 alter table entregas add column if not exists fotos jsonb default '[]'::jsonb;`;
 const SETUP_SQL = `-- Controle de Entregas — rode UMA vez no Supabase → SQL Editor
@@ -586,6 +604,7 @@ let entregas = [], custos = [], contagemMeses = {};
 let filtros = { busca: '', so: '', resp: '' };
 let _nfAtual = null, _editEnt = null, _editCus = null, _cusFrente = null;
 let veiculos = [], vdiario = [], veicOk = true, _veicSel = null, _editVd = null, _editV = null, _editOp = null, operFiltro = '';
+let rateios = [], ratOk = true, _editRat = null;
 let fotosOk = true, _fotosNovas = [], _fotosExist = [], agregadosLista = [], _agregadoAtual = '', _pendRec = null;
 
 // ══════════════════════════════════════════════════════════════
@@ -702,6 +721,9 @@ async function carregar() {
     ]);
     veicOk = !v.error && !vd.error;
     veiculos = v.data || []; vdiario = vd.data || [];
+    // v2.8: pessoal e seguros/rateios (não dependem da competência — vigência)
+    const rt = await db.from('entregas_rateios').select('*').order('inicio', { ascending: false });
+    ratOk = !rt.error; rateios = rt.data || [];
     contagemMeses = {}; (cm.data || []).forEach(r => contagemMeses[r.competencia] = (contagemMeses[r.competencia] || 0) + 1);
     dot('ok');
   } catch (err) { dot('err'); toast('❌ Erro ao carregar: ' + (err.message || err), 4000); }
@@ -718,7 +740,7 @@ function renderMeses() {
   }).join('');
 }
 function setTab(t) {
-  if (isOper() && ['geral', 'veiculos', 'custos'].includes(t)) t = 'avacy';
+  if (isOper() && ['geral', 'veiculos', 'custos', 'rateios'].includes(t)) t = 'avacy';
   aba = t;
   if (isOper()) { try { localStorage.setItem('ent_frente', t); } catch {} }
   document.querySelectorAll('.nav-it[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === t));
@@ -740,9 +762,15 @@ function resumo(fr) {
   // v2.0: custos de veículos (pela frente do veículo) e custos operacionais (só no geral)
   const vids = new Set(veiculos.filter(v => !fr || (v.frente || 'avacy') === fr).map(v => v.id));
   const veic = vdiario.filter(d => vids.has(d.veiculo_id)).reduce((s, d) => s + custoDia(d), 0);
-  const total = fixo + desp + varEnt + veic;
+  // v2.8: pessoal (salário + benefícios) e seguros/rateios proporcionais ao mês
+  const R = rateios.filter(x => !fr || ratFrente(x) === fr);
+  const pess = R.filter(x => x.tipo === 'pessoal').reduce((s, x) => s + ratMes(x, mes), 0);
+  const seg  = R.filter(x => x.tipo === 'rateio').reduce((s, x) => s + ratMes(x, mes), 0);
+  const fixoLanc = fixo;
+  const fixoT = fixo + pess + seg;
+  const total = fixoT + desp + varEnt + veic;
   return { E, C, n: E.length, vol: E.reduce((s, x) => s + (x.volume || 0), 0), div: E.filter(x => x.divergencia).length,
-           fixo, desp, varEnt, veic, total, porEnt: E.length ? total / E.length : 0 };
+           fixo: fixoT, fixoLanc, pess, seg, desp, varEnt, veic, total, porEnt: E.length ? total / E.length : 0 };
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -752,7 +780,7 @@ function render() {
   ['avacy', 'carrinho', 'agregados'].forEach(f => document.getElementById('pl-' + f).textContent =
     isOper() ? entregas.filter(x => x.frente === f && minha(x) && !finalizada(x)).length : entregas.filter(x => x.frente === f).length);
   document.getElementById('pl-geral').textContent = entregas.length;
-  document.getElementById('main').innerHTML = isVend() ? htmlVendedor() : isOper() ? htmlOperador() : aba === 'geral' ? htmlGeral() : aba === 'veiculos' ? htmlVeiculos() : aba === 'custos' ? htmlCustosOper() : htmlFrente(aba);
+  document.getElementById('main').innerHTML = isVend() ? htmlVendedor() : isOper() ? htmlOperador() : aba === 'geral' ? htmlGeral() : aba === 'veiculos' ? htmlVeiculos() : aba === 'custos' ? htmlCustosOper() : aba === 'rateios' ? htmlRateios() : htmlFrente(aba);
 }
 
 // v1.2: entrega finalizada = tem foto do comprovante de entrega
@@ -762,7 +790,7 @@ function kpis(r, cor) {
     <div class="kpi" style="border-left-color:${cor}"><div class="l">Entregas</div><div class="v">${int(r.n)}</div><div class="s">${int(r.E.filter(finalizada).length)} finalizada(s) · ${int(r.E.filter(x => !finalizada(x)).length)} pendente(s)</div></div>
     <div class="kpi" style="border-left-color:${cor}"><div class="l">Volumes entregues</div><div class="v">${int(r.vol)}</div></div>
     <div class="kpi" style="border-left-color:${r.div ? '#c0392b' : cor}"><div class="l">Divergências de volume</div><div class="v" style="color:${r.div ? '#c0392b' : 'inherit'}">${int(r.div)}</div></div>
-    <div class="kpi" style="border-left-color:var(--teal)"><div class="l">Custos fixos</div><div class="v">${brl(r.fixo)}</div></div>
+    <div class="kpi" style="border-left-color:var(--teal)"><div class="l">Custos fixos</div><div class="v">${brl(r.fixo)}</div>${r.pess || r.seg ? `<div class="s">pessoal ${brl(r.pess)} · seguros/rateios ${brl(r.seg)}</div>` : ''}</div>
     <div class="kpi" style="border-left-color:#b45309"><div class="l">Despesas</div><div class="v">${brl(r.desp + r.veic)}</div><div class="s">${r.veic ? 'veículos ' + brl(r.veic) + ' · ' : ''}+ ${brl(r.varEnt)} nas entregas</div></div>
     <div class="kpi" style="border-left-color:var(--red)"><div class="l">Custo total</div><div class="v">${brl(r.total)}</div><div class="s">${r.n ? brl(r.porEnt) + ' por entrega' : '—'}</div></div>
   </div>`;
@@ -929,6 +957,8 @@ function htmlGeral() {
   const cats = {}; custos.forEach(x => { const k = (x.tipo === 'fixo' ? 'Fixo · ' : '') + (x.categoria || 'Outros'); cats[k] = (cats[k] || 0) + num(x.valor); });
   if (g.varEnt) cats['Custos lançados nas entregas'] = g.varEnt;
   if (g.veic) cats['Veículos (combustível, pedágio, serviços…)'] = g.veic;
+  if (g.pess) cats['Pessoal (salários + benefícios)'] = g.pess;
+  rateios.filter(x => x.tipo === 'rateio').forEach(x => { const v = ratMes(x, mes); if (v) { const k = 'Rateio · ' + (x.categoria || 'Outros'); cats[k] = (cats[k] || 0) + v; } });
   const catL = Object.entries(cats).sort((a, b) => b[1] - a[1]); const maxC = Math.max(1, ...catL.map(c => c[1]));
   return `${kpis(g, 'var(--navy)')}
   <div class="grid2">
@@ -1432,6 +1462,175 @@ async function copiarOperMesAnterior() {
   toast(`✔ ${rows.length} lançamento(s) copiado(s)`); carregar();
 }
 
+// ══════════════════════════════════════════════════════════════
+// v2.8: PESSOAL (salário + benefícios) e SEGUROS / RATEIOS com vigência
+// ══════════════════════════════════════════════════════════════
+function _dia(iso) { if (!iso) return null; const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number); return Date.UTC(y, m - 1, d) / 86400000; }
+function ratFrente(x) { if (x.veiculo_id) { const v = veiculos.find(v => v.id === x.veiculo_id); if (v && x.tipo === 'rateio') return v.frente || 'avacy'; } return x.frente || 'avacy'; }
+function ratPlaca(x) { return veiculos.find(v => v.id === x.veiculo_id)?.placa || ''; }
+function ratMeses(x) { if (!x.inicio || !x.fim) return 0; const [a, b] = [x.inicio, x.fim].map(d => d.slice(0, 7).split('-').map(Number)); return (b[0] - a[0]) * 12 + (b[1] - a[1]) + 1; }
+// Valor que cabe no mês "comp" (AAAA-MM):
+//  • pessoal → (salário + benefícios) mensal, proporcional aos dias vigentes no mês (admissão/desligamento no meio do mês)
+//  • rateio  → valor total × dias da vigência dentro do mês ÷ dias totais da vigência
+function ratMes(x, comp) {
+  const [y, m] = comp.split('-').map(Number);
+  const mIni = Date.UTC(y, m - 1, 1) / 86400000, mFim = Date.UTC(y, m, 0) / 86400000, dMes = mFim - mIni + 1;
+  const ini = _dia(x.inicio); if (ini == null) return 0;
+  const fim = _dia(x.fim);
+  if (x.tipo === 'rateio' && fim == null) return 0;
+  const a = Math.max(ini, mIni), b = Math.min(fim ?? mFim, mFim);
+  const dias = b - a + 1; if (dias <= 0) return 0;
+  if (x.tipo === 'pessoal') return (num(x.salario) + num(x.beneficios)) * dias / dMes;
+  const tot = fim - ini + 1; return tot > 0 ? num(x.valor_total) * dias / tot : 0;
+}
+function ratStatus(x) {
+  const [y, m] = mes.split('-').map(Number);
+  const mIni = Date.UTC(y, m - 1, 1) / 86400000, mFim = Date.UTC(y, m, 0) / 86400000;
+  const ini = _dia(x.inicio), fim = _dia(x.fim);
+  if (ini > mFim) return '<span class="tag despesa">A iniciar</span>';
+  if (fim != null && fim < mIni) return '<span class="tag" style="background:#eee;color:#777">Encerrado</span>';
+  return '<span class="tag fin">Vigente</span>';
+}
+function avisoRat() {
+  setTimeout(() => { const e = document.getElementById('ratsql'); if (e) e.textContent = RAT_SQL; });
+  return `<div class="card"><div class="alert warn">⚙️ Para usar <b>Pessoal &amp; Seguros</b> é preciso rodar o SQL da v2.8 uma vez no Supabase.</div>
+    <div class="sql" id="ratsql"></div><div style="margin-top:10px"><button class="btn pri" onclick="navigator.clipboard.writeText(RAT_SQL).then(()=>toast('✔ SQL copiado'))">📋 Copiar SQL</button></div></div>`;
+}
+let ratFiltro = '';
+function htmlRateios() {
+  if (!veicOk) { setTimeout(() => { const e = document.getElementById('v2sql'); if (e) e.textContent = V2_SQL; }); return avisoV2(); }
+  if (!ratOk) return avisoRat();
+  const q = ratFiltro.toLowerCase();
+  const ok = x => !q || [x.nome, x.funcao, x.categoria, x.fornecedor, x.apolice, ratPlaca(x), nomeFrente(ratFrente(x))].join(' ').toLowerCase().includes(q);
+  const P = rateios.filter(x => x.tipo === 'pessoal' && ok(x)).sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+  const S = rateios.filter(x => x.tipo === 'rateio' && ok(x));
+  const totP = P.reduce((s, x) => s + ratMes(x, mes), 0), totS = S.reduce((s, x) => s + ratMes(x, mes), 0);
+  const ativosP = P.filter(x => ratMes(x, mes) > 0);
+  const opF = v => `<span class="tag ${ratFrente(v)}">${nomeFrente(ratFrente(v))}</span>`;
+  const acoes = x => `<td class="acoes"><button class="btn sm" onclick="editarRat('${x.id}')">✏️</button><button class="btn sm" onclick="excluirRat('${x.id}')">🗑</button></td>`;
+  return `<div class="kpis">
+    <div class="kpi" style="border-left-color:var(--blue)"><div class="l">Pessoal no mês</div><div class="v">${brl(totP)}</div><div class="s">${ativosP.length} pessoa(s) vigente(s)</div></div>
+    <div class="kpi" style="border-left-color:var(--teal)"><div class="l">Salários</div><div class="v">${brl(ativosP.reduce((s, x) => s + num(x.salario) * ratMes(x, mes) / Math.max(0.01, num(x.salario) + num(x.beneficios)), 0))}</div></div>
+    <div class="kpi" style="border-left-color:#7c3aed"><div class="l">Benefícios</div><div class="v">${brl(ativosP.reduce((s, x) => s + num(x.beneficios) * ratMes(x, mes) / Math.max(0.01, num(x.salario) + num(x.beneficios)), 0))}</div></div>
+    <div class="kpi" style="border-left-color:#b45309"><div class="l">Seguros / rateios no mês</div><div class="v">${brl(totS)}</div><div class="s">${S.filter(x => ratMes(x, mes) > 0).length} vigente(s)</div></div>
+    <div class="kpi" style="border-left-color:var(--red)"><div class="l">Total rateado — ${mesNome(mes)}</div><div class="v">${brl(totP + totS)}</div><div class="s">entra nos custos fixos de cada frente</div></div>
+  </div>
+  <div class="card"><div class="tools" style="margin:0">
+    <input type="text" placeholder="🔍 Nome, função, placa, seguradora, apólice, frente…" value="${esc(ratFiltro)}" oninput="ratFiltro=this.value;render();setTimeout(()=>{const i=document.querySelector('.tools input');i.focus();i.setSelectionRange(i.value.length,i.value.length)})">
+  </div></div>
+  <div class="card"><h3>👷 Pessoal — salário + benefícios (mensal)<span class="sp"></span>
+      <button class="btn sm pri" onclick="editarRat(null,'pessoal')">+ Cadastrar motorista / ajudante</button></h3>
+    ${P.length ? `<div class="tw"><table><thead><tr><th>Nome</th><th>Função</th><th>Frente</th><th>Veículo</th><th class="n">Salário</th><th class="n">Benefícios</th><th class="n">Total mensal</th><th>Início</th><th>Fim</th><th>Situação</th><th class="n">Valor em ${MESES[+mes.slice(5) - 1]}</th><th class="acoes">Ações</th></tr></thead>
+      <tbody>${P.map(x => `<tr><td><b>${esc(x.nome || '')}</b></td><td>${esc(x.funcao || '')}</td><td>${opF(x)}</td><td>${esc(ratPlaca(x))}</td>
+        <td class="n">${brl(x.salario)}</td><td class="n">${brl(x.beneficios)}</td><td class="n">${brl(num(x.salario) + num(x.beneficios))}</td>
+        <td>${dBR(x.inicio)}</td><td>${dBR(x.fim) || '—'}</td><td>${ratStatus(x)}</td><td class="n"><b>${brl(ratMes(x, mes))}</b></td>${acoes(x)}</tr>`).join('')}</tbody>
+      <tfoot><tr><td colspan="10">${P.length} cadastro(s)</td><td class="n">${brl(totP)}</td><td></td></tr></tfoot></table></div>`
+      : '<div class="empty">Nenhum motorista/ajudante cadastrado. Clique em “+ Cadastrar motorista / ajudante”.</div>'}
+  </div>
+  <div class="card"><h3>🛡️ Seguros e outros rateios por vigência<span class="sp"></span>
+      <button class="btn sm red" onclick="editarRat(null,'rateio')">+ Cadastrar seguro / rateio</button></h3>
+    ${S.length ? `<div class="tw"><table><thead><tr><th>Categoria</th><th>Veículo</th><th>Frente</th><th>Seguradora / fornecedor</th><th>Apólice / doc.</th><th>Vigência</th><th class="n">Meses</th><th class="n">Valor total</th><th class="n">≈ por mês</th><th>Situação</th><th class="n">Valor em ${MESES[+mes.slice(5) - 1]}</th><th class="c">📎</th><th class="acoes">Ações</th></tr></thead>
+      <tbody>${S.map(x => { const nM = ratMeses(x); return `<tr><td>${esc(x.categoria || '')}</td><td><b>${esc(ratPlaca(x))}</b></td><td>${opF(x)}</td><td>${esc(x.fornecedor || '')}</td><td>${esc(x.apolice || '')}</td>
+        <td>${dBR(x.inicio)} → ${dBR(x.fim)}</td><td class="n">${nM}</td><td class="n">${brl(x.valor_total)}</td><td class="n" style="color:var(--muted)">${nM ? brl(num(x.valor_total) / nM) : ''}</td>
+        <td>${ratStatus(x)}</td><td class="n"><b>${brl(ratMes(x, mes))}</b></td>
+        <td class="c">${x.comprovante_path ? `<button class="btn sm" title="${esc(x.comprovante_nome || '')}" onclick="abrirDoc('${esc(x.comprovante_path)}')">📎</button>` : ''}</td>${acoes(x)}</tr>`; }).join('')}</tbody>
+      <tfoot><tr><td colspan="10">${S.length} cadastro(s)</td><td class="n">${brl(totS)}</td><td colspan="2"></td></tr></tfoot></table></div>`
+      : '<div class="empty">Nenhum seguro/rateio cadastrado. Clique em “+ Cadastrar seguro / rateio”.</div>'}
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">ℹ️ O valor total é dividido pelos dias da vigência — cada mês recebe a parte proporcional aos dias que estão dentro dele. Pessoal: valor mensal cheio, proporcional só no mês de início/fim.</div>
+  </div>`;
+}
+function editarRat(id, tipo) {
+  const x = id ? rateios.find(r => r.id === id) : null; _editRat = x; tipo = x?.tipo || tipo;
+  const m = v => v != null && v !== '' && num(v) ? String(v).replace('.', ',') : '';
+  const frOpts = sel => [...Object.keys(FRENTES), 'operacao'].map(f => `<option value="${f}" ${(sel || 'avacy') === f ? 'selected' : ''}>${nomeFrente(f)}</option>`).join('');
+  const vOpts = `<option value="">— nenhum —</option>` + veiculos.map(v => `<option value="${v.id}" ${x?.veiculo_id === v.id ? 'selected' : ''}>${esc(v.placa)} ${esc(v.modelo || '')}</option>`).join('');
+  const del = x ? `<button class="btn" style="margin-right:auto;color:#c0392b" onclick="excluirRat('${x.id}',true)">🗑 Excluir</button>` : '';
+  if (tipo === 'pessoal') {
+    formModal(x ? `✏️ ${x.nome}` : '👷 Cadastrar motorista / ajudante', `
+      <input type="hidden" id="rTipo" value="pessoal">
+      <div class="fg">
+        <div class="f w2"><label>Nome <span class="req">*</span></label><input id="rNome" value="${esc(x?.nome || '')}"></div>
+        <div class="f"><label>Função <span class="req">*</span></label><input id="rFunc" list="dlFunc" value="${esc(x?.funcao || 'Motorista')}"></div>
+        <div class="f"><label>Frente</label><select id="rFrente">${frOpts(x?.frente)}</select></div>
+        <div class="f"><label>Salário mensal (R$) <span class="req">*</span></label><input id="rSal" inputmode="decimal" value="${m(x?.salario)}" oninput="prevRat()"></div>
+        <div class="f"><label>Benefícios mensais (R$)</label><input id="rBen" inputmode="decimal" value="${m(x?.beneficios)}" placeholder="VR, VT, plano…" oninput="prevRat()"></div>
+        <div class="f w2"><label>Veículo (opcional)</label><select id="rVeic">${vOpts}</select></div>
+        <div class="f"><label>Início / admissão <span class="req">*</span></label><input type="date" id="rIni" value="${x?.inicio || mes + '-01'}" oninput="prevRat()"></div>
+        <div class="f"><label>Fim / desligamento</label><input type="date" id="rFim" value="${x?.fim || ''}" oninput="prevRat()"></div>
+        <div class="f w2"><label>Observação</label><input id="rObs" value="${esc(x?.obs || '')}"></div>
+      </div>
+      <div class="alert info" id="rPrev" style="margin-top:10px"></div>
+      <datalist id="dlFunc">${FUNCOES.map(f => `<option value="${f}">`).join('')}</datalist>`, salvarRat, del);
+  } else {
+    formModal(x ? `✏️ ${x.categoria || 'Rateio'} ${ratPlaca(x)}` : '🛡️ Cadastrar seguro / rateio', `
+      <input type="hidden" id="rTipo" value="rateio">
+      <div class="fg">
+        <div class="f w2"><label>Categoria <span class="req">*</span></label><select id="rCat">${CATS_RAT.map(c => `<option ${x?.categoria === c ? 'selected' : ''}>${c}</option>`).join('')}</select></div>
+        <div class="f w2"><label>Veículo</label><select id="rVeic" onchange="document.getElementById('rFrente').disabled=!!this.value">${vOpts}</select></div>
+        <div class="f w2"><label>Seguradora / fornecedor</label><input id="rForn" value="${esc(x?.fornecedor || '')}"></div>
+        <div class="f"><label>Apólice / nº doc.</label><input id="rApol" value="${esc(x?.apolice || '')}"></div>
+        <div class="f"><label>Frente (sem veículo)</label><select id="rFrente" ${x?.veiculo_id ? 'disabled' : ''}>${frOpts(x?.frente)}</select></div>
+        <div class="f"><label>Valor total (R$) <span class="req">*</span></label><input id="rTot" inputmode="decimal" value="${m(x?.valor_total)}" oninput="prevRat()"></div>
+        <div class="f"><label>Início vigência <span class="req">*</span></label><input type="date" id="rIni" value="${x?.inicio || ''}" oninput="prevRat()"></div>
+        <div class="f"><label>Fim vigência <span class="req">*</span></label><input type="date" id="rFim" value="${x?.fim || ''}" oninput="prevRat()"></div>
+        <div class="f"><label>Observação</label><input id="rObs" value="${esc(x?.obs || '')}"></div>
+        <div class="f w4"><label>Apólice / comprovante (opcional)</label><input type="file" id="rArq" accept=".pdf,image/*">
+          <div style="font-size:11px;color:var(--muted)">${x?.comprovante_nome ? 'Atual: ' + esc(x.comprovante_nome) : ''}</div></div>
+      </div>
+      <div class="alert info" id="rPrev" style="margin-top:10px"></div>`, salvarRat, del);
+  }
+  setTimeout(prevRat, 0);
+}
+function _ratForm() {
+  const g = id => document.getElementById(id)?.value.trim() ?? '';
+  const tipo = g('rTipo');
+  const row = { tipo, inicio: g('rIni') || null, fim: g('rFim') || null, obs: g('rObs') || null, veiculo_id: g('rVeic') || null, frente: g('rFrente') || 'avacy' };
+  if (tipo === 'pessoal') Object.assign(row, { nome: g('rNome'), funcao: g('rFunc') || null, salario: num(g('rSal')), beneficios: num(g('rBen')) });
+  else {
+    Object.assign(row, { categoria: g('rCat'), fornecedor: g('rForn') || null, apolice: g('rApol') || null, valor_total: num(g('rTot')) });
+    if (row.veiculo_id) row.frente = veiculos.find(v => v.id === row.veiculo_id)?.frente || 'avacy';
+  }
+  return row;
+}
+function prevRat() {
+  const el = document.getElementById('rPrev'); if (!el) return;
+  const r = _ratForm();
+  if (!r.inicio || (r.tipo === 'rateio' && !r.fim)) { el.innerHTML = 'Informe a vigência para ver o rateio por mês.'; return; }
+  if (r.fim && r.fim < r.inicio) { el.innerHTML = '⚠️ O fim é anterior ao início.'; return; }
+  const ini = r.inicio.slice(0, 7), fim = (r.fim || (mes > ini ? mes : ini)).slice(0, 7);
+  const lista = []; let [y, m] = ini.split('-').map(Number);
+  while (lista.length < 24) { const c = `${y}-${String(m).padStart(2, '0')}`; if (c > fim) break; lista.push(c); m++; if (m > 12) { m = 1; y++; } }
+  const tot = lista.reduce((s, c) => s + ratMes(r, c), 0);
+  el.innerHTML = `<b>Rateio por mês${r.tipo === 'pessoal' && !r.fim ? ' (até ' + mesNome(fim) + ', segue enquanto não houver fim)' : ''}:</b><br>` +
+    lista.map(c => `${MESES[+c.slice(5) - 1]}/${c.slice(2, 4)}: <b>${brl(ratMes(r, c))}</b>`).join(' · ') +
+    (r.tipo === 'rateio' ? `<br>Total distribuído: <b>${brl(tot)}</b> em ${lista.length} mês(es)` : '');
+}
+async function salvarRat() {
+  const row = _ratForm();
+  if (row.tipo === 'pessoal' && (!row.nome || !row.salario)) { toast('⚠ Informe nome e salário.'); return false; }
+  if (row.tipo === 'rateio' && (!row.valor_total || !row.fim)) { toast('⚠ Informe valor total e vigência (início e fim).'); return false; }
+  if (!row.inicio) { toast('⚠ Informe a data de início.'); return false; }
+  if (row.fim && row.fim < row.inicio) { toast('⚠ O fim é anterior ao início.'); return false; }
+  if (row.categoria === 'Seguro do veículo' && !row.veiculo_id) { toast('⚠ Selecione o veículo do seguro.'); return false; }
+  const file = document.getElementById('rArq')?.files[0];
+  if (file) {
+    const path = `rateios/${row.inicio.slice(0, 7)}/${Date.now()}_${file.name.normalize('NFD').replace(/[^\w.\-]+/g, '_')}`;
+    const up = await db.storage.from(BUCKET).upload(path, file, { upsert: true, contentType: file.type || undefined });
+    if (up.error) { toast('❌ ' + up.error.message); return false; }
+    row.comprovante_path = path; row.comprovante_nome = file.name;
+  }
+  const r = _editRat ? await db.from('entregas_rateios').update(row).eq('id', _editRat.id) : await db.from('entregas_rateios').insert({ ...row, criado_por: usuario.username });
+  if (r.error) { toast('❌ ' + r.error.message, 4000); return false; }
+  toast('✔ Cadastro salvo'); carregar(); return true;
+}
+async function excluirRat(id, doModal) {
+  if (!confirm('Excluir este cadastro? Ele deixa de ser rateado em TODOS os meses.')) return;
+  const { error } = await db.from('entregas_rateios').delete().eq('id', id);
+  if (error) { toast('❌ ' + error.message); return; }
+  if (doModal) fecha('ovForm');
+  toast('🗑 Excluído'); carregar();
+}
+
 // Modal genérico de formulário (veículos / KM / custos operacionais)
 let _formSalvar = null;
 function formModal(titulo, corpo, onSalvar, extraFoot = '') {
@@ -1732,6 +1931,18 @@ function exportarExcel(fr) {
   ws3['!cols'] = [18, 10, 10, 13, 14, 14, 18, 14, 16].map(w => ({ wch: w }));
   for (let r = 1; r < res.length; r++) for (const c of [4, 5, 6, 7, 8]) { const a = XLSX.utils.encode_cell({ r, c }); if (ws3[a]) ws3[a].z = '"R$" #,##0.00'; }
   XLSX.utils.book_append_sheet(wb, ws3, 'Resumo');
+  // v2.8: pessoal e rateios do mês
+  const RT = rateios.filter(x => (!fr || ratFrente(x) === fr) && ratMes(x, mes) > 0);
+  if (RT.length) {
+    const rr = [['TIPO','FRENTE','NOME / CATEGORIA','FUNÇÃO / FORNECEDOR','VEÍCULO','SALÁRIO','BENEFÍCIOS','VALOR TOTAL VIGÊNCIA','INÍCIO','FIM','VALOR NO MÊS']];
+    RT.forEach(x => rr.push([x.tipo === 'pessoal' ? 'Pessoal' : 'Rateio', nomeFrente(ratFrente(x)), x.tipo === 'pessoal' ? (x.nome || '') : (x.categoria || ''),
+      x.tipo === 'pessoal' ? (x.funcao || '') : (x.fornecedor || ''), ratPlaca(x), x.tipo === 'pessoal' ? num(x.salario) : '', x.tipo === 'pessoal' ? num(x.beneficios) : '',
+      x.tipo === 'rateio' ? num(x.valor_total) : '', dBR(x.inicio), dBR(x.fim), Math.round(ratMes(x, mes) * 100) / 100]));
+    const ws4 = XLSX.utils.aoa_to_sheet(rr);
+    ws4['!cols'] = [9, 16, 28, 22, 10, 12, 12, 18, 11, 11, 14].map(w => ({ wch: w }));
+    for (let r = 1; r < rr.length; r++) for (const c of [5, 6, 7, 10]) { const a = XLSX.utils.encode_cell({ r, c }); if (ws4[a] && ws4[a].v !== '') ws4[a].z = '"R$" #,##0.00'; }
+    XLSX.utils.book_append_sheet(wb, ws4, 'Pessoal e Rateios');
+  }
   XLSX.writeFile(wb, `Entregas_${fr ? FRENTES[fr].nome.replace(/\s+/g, '_') + '_' : ''}${mes}.xlsx`);
 }
 
@@ -1743,7 +1954,7 @@ document.getElementById('hVer').textContent = APP_VERSION;
 document.getElementById('sbVer').textContent = APP_VERSION;
 function toggleSb(on) { document.body.classList.toggle('sbOpen', on); }
 function colapsaSb() { const m = document.body.classList.toggle('sbMini'); try { localStorage.setItem('ent_sbmini', m ? '1' : '0'); } catch {} }
-function abrirConfig() { document.body.classList.remove('sbOpen'); document.getElementById('sqlTxt').textContent = !fotosOk ? FOTOS_SQL : !veicOk ? V2_SQL : SETUP_SQL; abre('ovSetup'); }
+function abrirConfig() { document.body.classList.remove('sbOpen'); document.getElementById('sqlTxt').textContent = !fotosOk ? FOTOS_SQL : !veicOk ? V2_SQL : !ratOk ? RAT_SQL : SETUP_SQL; abre('ovSetup'); }
 function abrirSobre() {
   document.body.classList.remove('sbOpen');
   alert(`Controle de Entregas AVACY — ${APP_VERSION}\n\nFrentes: Transporte Avacy, Carrinho e Agregados.\nBase de notas e usuários compartilhada com o Dashboard de Expedição.`);
