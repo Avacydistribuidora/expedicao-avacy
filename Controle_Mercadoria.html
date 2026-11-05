@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Controle de Mercadoria | V1.3</title>
+<title>Controle de Mercadoria | V1.4</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--navy:#0d2167;--navy2:#07142a;--brand:#8b1111;--bg:#f2f4f8;--bg2:#fff;--bg3:#f6f8fc;--acc:#2463cc;--grn:#16a34a;--red:#dc2626;--ylw:#ea580c;--pur:#7c3aed;--cyn:#0d9488;--txt:#1a2035;--mut:#6b7a99;--bdr:#dde2ec;--r:10px}
@@ -216,7 +216,10 @@ html,body{font-size:14px}
 .sh-title{color:var(--navy)}
 .tbl th{background:var(--navy);color:#fff;position:sticky;top:0}
 .tbl tr:hover td{background:#f6f9ff}
-.menu{background:#fff;box-shadow:0 10px 30px rgba(7,20,42,.25)}
+.menu{background:#fff;color:var(--txt);box-shadow:0 10px 30px rgba(7,20,42,.25)}
+.menu-i{color:var(--txt);font-weight:600;white-space:nowrap}
+.hdr .menu{min-width:290px}
+.menu-i:hover{background:#eef2fb;color:var(--navy)}
 .irow.click:active,.dcard:active{background:#eef2fb}
 .iqty.tap{background:#fff}
 .lsnm{color:var(--txt)}
@@ -652,7 +655,7 @@ body:not(.adm) .adm-only{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.3';
+const APP_VERSION='V1.4';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
