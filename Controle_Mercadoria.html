@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Controle de Mercadoria | V1.1</title>
+<title>Controle de Mercadoria | V1.2</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0d1117;--bg2:#161b22;--bg3:#21262d;--acc:#2196f3;--grn:#4caf50;--red:#f44336;--ylw:#ff9800;--pur:#9c27b0;--cyn:#00bcd4;--txt:#e6edf3;--mut:#8b949e;--bdr:#30363d;--r:10px}
@@ -329,7 +329,8 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
     <button class="btn btn-grn hide" id="mv-conf" onclick="mvConfirmar()">✓ CONFIRMAR</button>
 
     <div class="card" id="mv-hist-card">
-      <div class="ct"><span>🕓 Meus últimos movimentos</span></div>
+      <div class="ct"><span>🕓 Meus movimentos de hoje</span><span class="c-mut" style="text-transform:none;letter-spacing:0">agrupado por grade</span></div>
+      <div class="kpi-g" id="mv-hist-kpi" style="grid-template-columns:repeat(3,1fr);margin-bottom:10px"></div>
       <div id="mv-hist"><div class="empty">—</div></div>
     </div>
   </div>
@@ -542,7 +543,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.1';
+const APP_VERSION='V1.2';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -909,7 +910,6 @@ async function mvConfirmar(){
   if(op==='SAI'&&!mot){ toast('Selecione o motivo da saída',1); $('mv-mot').focus(); return; }
   const tot=MV.items.reduce((s,x)=>s+x.qtd,0);
   const resumo=op==='ENT'?`ENTRADA em ${MV.addr}`:op==='SAI'?`SAÍDA de ${MV.addr}`:`TRANSFERÊNCIA ${MV.addr} → ${MV.dest}`;
-  if(!confirm(`${resumo}\n${MV.items.length} produto(s) · ${fmt(tot)} un.\n\nConfirmar?`)) return;
   _mvBusy=true; const btn=$('mv-conf'); btn.disabled=true; btn.textContent='Gravando...';
   const tipo={ENT:'ENTRADA',SAI:'SAIDA',TRF:'TRANSF'}[op];
   const origem=op==='ENT'?null:MV.addr, destino=op==='ENT'?MV.addr:(op==='TRF'?MV.dest:null);
@@ -934,7 +934,6 @@ async function mvEnviarRotativa(){
   base.forEach(r=>{ const c=MV.items.find(x=>x.gtin===r.gtin); itens.push({gtin:r.gtin,descricao:r.descricao,marca:r.marca||'',qtd_sis:r.qtd,qtd_cnt:c?c.qtd:0}); });
   MV.items.filter(x=>!base.find(r=>r.gtin===x.gtin)).forEach(x=>itens.push({gtin:x.gtin,descricao:x.descr,marca:x.marca||'',qtd_sis:0,qtd_cnt:x.qtd}));
   const div=itens.filter(i=>i.qtd_cnt!==i.qtd_sis).length;
-  if(!confirm(`Contagem rotativa de ${A}\n${itens.length} produto(s) · ${div} divergência(s)\n\nEnviar para aprovação do administrador?`)) return;
   _mvBusy=true; $('mv-conf').disabled=true;
   const {error}=await getSB().from('est_rotativa').insert({endereco:A,itens,operador:CU.name});
   _mvBusy=false; $('mv-conf').disabled=false;
@@ -945,9 +944,34 @@ async function mvEnviarRotativa(){
 async function loadMyMovs(){
   if(!CU) return;
   try{
-    const {data}=await getSB().from('est_mov').select('*').eq('operador',CU.name).order('criado_em',{ascending:false}).limit(12);
-    $('mv-hist').innerHTML=(data&&data.length)?data.map(movRow).join(''):'<div class="empty">Nenhum movimento ainda</div>';
+    const d0=new Date(); d0.setHours(0,0,0,0);
+    const {data}=await getSB().from('est_mov').select('*').eq('operador',CU.name).neq('tipo','IMPORT').gte('criado_em',d0.toISOString()).order('criado_em',{ascending:false}).limit(1000);
+    renderMyMovs(data||[]);
   }catch(e){}
+}
+function movEnd(m){ return m.tipo==='TRANSF'?m.end_destino:(m.end_destino||m.end_origem||''); }
+function renderMyMovs(L){
+  const G={}, allEnd=new Set(); let vol=0;
+  L.forEach(m=>{
+    const g=G[m.gtin]=G[m.gtin]||{gtin:m.gtin,descr:m.descricao||'',ult:m.criado_em,vol:0,ends:{}};
+    const q=Math.abs(Number(m.qtd)||0); g.vol+=q; vol+=q;
+    const a=movEnd(m), k=m.tipo+'|'+(m.tipo==='TRANSF'?m.end_origem+' → ':'')+a;
+    g.ends[k]=g.ends[k]||{tipo:m.tipo,rota:(m.tipo==='TRANSF'?m.end_origem+' → ':'')+a,qtd:0,n:0}; g.ends[k].qtd+=Number(m.qtd)||0; g.ends[k].n++;
+    if(a) allEnd.add(a);
+  });
+  const grades=Object.values(G);
+  $('mv-hist-kpi').innerHTML=`<div class="kpi"><div class="kn c-acc">${fmt(grades.length)}</div><div class="kl">Grades</div></div>
+    <div class="kpi"><div class="kn c-ylw">${fmt(allEnd.size)}</div><div class="kl">Endereços</div></div>
+    <div class="kpi"><div class="kn c-grn">${fmt(vol)}</div><div class="kl">Volumes</div></div>`;
+  if(!grades.length){ $('mv-hist').innerHTML='<div class="empty">Nenhum movimento hoje</div>'; return; }
+  $('mv-hist').innerHTML=grades.map(g=>{
+    const ends=Object.values(g.ends); const nEnd=new Set(ends.map(e=>e.rota.split(' → ').pop())).size;
+    return `<div class="irow" style="align-items:flex-start"><div class="ibody">
+      <div class="inm" style="font-weight:600">${esc(g.descr)}</div>
+      <div class="iean">${esc(g.gtin)} · último ${fmtDT(g.ult).split(' ')[1]||''}</div>
+      <div style="margin-top:5px;display:flex;flex-direction:column;gap:3px">${ends.map(e=>`<div class="row" style="gap:6px;font-size:13px"><span class="tag ${TIPO_TAG[e.tipo]||'t-mut'}">${TIPO_LBL[e.tipo]||e.tipo}</span><b class="c-ylw">${esc(e.rota)}</b><span class="c-mut">${e.n>1?e.n+' lançamentos':''}</span><span style="margin-left:auto;font-weight:700" class="${e.tipo==='SAIDA'||(e.tipo==='AJUSTE'&&e.qtd<0)?'c-red':'c-grn'}">${e.tipo==='SAIDA'?'-'+fmt(Math.abs(e.qtd)):e.tipo==='AJUSTE'?(e.qtd>0?'+':'')+fmt(e.qtd):'+'+fmt(Math.abs(e.qtd))}</span></div>`).join('')}</div>
+    </div><div class="iright" style="min-width:70px"><div class="iqty c-grn">${fmt(g.vol)}</div><div class="isub">vol.</div><div class="isub">📍 ${nEnd} end.</div></div></div>`;
+  }).join('');
 }
 function movRow(m){
   const rota=m.tipo==='TRANSF'?`${esc(m.end_origem)} → ${esc(m.end_destino)}`:esc(m.end_origem||m.end_destino||'');
