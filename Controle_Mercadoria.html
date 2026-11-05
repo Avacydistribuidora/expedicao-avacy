@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Controle de Mercadoria | V1.4</title>
+<title>Controle de Mercadoria | V1.5</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--navy:#0d2167;--navy2:#07142a;--brand:#8b1111;--bg:#f2f4f8;--bg2:#fff;--bg3:#f6f8fc;--acc:#2463cc;--grn:#16a34a;--red:#dc2626;--ylw:#ea580c;--pur:#7c3aed;--cyn:#0d9488;--txt:#1a2035;--mut:#6b7a99;--bdr:#dde2ec;--r:10px}
@@ -278,6 +278,21 @@ body:not(.adm) .adm-only{display:none!important}
   .hdr{padding:8px 12px;gap:8px}.hdr .htitle{font-size:16px}
   .hdr .tb-btn.acoes .t{display:none}
 }
+
+/* V1.5 — lista de produtos expansível */
+#mv-hist{display:flex;flex-direction:column;gap:6px}
+.gl{border:1px solid var(--bdr);border-radius:10px;background:#fff;overflow:hidden}
+.gl-h{display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;user-select:none}
+.gl-h:hover{background:#f6f9ff}
+.gl-dot{width:9px;height:9px;border-radius:50%;background:var(--grn);flex-shrink:0}
+.gl-q{font-size:17px;font-weight:800;color:var(--grn);min-width:36px;text-align:right}
+.gl-ch{color:var(--mut);font-size:12px;transition:transform .15s}
+.gl.open .gl-ch{transform:rotate(180deg)}
+.gl-b{display:none;border-top:1px solid var(--bdr);padding:4px 12px 6px 31px;background:var(--bg3)}
+.gl.open .gl-b{display:block}
+.gl-r{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;border-bottom:1px dashed var(--bdr);flex-wrap:wrap}
+.gl-r:last-child{border:none}
+.gl-est{margin-left:auto;color:var(--mut);font-size:12px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -655,7 +670,7 @@ body:not(.adm) .adm-only{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.4';
+const APP_VERSION='V1.5';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -1085,14 +1100,21 @@ function renderMyMovs(L){
     <div class="kpi"><div class="kn c-grn">${fmt(vol)}</div><div class="kl">Volumes</div></div>`;
   if(!grades.length){ $('mv-hist').innerHTML='<div class="empty">Nenhum movimento hoje</div>'; return; }
   $('mv-hist').innerHTML=grades.map(g=>{
-    const ends=Object.values(g.ends); const nEnd=new Set(ends.map(e=>e.rota.split(' → ').pop())).size;
-    return `<div class="irow" style="align-items:flex-start"><div class="ibody">
-      <div class="inm" style="font-weight:600">${esc(g.descr)}</div>
-      <div class="iean">${esc(g.gtin)} · último ${fmtDT(g.ult).split(' ')[1]||''}</div>
-      <div style="margin-top:5px;display:flex;flex-direction:column;gap:3px">${ends.map(e=>`<div class="row" style="gap:6px;font-size:13px"><span class="tag ${TIPO_TAG[e.tipo]||'t-mut'}">${TIPO_LBL[e.tipo]||e.tipo}</span><b class="c-ylw">${esc(e.rota)}</b><span class="c-mut">${e.n>1?e.n+' lançamentos':''}</span><span style="margin-left:auto;font-weight:700" class="${e.tipo==='SAIDA'||(e.tipo==='AJUSTE'&&e.qtd<0)?'c-red':'c-grn'}">${e.tipo==='SAIDA'?'-'+fmt(Math.abs(e.qtd)):e.tipo==='AJUSTE'?(e.qtd>0?'+':'')+fmt(e.qtd):'+'+fmt(Math.abs(e.qtd))}</span></div>`).join('')}</div>
-    </div><div class="iright" style="min-width:70px"><div class="iqty c-grn">${fmt(g.vol)}</div><div class="isub">vol.</div><div class="isub">📍 ${nEnd} end.</div></div></div>`;
+    const ends=Object.values(g.ends);
+    const op=MH_OPEN.has(g.gtin);
+    return `<div class="gl${op?' open':''}" data-g="${esc(g.gtin)}">
+      <div class="gl-h" onclick="mhToggle(this)">
+        <span class="gl-dot"></span>
+        <div class="ibody"><div class="iean">${esc(g.gtin)}</div><div class="inm">${esc(g.descr)}</div></div>
+        <span class="gl-q">${fmt(g.vol)}</span><span class="gl-ch">▼</span>
+      </div>
+      <div class="gl-b">${ends.map(e=>{const a=e.rota.split(' → ').pop(); const est=saldoAt(g.gtin,a);
+        return `<div class="gl-r"><span>📍</span><b class="c-ylw">${esc(e.rota)}</b><span class="tag ${TIPO_TAG[e.tipo]||'t-mut'}">${TIPO_LBL[e.tipo]||e.tipo} ${e.tipo==='SAIDA'?'-'+fmt(Math.abs(e.qtd)):e.tipo==='AJUSTE'?(e.qtd>0?'+':'')+fmt(e.qtd):'+'+fmt(Math.abs(e.qtd))}</span><span class="gl-est">Estoque: <b class="c-grn">${fmt(est)}</b></span></div>`;}).join('')}</div>
+    </div>`;
   }).join('');
 }
+const MH_OPEN=new Set();
+function mhToggle(h){ const el=h.parentElement, g=el.dataset.g; el.classList.toggle('open'); if(el.classList.contains('open')) MH_OPEN.add(g); else MH_OPEN.delete(g); }
 function movRow(m){
   const rota=m.tipo==='TRANSF'?`${esc(m.end_origem)} → ${esc(m.end_destino)}`:esc(m.end_origem||m.end_destino||'');
   const q=Number(m.qtd)||0;
