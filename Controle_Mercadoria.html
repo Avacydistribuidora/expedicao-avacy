@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Controle de Mercadoria | V1.2</title>
+<title>Controle de Mercadoria | V1.3</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-:root{--bg:#0d1117;--bg2:#161b22;--bg3:#21262d;--acc:#2196f3;--grn:#4caf50;--red:#f44336;--ylw:#ff9800;--pur:#9c27b0;--cyn:#00bcd4;--txt:#e6edf3;--mut:#8b949e;--bdr:#30363d;--r:10px}
+:root{--navy:#0d2167;--navy2:#07142a;--brand:#8b1111;--bg:#f2f4f8;--bg2:#fff;--bg3:#f6f8fc;--acc:#2463cc;--grn:#16a34a;--red:#dc2626;--ylw:#ea580c;--pur:#7c3aed;--cyn:#0d9488;--txt:#1a2035;--mut:#6b7a99;--bdr:#dde2ec;--r:10px}
 html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'Segoe UI',Arial,sans-serif;font-size:15px;overflow:hidden}
 .scr{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .18s}
 .scr.on{opacity:1;pointer-events:all}
@@ -185,6 +185,96 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 .toast.on{opacity:1}.toast.err{background:var(--red)}
 ::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px}
 #qr-canvas{margin:0 auto;background:#fff;padding:8px;border-radius:8px;display:inline-block}
+
+/* ═══ V1.3 — tema Avacy (igual Controle de Entregas) + menu lateral ═══ */
+html,body{font-size:14px}
+#s-loading,#s-login{background:linear-gradient(135deg,var(--navy2),var(--navy))}
+.ld-spin{border-color:rgba(255,255,255,.2);border-top-color:#fff}.ld-txt{color:#c9d3ff}
+.lbox{background:#fff;border:none;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.llogo{width:56px;height:56px;margin:0 auto 10px;display:flex}.llogo svg{width:100%;height:100%}
+.ltitle{color:var(--navy);font-size:20px;font-weight:900}
+#s-login .btn-acc{background:var(--brand)}
+#s-login .inp:focus{border-color:var(--brand)}
+.inp{background:#fff}
+.scan-inp{background:#fff;border-width:2px;font-family:Consolas,monospace;font-weight:700}
+.card{border-radius:12px;box-shadow:0 1px 2px rgba(13,33,103,.04)}
+.ct{color:var(--navy);font-weight:800;letter-spacing:.06em}
+.kpi{display:flex;flex-direction:column-reverse;text-align:left;border-left:4px solid var(--navy);border-radius:10px;padding:10px 14px}
+.kpi .kl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:0 0 2px}
+.kpi .kn{font-size:24px}
+.kpi:has(.c-ylw){border-left-color:var(--ylw)}.kpi:has(.c-acc){border-left-color:var(--acc)}.kpi:has(.c-grn){border-left-color:var(--grn)}.kpi:has(.c-red){border-left-color:var(--red)}.kpi:has(.c-pur){border-left-color:var(--pur)}
+.addr-banner{background:#fff7ed;border-color:#fdba74}.addr-code{color:#c2410c}
+.addr-banner.dest{background:#f0fdfa;border-color:#5eead4}
+.op-c{background:#fff}
+.dcard{background:#fff}
+.btn-go{background:var(--brand)}
+.btn-go.blue{background:var(--navy)}
+.btn-acc{background:var(--navy)}
+.chip.on{background:var(--navy);border-color:var(--navy)}
+.seg-b.on,.trat-b.on{border-color:var(--navy);color:var(--navy);background:#eef2fb}
+.ovl{background:rgba(7,20,42,.55)}
+.sh-title{color:var(--navy)}
+.tbl th{background:var(--navy);color:#fff;position:sticky;top:0}
+.tbl tr:hover td{background:#f6f9ff}
+.menu{background:#fff;box-shadow:0 10px 30px rgba(7,20,42,.25)}
+.irow.click:active,.dcard:active{background:#eef2fb}
+.iqty.tap{background:#fff}
+.lsnm{color:var(--txt)}
+
+/* layout com menu lateral */
+#s-main{flex-direction:row;background:var(--bg)}
+.sb{width:240px;flex-shrink:0;background:var(--navy);color:#e6ecff;display:flex;flex-direction:column;height:100%;transition:width .2s;z-index:60}
+.sbTop{display:flex;align-items:center;gap:10px;padding:16px 14px;border-bottom:1px solid rgba(255,255,255,.12)}
+.sbLogo{width:44px;height:44px;border-radius:11px;display:flex;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.25)}.sbLogo svg{width:100%;height:100%}
+.sbName{font-size:16px;font-weight:800;color:#fff;white-space:nowrap}.sbName span{color:#a9b8ff}
+.sbCol{margin-left:auto;background:none;border:none;color:#c9d3ff;font-size:20px;cursor:pointer;padding:2px 6px;border-radius:6px}
+.sbCol:hover{background:rgba(255,255,255,.12)}
+.sbNav{flex:1;overflow-y:auto;padding:10px 8px}
+.sbSec{font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#7f93d6;padding:14px 10px 6px}
+.nav-it{display:flex;align-items:center;gap:12px;width:100%;background:none;border:none;color:#eef2ff;font-size:14.5px;padding:10px 12px;border-radius:10px;cursor:pointer;text-align:left;position:relative;font-family:inherit;margin-bottom:2px}
+.nav-it:hover{background:rgba(255,255,255,.09)}
+.nav-it.on{background:rgba(255,255,255,.14);font-weight:700;box-shadow:inset 3px 0 0 #dc2626}
+.nav-it.on::before{content:'';position:absolute;left:-5px;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:#a9b8ff}
+.nav-it i{width:22px;height:22px;flex-shrink:0;display:flex}
+.nav-it svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav-it .lb{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav-it .pill{min-width:22px;height:22px;padding:0 7px;border-radius:11px;background:rgba(255,255,255,.16);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.nav-it .pill.alert{background:#dc2626}
+.sbVer{text-align:center;font-size:11px;color:#8ea0dd;padding:8px}
+.sbUser{display:flex;align-items:center;gap:10px;padding:12px;border-top:1px solid rgba(255,255,255,.12)}
+.sbUser .av{width:40px;height:40px;border-radius:50%;background:#2563eb;border:2px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0;color:#fff}
+.sbUser .ui{flex:1;min-width:0}.sbUser .un{font-weight:700;font-size:13.5px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sbUser .ur{font-size:11px;color:#9fb0e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sbUser .rb{font-size:10px;font-weight:800;letter-spacing:.05em;padding:3px 8px;border-radius:6px;background:#a78bfa;color:#fff;text-transform:uppercase;border:none}
+.sbUser .rb.op{background:#0ea5e9}
+.sbUser .pw{background:none;border:none;color:#c9d3ff;cursor:pointer;padding:4px;border-radius:6px;display:flex}
+.sbUser .pw:hover{background:rgba(255,255,255,.12);color:#fff}
+.sbUser .pw svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+body.sbMini .sb{width:72px}
+body.sbMini .sbName,body.sbMini .nav-it .lb,body.sbMini .nav-it .pill,body.sbMini .sbSec,body.sbMini .sbUser .ui,body.sbMini .sbUser .rb,body.sbMini .sbVer{display:none}
+body.sbMini .sbTop{flex-direction:column;padding:12px 6px}body.sbMini .sbCol{margin:0;transform:rotate(180deg)}
+body.sbMini .nav-it{justify-content:center;padding:12px 0}body.sbMini .sbUser{flex-direction:column;padding:10px 4px}
+.content{flex:1;min-width:0;display:flex;flex-direction:column;height:100%}
+.hdr{background:var(--navy);border-bottom:3px solid var(--brand);color:#fff;display:flex;align-items:center;gap:12px;padding:10px 18px;flex-shrink:0;min-height:56px}
+.hdr .htitle{font-size:18px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr .htitle small{font-size:9px;font-weight:400;opacity:.5;margin-left:4px}
+.hdr .hsp{flex:1}
+.hdr .tb-sync{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25)}
+.hdr .tb-btn.acoes{background:#fff;color:var(--navy);border:none;font-weight:800}
+.hamb{display:none;background:none;border:none;color:#fff;cursor:pointer;padding:2px}
+.hamb svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.adm-only{}
+body:not(.adm) .adm-only{display:none!important}
+.sbBack{display:none}
+@media(max-width:760px){
+  .sb{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%);transition:transform .2s;width:260px!important}
+  body.sbOpen .sb{transform:none}
+  body.sbOpen .sbBack{display:block;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:55}
+  .hamb{display:flex}.sbCol{display:none}
+  body.sbMini .sbName,body.sbMini .nav-it .lb,body.sbMini .nav-it .pill,body.sbMini .sbSec,body.sbMini .sbUser .ui,body.sbMini .sbUser .rb,body.sbMini .sbVer{display:revert}
+  .hdr{padding:8px 12px;gap:8px}.hdr .htitle{font-size:16px}
+  .hdr .tb-btn.acoes .t{display:none}
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -198,7 +288,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 <!-- ══════════ LOGIN ══════════ -->
 <div id="s-login" class="scr">
   <div class="lbox">
-    <div class="lhead"><div class="llogo">🏷️</div><div class="ltitle">Controle de Mercadoria</div><div class="lsub">Estoque por endereço · Devoluções <span style="opacity:.5;font-size:10px" class="app-ver"></span></div></div>
+    <div class="lhead"><div class="llogo"><svg viewBox="0 0 48 48" aria-label="Avacy"><rect width="48" height="48" rx="11" fill="#fff"/><circle cx="24" cy="24" r="15.5" fill="#2b3f95"/><clipPath id="lgc2"><circle cx="24" cy="24" r="14"/></clipPath><path clip-path="url(#lgc2)" d="M14 41 L19.4 24.5 C21.2 18.3 26.8 18.3 28.6 24.5 L34 41 Z" fill="#e10a17" stroke="#fff" stroke-width="1.1"/></svg></div><div class="ltitle">Controle de Mercadoria</div><div class="lsub">Estoque por endereço · Devoluções <span style="opacity:.5;font-size:10px" class="app-ver"></span></div></div>
     <label class="flbl">Usuário</label>
     <input id="l-user" class="inp" type="text" placeholder="Nome de usuário" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
     <label class="flbl">Senha</label>
@@ -211,13 +301,39 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 
 <!-- ══════════ MAIN ══════════ -->
 <div id="s-main" class="scr">
-  <div class="topbar">
-    <span style="font-size:17px">🏷️</span>
-    <span class="tb-t">Controle de Mercadoria <span style="font-size:10px;opacity:.5;font-weight:400" class="app-ver"></span></span>
-    <span class="rb" id="tb-rb">OP</span>
+  <div class="sbBack" onclick="toggleSb(false)"></div>
+  <aside class="sb" id="sb">
+    <div class="sbTop">
+      <div class="sbLogo"><svg viewBox="0 0 48 48" aria-label="Avacy"><rect width="48" height="48" rx="11" fill="#fff"/><circle cx="24" cy="24" r="15.5" fill="#2b3f95"/><clipPath id="lgc"><circle cx="24" cy="24" r="14"/></clipPath><path clip-path="url(#lgc)" d="M14 41 L19.4 24.5 C21.2 18.3 26.8 18.3 28.6 24.5 L34 41 Z" fill="#e10a17" stroke="#fff" stroke-width="1.1"/></svg></div>
+      <div class="sbName">Mercadoria <span>Avacy</span></div>
+      <button class="sbCol" onclick="colapsaSb()" title="Recolher menu">«</button>
+    </div>
+    <nav class="sbNav">
+      <div class="sbSec">Principal</div>
+      <button class="nav-it" id="t-con" onclick="goTab('con')"><i><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></i><span class="lb">Consulta</span></button>
+      <button class="nav-it" id="t-mov" onclick="goTab('mov')"><i><svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg></i><span class="lb">Estoque</span></button>
+      <div class="sbSec">Devoluções</div>
+      <button class="nav-it" id="t-dev" onclick="goTab('dev')"><i><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg></i><span class="lb">Devoluções</span><span class="pill hide" id="dev-pill">0</span></button>
+      <div class="sbSec adm-only">Administração</div>
+      <button class="nav-it adm-only" id="t-his" onclick="goTab('his')"><i><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 3"/></svg></i><span class="lb">Histórico</span></button>
+      <button class="nav-it adm-only" id="t-apr" onclick="goTab('apr')"><i><svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></i><span class="lb">Aprovações</span><span class="pill alert hide" id="apr-badge">0</span></button>
+    </nav>
+    <div class="sbVer">Controle de Mercadoria <span class="app-ver"></span></div>
+    <div class="sbUser">
+      <div class="av" id="uAv">?</div>
+      <div class="ui"><div class="un" id="uNome">—</div><div class="ur">Controle de Mercadoria</div></div>
+      <span class="rb" id="uRole"></span>
+      <button class="pw" onclick="doLogout()" title="Sair"><svg viewBox="0 0 24 24"><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/><path d="M12 2v10"/></svg></button>
+    </div>
+  </aside>
+  <div class="content">
+  <header class="hdr">
+    <button class="hamb" onclick="toggleSb(true)"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+    <span class="htitle"><span id="h-title">Consulta</span><small class="app-ver"></small></span>
+    <span class="hsp"></span>
     <button class="tb-sync" id="btn-sync" onclick="doSync(this)" title="Atualizar">↻</button>
     <div class="menu-wrap hide" id="acoes-wrap">
-      <button class="tb-btn" style="background:var(--acc);color:#fff;border-color:var(--acc);font-weight:700" onclick="toggleMenu(event)">⚙ Ações ▾</button>
+      <button class="tb-btn acoes" onclick="toggleMenu(event)">⚙<span class="t"> Ações</span> ▾</button>
       <div class="menu" id="acoes-menu">
         <div class="menu-i" onclick="openImp()">📥 Importar saldo (planilha / inventário)</div>
         <div class="menu-i" onclick="openGrd()">🏷 Importar cadastro de grade (Z01)</div>
@@ -227,15 +343,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
         <div class="menu-i" onclick="openQR()">📱 QR Code (abrir no coletor)</div>
       </div>
     </div>
-    <button class="tb-btn" onclick="doLogout()">⏻</button>
-  </div>
-  <div class="tabs">
-    <button class="tab on" id="t-con" onclick="goTab('con')">🔎 Consulta</button>
-    <button class="tab" id="t-mov" onclick="goTab('mov')">📦 Estoque</button>
-    <button class="tab" id="t-dev" onclick="goTab('dev')">↩ Devoluções</button>
-    <button class="tab hide" id="t-his" onclick="goTab('his')">📜 Histórico</button>
-    <button class="tab hide" id="t-apr" onclick="goTab('apr')">✅ Aprovações <span class="tab-badge hide" id="apr-badge">0</span></button>
-  </div>
+  </header>
 
   <!-- ── CONSULTA ── -->
   <div class="pg" id="p-con">
@@ -459,6 +567,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
     </div>
     <div id="ap-list" style="display:flex;flex-direction:column;gap:8px"></div>
   </div>
+  </div><!-- /content -->
 </div><!-- /s-main -->
 
 <!-- ══════════ OVERLAY: QUANTIDADE ══════════ -->
@@ -543,7 +652,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.2';
+const APP_VERSION='V1.3';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -689,19 +798,27 @@ async function doLogin(){
 function doLogout(){ CU=null; $('l-pwd').value=''; go('login'); focusLater('l-user'); }
 function enterMain(){
   const adm=isAdm();
-  $('tb-rb').textContent=CU.name.split(' ')[0]+' · '+(adm?'ADMIN':'OP');
-  $('tb-rb').className='rb '+(adm?'rb-adm':'rb-op');
+  document.body.classList.toggle('adm',adm);
+  $('uNome').textContent=CU.name; $('uAv').textContent=CU.name.split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase();
+  $('uRole').textContent=adm?'Admin':'Operador'; $('uRole').className='rb'+(adm?'':' op');
   $('acoes-wrap').classList.toggle('hide',!adm);
-  $('t-his').classList.toggle('hide',!adm);
-  $('t-apr').classList.toggle('hide',!adm);
   $('con-kpis').classList.toggle('hide',!adm);
   $('dd-adm').classList.toggle('hide',!adm);
   go('main'); goTab('con'); loadPendCount();
+}
+function toggleSb(on){ document.body.classList.toggle('sbOpen',!!on); }
+function colapsaSb(){ document.body.classList.toggle('sbMini'); try{localStorage.setItem('cm_sbMini',document.body.classList.contains('sbMini')?'1':'');}catch(e){} }
+try{ if(localStorage.getItem('cm_sbMini')) document.body.classList.add('sbMini'); }catch(e){}
+async function loadDevPill(){
+  try{ const {count}=await getSB().from('dev_devolucoes').select('id',{count:'exact',head:true}).in('status',['RECEBIDA','EM TRATATIVA']);
+    const p=$('dev-pill'); p.textContent=count||0; p.classList.toggle('hide',!count); }catch(e){}
 }
 function go(s){ document.querySelectorAll('.scr').forEach(x=>x.classList.remove('on')); $('s-'+s).classList.add('on'); }
 function goTab(t){
   CUR_TAB=t;
   ['con','mov','dev','his','apr'].forEach(x=>{ $('t-'+x).classList.toggle('on',x===t); $('p-'+x).classList.toggle('hide',x!==t); });
+  $('h-title').textContent={con:'Consulta',mov:'Estoque',dev:'Devoluções',his:'Histórico',apr:'Aprovações'}[t];
+  toggleSb(false); loadDevPill();
   if(t==='con'){ renderKpis(); focusLater('con-inp'); }
   if(t==='mov'){ renderMov(); loadMyMovs(); }
   if(t==='dev'){ if(DEV_CUR) devAbrir(DEV_CUR.id); else { devVoltarLista(); } }
