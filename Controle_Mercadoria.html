@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Controle de Mercadoria | V1.5</title>
+<title>Controle de Mercadoria | V1.6</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--navy:#0d2167;--navy2:#07142a;--brand:#8b1111;--bg:#f2f4f8;--bg2:#fff;--bg3:#f6f8fc;--acc:#2463cc;--grn:#16a34a;--red:#dc2626;--ylw:#ea580c;--pur:#7c3aed;--cyn:#0d9488;--txt:#1a2035;--mut:#6b7a99;--bdr:#dde2ec;--r:10px}
@@ -293,6 +293,14 @@ body:not(.adm) .adm-only{display:none!important}
 .gl-r{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;border-bottom:1px dashed var(--bdr);flex-wrap:wrap}
 .gl-r:last-child{border:none}
 .gl-est{margin-left:auto;color:var(--mut);font-size:12px}
+
+/* V1.6 — coluna Protheus */
+.gl-col{display:flex;flex-direction:column;align-items:flex-end;min-width:62px;font-size:15px}
+.gl-lb{font-size:9.5px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+.gl-col .gl-q{font-size:15px;min-width:0}
+.prt-box{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:var(--bg3);border:1px solid var(--bdr);border-radius:8px;padding:8px 12px;margin:4px 0 8px}
+.prt-box .il{font-size:10px;font-weight:700;color:var(--mut);text-transform:uppercase}.prt-box .iv{font-size:17px;font-weight:800}
+@media(max-width:520px){.gl-col{min-width:46px;font-size:13px}.gl-lb{font-size:8.5px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -355,6 +363,7 @@ body:not(.adm) .adm-only{display:none!important}
       <div class="menu" id="acoes-menu">
         <div class="menu-i" onclick="openImp()">📥 Importar saldo (planilha / inventário)</div>
         <div class="menu-i" onclick="openGrd()">🏷 Importar cadastro de grade (Z01)</div>
+        <div class="menu-i" onclick="openPrt()">🏢 Importar saldo Protheus (qry001)</div>
         <div class="menu-i" onclick="exportSaldo()">📊 Exportar saldo</div>
         <div class="menu-i" onclick="baixarModelo()">📄 Baixar modelo de planilha</div>
         <div class="menu-i" onclick="exportDevs()">↩ Exportar devoluções</div>
@@ -658,6 +667,22 @@ body:not(.adm) .adm-only{display:none!important}
   </div>
 </div>
 
+<!-- ══════════ OVERLAY: SALDO PROTHEUS ══════════ -->
+<div class="ovl center hide" id="prt-ovl" onclick="if(event.target===this)closePrt()">
+  <div class="sheet" style="max-width:480px">
+    <div class="sh-title"><span>🏢 Saldo Protheus</span><button class="sh-x" onclick="closePrt()">✕</button></div>
+    <div class="sh-sub">Arquivo qry001 (.csv/.xlsx) com <b>LOTE</b>, <b>TOTAL_SALDO_ARMAZEM_01</b>, <b>QTD_TABELA_Z01</b> e <b>RESULTADO_DIVISAO</b> (volumes). Substitui o saldo Protheus anterior — ele aparece numa coluna ao lado do saldo do estoque.</div>
+    <div class="sh-sub" id="prt-info"></div>
+    <label class="imp-file" onclick="document.getElementById('prt-file').click()">
+      <span style="font-size:22px">📄</span>
+      <span style="flex:1;font-size:13px;color:var(--mut)" id="prt-fname">Selecionar arquivo (.csv / .xlsx)</span>
+    </label>
+    <input type="file" id="prt-file" accept=".csv,.txt,.xlsx,.xls" class="hide" onchange="prtLer(this)">
+    <div class="imp-prev hide" id="prt-prev"></div>
+    <div class="row"><button class="btn btn-ghost" style="flex:1" onclick="closePrt()">Fechar</button><button class="btn btn-acc" style="flex:2" id="prt-ok" disabled onclick="prtGravar()">⬆ Gravar saldo Protheus</button></div>
+  </div>
+</div>
+
 <!-- ══════════ OVERLAY: QR ══════════ -->
 <div class="ovl center hide" id="qr-ovl" onclick="if(event.target===this)this.classList.add('hide')">
   <div class="sheet" style="max-width:300px;text-align:center;align-items:center">
@@ -670,7 +695,7 @@ body:not(.adm) .adm-only{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.5';
+const APP_VERSION='V1.6';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -731,7 +756,21 @@ async function loadUsers(){
   }catch(e){}
   if(!USERS.find(u=>u.user==='admin')) USERS.unshift(DEFAULT_ADMIN);
 }
+// ── Saldo Protheus (por GTIN, em volumes) ──
+let PROT={}, PROT_TS=null, PROT_OK=false;
+async function loadProtheus(){
+  try{
+    const rows=await fetchAll('est_protheus','id,gtin,saldo_pares,pares,volumes,atualizado_em');
+    PROT={}; PROT_TS=null;
+    rows.forEach(r=>{ PROT[r.gtin]={vol:Number(r.volumes)||0,pares:r.pares,saldo:Number(r.saldo_pares)||0}; if(!PROT_TS||r.atualizado_em>PROT_TS) PROT_TS=r.atualizado_em; });
+    PROT_OK=rows.length>0;
+  }catch(e){ PROT_OK=false; }
+}
+function protVol(g){ return PROT[g]?PROT[g].vol:0; }
+function estTotal(g){ return (BY_GTIN[g]||[]).reduce((s,r)=>s+(r.qtd>0?r.qtd:0),0); }
+function difTag(est,prot){ const d=Math.round((est-prot)*100)/100; return d===0?'<span class="tag t-grn">=</span>':`<span class="tag ${d>0?'t-acc':'t-red'}">${d>0?'+':''}${fmt(d)}</span>`; }
 async function loadSaldo(){
+  await loadProtheus();
   try{ SALDO=await fetchAll('est_saldo','id,gtin,descricao,marca,endereco,qtd,atualizado_em,atualizado_por'); indexSaldo(); }
   catch(e){ console.error(e); toast('Erro ao carregar saldo: '+(e.message||e),1,4000); }
 }
@@ -890,6 +929,7 @@ async function consultar(silent){
       <div class="iean">${esc(g)}</div><div style="font-size:16px;font-weight:700;margin:2px 0 4px">${esc(p.descr)}</div>
       <div class="isub">${esc(p.marca||'')}</div>
       <div class="row" style="margin:10px 0 6px"><span class="tag t-grn">Total: ${fmt(tot)}</span><span class="tag t-ylw">${rows.length} endereço(s)</span>${p.pares?`<span class="tag t-pur">${fmt(p.pares)} pares/cx</span>`:''}</div>
+      ${PROT_OK?`<div class="prt-box"><div><div class="il">Estoque (endereços)</div><div class="iv">${fmt(tot)}</div></div><div><div class="il">Protheus (vol.)</div><div class="iv">${fmt(protVol(g))}</div></div><div><div class="il">Diferença</div><div class="iv">${difTag(tot,protVol(g))}</div></div></div>`:''}
       ${rows.length?rows.map(r=>`<div class="irow click" onclick="conAbrir('${esc(r.endereco)}')"><span style="font-size:16px">📍</span><div class="ibody"><div style="font-weight:700;color:var(--ylw)">${esc(r.endereco)}</div><div class="isub">Atualizado ${fmtDT(r.atualizado_em)} ${r.atualizado_por?'· '+esc(r.atualizado_por):''}</div></div><div class="iright"><div class="iqty">${fmt(r.qtd)}</div></div></div>`).join('')
       :'<div class="empty">Sem saldo em nenhum endereço</div>'}
     </div>`;
@@ -1106,7 +1146,10 @@ function renderMyMovs(L){
       <div class="gl-h" onclick="mhToggle(this)">
         <span class="gl-dot"></span>
         <div class="ibody"><div class="iean">${esc(g.gtin)}</div><div class="inm">${esc(g.descr)}</div></div>
-        <span class="gl-q">${fmt(g.vol)}</span><span class="gl-ch">▼</span>
+        <span class="gl-col"><span class="gl-lb">Mov. hoje</span><span class="gl-q">${fmt(g.vol)}</span></span>
+        <span class="gl-col"><span class="gl-lb">Estoque</span><b>${fmt(estTotal(g.gtin))}</b></span>
+        ${PROT_OK?`<span class="gl-col"><span class="gl-lb">Protheus</span><b>${fmt(protVol(g.gtin))}</b></span><span class="gl-col"><span class="gl-lb">Dif.</span>${difTag(estTotal(g.gtin),protVol(g.gtin))}</span>`:''}
+        <span class="gl-ch">▼</span>
       </div>
       <div class="gl-b">${ends.map(e=>{const a=e.rota.split(' → ').pop(); const est=saldoAt(g.gtin,a);
         return `<div class="gl-r"><span>📍</span><b class="c-ylw">${esc(e.rota)}</b><span class="tag ${TIPO_TAG[e.tipo]||'t-mut'}">${TIPO_LBL[e.tipo]||e.tipo} ${e.tipo==='SAIDA'?'-'+fmt(Math.abs(e.qtd)):e.tipo==='AJUSTE'?(e.qtd>0?'+':'')+fmt(e.qtd):'+'+fmt(Math.abs(e.qtd))}</span><span class="gl-est">Estoque: <b class="c-grn">${fmt(est)}</b></span></div>`;}).join('')}</div>
@@ -1651,6 +1694,83 @@ async function grdGravar(){
   finally{ btn.disabled=false; }
 }
 
+// ═════════════════════ SALDO PROTHEUS (adm) ═════════════════════
+let PRT=[];
+function openPrt(){
+  PRT=[]; $('prt-file').value=''; $('prt-fname').textContent='Selecionar arquivo (.csv / .xlsx)'; $('prt-prev').classList.add('hide'); $('prt-ok').disabled=true;
+  $('prt-info').innerHTML=PROT_OK?`Saldo atual: <b>${fmt(Object.keys(PROT).length)}</b> GTINs com saldo · importado ${fmtDT(PROT_TS)}`:'Nenhum saldo Protheus importado ainda.';
+  $('prt-ovl').classList.remove('hide');
+}
+function closePrt(){ $('prt-ovl').classList.add('hide'); }
+function prtLer(inp){
+  const f=inp.files[0]; if(!f) return;
+  $('prt-fname').textContent=f.name; $('prt-prev').classList.remove('hide'); $('prt-prev').textContent='Lendo arquivo...';
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      let aoa;
+      if(/\.(csv|txt)$/i.test(f.name)){
+        let txt; try{ txt=new TextDecoder('utf-8',{fatal:true}).decode(e.target.result); }catch(x){ txt=new TextDecoder('windows-1252').decode(e.target.result); }
+        const fl=txt.split(/\r?\n/)[0]||''; const sep=fl.split(';').length>=fl.split(',').length?';':',';
+        aoa=txt.split(/\r?\n/).map(l=>l.split(sep));
+      } else {
+        if(typeof XLSX==='undefined') throw new Error('Biblioteca Excel não carregou');
+        const wb=XLSX.read(e.target.result,{type:'array'});
+        aoa=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''});
+      }
+      prtParse(aoa);
+    }catch(x){ $('prt-prev').innerHTML='<span class="c-red">Erro ao ler: '+esc(x.message)+'</span>'; }
+  };
+  r.readAsArrayBuffer(f);
+}
+function prtParse(aoa){
+  let hi=-1, C={g:0,s:1,p:2,v:3};
+  for(let i=0;i<Math.min(10,aoa.length);i++){
+    const h=(aoa[i]||[]).map(nrm); const fi=re=>h.findIndex(x=>re.test(x));
+    const g=fi(/LOTE|GTIN|EAN|BARRA/); const sd=fi(/SALDO/); if(g<0||sd<0) continue;
+    hi=i; C={g,s:sd,p:h.findIndex((x,ix)=>ix!==sd&&/QTD|PARES|Z01/.test(x)),v:fi(/RESULT|DIVIS|VOLUM/)}; break;
+  }
+  const map={}; let lidas=0, ign=0, zer=0;
+  aoa.slice(hi+1).forEach(r=>{
+    if(!r||r.every(c=>String(c).trim()==='')) return;
+    lidas++;
+    const g=normG(String(r[C.g]??'').trim());
+    if(!/^\d{8,14}$/.test(g)){ ign++; return; }
+    const sp=parseNum(String(r[C.s]??'').trim())||0;
+    const pr=C.p>=0?parseInt(String(r[C.p]).trim())||null:null;
+    let vol=C.v>=0?parseNum(String(r[C.v]??'').trim()):NaN;
+    if(isNaN(vol)) vol=pr?sp/pr:sp;
+    vol=Math.round(vol*100)/100;
+    if(!sp&&!vol){ zer++; return; }
+    if(map[g]){ map[g].saldo_pares+=sp; map[g].volumes=Math.round((map[g].volumes+vol)*100)/100; }
+    else map[g]={gtin:g,saldo_pares:sp,pares:pr,volumes:vol};
+  });
+  PRT=Object.values(map);
+  const tv=PRT.reduce((s,x)=>s+x.volumes,0), tp=PRT.reduce((s,x)=>s+x.saldo_pares,0);
+  $('prt-prev').innerHTML=`Linhas lidas: <b>${fmt(lidas)}</b> · sem saldo: <b>${fmt(zer)}</b> · ignoradas: <b class="${ign?'c-ylw':''}">${fmt(ign)}</b><br>
+    GTINs com saldo: <b class="c-grn">${fmt(PRT.length)}</b><br>Total: <b>${fmt(tv)}</b> volumes · <b>${fmt(tp)}</b> pares
+    ${hi<0?'<br><span class="c-ylw">⚠ Cabeçalho não reconhecido — usei A=Lote, B=Saldo, C=Pares, D=Volumes</span>':''}`;
+  $('prt-ok').disabled=!PRT.length;
+}
+async function prtGravar(){
+  if(!PRT.length) return;
+  if(!confirm(`Substituir o saldo Protheus por ${fmt(PRT.length)} GTINs?`)) return;
+  const btn=$('prt-ok'); btn.disabled=true; const prev=$('prt-prev'); const sb=getSB(); const now=new Date().toISOString();
+  try{
+    prev.innerHTML='Apagando saldo Protheus anterior...';
+    const {error:de}=await sb.from('est_protheus').delete().gte('id',0); if(de) throw de;
+    for(let i=0;i<PRT.length;i+=1000){
+      const {error}=await sb.from('est_protheus').insert(PRT.slice(i,i+1000).map(x=>({...x,atualizado_em:now}))); if(error) throw error;
+      prev.innerHTML=`Gravando... <b>${fmt(Math.min(i+1000,PRT.length))}</b> / ${fmt(PRT.length)}`;
+    }
+    await loadProtheus();
+    prev.innerHTML=`<span class="c-grn">✓ Saldo Protheus gravado — ${fmt(PRT.length)} GTINs</span>`;
+    toast('✓ Saldo Protheus atualizado');
+    if(CUR_TAB==='mov') loadMyMovs(); if(CUR_TAB==='con'&&$('con-inp').value.trim()) consultar(true);
+  }catch(e){ prev.innerHTML='<span class="c-red">Erro: '+esc(e.message||e)+'</span>'; toast('Erro ao gravar',1); }
+  finally{ btn.disabled=false; }
+}
+
 // ═════════════════════ EXPORTAÇÕES ═════════════════════
 function xlsxSave(sheets,nome){
   if(typeof XLSX==='undefined') return toast('Biblioteca Excel não carregou',1);
@@ -1665,7 +1785,14 @@ function exportSaldo(){
   L.forEach(r=>aoa.push([r.endereco,r.gtin,r.descricao||'',r.marca||'',r.qtd,fmtDT(r.atualizado_em),r.atualizado_por||'']));
   const byA={}; L.forEach(r=>{byA[r.endereco]=(byA[r.endereco]||0)+r.qtd;});
   const res=[['ENDERECO','QTD TOTAL']].concat(Object.entries(byA));
-  xlsxSave([['Saldo',aoa,[14,16,44,16,8,17,18]],['Por endereço',res,[14,10]]],'saldo_estoque');
+  const sheets=[['Saldo',aoa,[14,16,44,16,8,17,18]],['Por endereço',res,[14,10]]];
+  if(PROT_OK){
+    const gs=new Set([...Object.keys(BY_GTIN).filter(g=>estTotal(g)>0),...Object.keys(PROT).filter(g=>PROT[g].vol)]);
+    const cmp=[['GTIN','DESCRICAO','ESTOQUE (ENDEREÇOS)','PROTHEUS (VOL)','DIFERENÇA','PARES/CX','SALDO PROTHEUS (PARES)']];
+    [...gs].sort().forEach(g=>{ const e=estTotal(g), p=protVol(g); cmp.push([g,(PROD[g]&&PROD[g].descr)||(GRADE[g]&&GRADE[g].descr)||'',e,p,Math.round((e-p)*100)/100,PROT[g]?PROT[g].pares:'',PROT[g]?PROT[g].saldo:'']); });
+    sheets.push(['Comparativo Protheus',cmp,[16,44,12,12,11,9,14]]);
+  }
+  xlsxSave(sheets,'saldo_estoque');
 }
 function baixarModelo(){
   xlsxSave([['Saldo',[['GTIN','DESCRICAO','MARCA','ENDERECO','QTD'],['07890541277879','HAVAIANAS SLIM 0001 BRANCO F82 35-40','HAVAIANAS','G1-02-42-B',93]],[16,44,16,14,8]]],'modelo_saldo');
