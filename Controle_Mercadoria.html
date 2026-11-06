@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Controle de Mercadoria | V1.9</title>
+<title>Controle de Mercadoria | V1.10</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--navy:#0d2167;--navy2:#07142a;--brand:#8b1111;--bg:#f2f4f8;--bg2:#fff;--bg3:#f6f8fc;--acc:#2463cc;--grn:#16a34a;--red:#dc2626;--ylw:#ea580c;--pur:#7c3aed;--cyn:#0d9488;--txt:#1a2035;--mut:#6b7a99;--bdr:#dde2ec;--r:10px}
@@ -325,6 +325,15 @@ body:not(.adm) .adm-only{display:none!important}
 .pos-ean-m{display:none}
 @media(max-width:600px){.pos-wrap .c-ean{display:none}.pos-ean-m{display:block}.pos-wrap .tbl td,.pos-wrap .tbl th{padding:6px 5px}}
 
+/* V1.10 — feedback de bipagem */
+#mv-ls.lsbar{border-radius:8px;padding:8px 10px;font-size:14px;min-height:0}
+#mv-ls.lsbar:empty{padding:0}
+#mv-ls.ok{background:#f0fdf4;border:1.5px solid #86efac;color:#166534}
+#mv-ls.warn{background:#fff7ed;border:1.5px solid #fdba74;color:#9a3412;font-weight:700}
+#mv-ls.err{background:#fef2f2;border:2px solid #f87171;color:#b91c1c;font-weight:800;font-size:16px}
+#mv-ls .lsean{margin-top:2px;font-weight:400}
+@keyframes shake{0%,100%{transform:none}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+.shake{animation:shake .35s}
 /* V1.8 — kardex / baixa de vendas */
 .kdx-wrap{overflow:auto;max-height:65vh;border:1px solid var(--bdr);border-radius:8px}
 .kdx-wrap .tbl td{vertical-align:middle;white-space:nowrap}
@@ -405,6 +414,7 @@ body:not(.adm) .adm-only{display:none!important}
         <div class="menu-i" onclick="openPrt()">🏢 Importar saldo Protheus (qry001)</div>
         <div class="menu-i" onclick="openVnd()">🧾 Baixar vendas (qry001)</div>
         <div class="menu-i" onclick="exportSaldo()">📊 Exportar saldo</div>
+        <div class="menu-i" onclick="exportEnderecos()">📍 Exportar endereços (Protheus)</div>
         <div class="menu-i" onclick="baixarModelo()">📄 Baixar modelo de planilha</div>
         <div class="menu-i" onclick="exportDevs()">↩ Exportar devoluções</div>
         <div class="menu-i" onclick="openQR()">📱 QR Code (abrir no coletor)</div>
@@ -591,7 +601,7 @@ body:not(.adm) .adm-only{display:none!important}
   <!-- ── ENDEREÇO ── -->
   <div class="pg hide" id="p-end">
     <div class="card">
-      <div class="ct">📍 Consultar endereço</div>
+      <div class="ct"><span>📍 Consultar endereço</span><button class="btn btn-ghost btn-sm" onclick="exportEnderecos()">⬇ Exportar endereços</button></div>
       <div class="row">
         <input id="end-inp" class="scan-inp addr" type="text" placeholder="Bipe ou digite o endereço..." autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" oninput="endDigitando()">
         <button class="btn-go" onclick="endBuscar()">OK ▶</button>
@@ -656,7 +666,7 @@ body:not(.adm) .adm-only{display:none!important}
     <div class="card hide" id="mv-scan-card">
       <div class="ct"><span>📷 Bipar produto (EAN)</span><button class="btn btn-ghost btn-sm hide" id="mv-tudo" onclick="mvTudo()">⇉ Tudo do endereço</button></div>
       <div class="row">
-        <input id="mv-scan" class="scan-inp" type="text" inputmode="numeric" placeholder="Código de barras..." autocomplete="off" autocorrect="off" spellcheck="false">
+        <input id="mv-scan" class="scan-inp" type="text" inputmode="numeric" oninput="mvScanAuto()" placeholder="Código de barras..." autocomplete="off" autocorrect="off" spellcheck="false">
         <button class="btn-go blue" onclick="mvScan()">+</button>
       </div>
       <div class="lsbar" id="mv-ls"></div>
@@ -820,7 +830,7 @@ body:not(.adm) .adm-only{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.9';
+const APP_VERSION='V1.10';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -1104,7 +1114,7 @@ const OP_INFO={
 function selOp(op,force){
   if(!force&&MV.items.length&&MV.op!==op&&!confirm('Descartar os itens bipados?')) return;
   MV={op,addr:null,dest:null,items:[]};
-  $('mv-addr-inp').value=''; $('mv-dest-inp').value=''; $('mv-obs').value=''; $('mv-mot').value=''; $('mv-ls').innerHTML='';
+  $('mv-addr-inp').value=''; $('mv-dest-inp').value=''; $('mv-obs').value=''; $('mv-mot').value=''; $('mv-ls').innerHTML=''; $('mv-ls').className='lsbar';
   const ico={ENT:'📥',SAI:'📤',TRF:'🔄',ROT:'🔢'}[op];
   $('mv-ovl-ttl').textContent=ico+' '+OP_INFO[op].nome;
   $('mv-sheet').className='sheet mv-sheet '+op;
@@ -1136,25 +1146,42 @@ function mvSetDest(){
   beep(true); MV.dest=D; renderMov();
 }
 function mvTrocarDest(){ MV.dest=null; $('mv-dest-inp').value=''; renderMov(); focusLater('mv-dest-inp'); }
-async function mvScan(){
+// Bipagem: Enter do coletor OU auto-envio quando o EAN completo é digitado/colado. Fila evita perder bipes rápidos.
+let _scanQ=Promise.resolve(), _scanTmr=0;
+function mvScan(){
+  clearTimeout(_scanTmr);
   const inp=$('mv-scan'); const raw=inp.value.trim(); inp.value=''; inp.focus(); if(!raw) return;
+  _scanQ=_scanQ.then(()=>mvScanDo(raw)).catch(e=>mvMsg('err','Erro: '+esc(e.message||e)));
+}
+function mvScanAuto(){
+  clearTimeout(_scanTmr);
+  const v=$('mv-scan').value.trim();
+  if(/^\d{8}$|^\d{12,14}$/.test(v)) _scanTmr=setTimeout(mvScan,v.length===14?60:350);
+}
+function mvMsg(tipo,html){
+  const el=$('mv-ls'); el.className='lsbar '+tipo; el.innerHTML=html;
+  if(tipo==='err'){ const c=$('mv-scan-card'); c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake'); }
+}
+async function mvScanDo(raw){
   if(!isCode(raw)){
-    // bipou um endereço: na transferência vira destino
     if(MV.op==='TRF'&&MV.items.length){ $('mv-dest-inp').value=raw; mvSetDest(); return; }
-    beep(false); $('mv-ls').innerHTML='<span class="tag t-red">Código inválido: '+esc(raw)+'</span>'; return;
+    beep(false); mvMsg('err','✖ Código inválido: <b>'+esc(raw)+'</b>'); return;
   }
   const g=normG(raw); const sis=saldoAt(g,MV.addr);
   let it=MV.items.find(x=>x.gtin===g);
   if(MV.op==='SAI'||MV.op==='TRF'){
-    if(sis<=0){ beep(false); const p=PROD[g]; $('mv-ls').innerHTML=`<span class="lsean">${esc(g)}</span><span class="tag t-red">Sem saldo em ${esc(MV.addr)}</span> <span class="lsnm">${esc(cut(p?p.descr:'',34))}</span>`; return; }
-    if(it&&it.qtd+1>sis){ beep(false); $('mv-ls').innerHTML=`<span class="lsean">${esc(g)}</span><span class="tag t-red">Excede o saldo (${fmt(sis)})</span>`; return; }
+    if(sis<=0){ beep(false); const p=PROD[g]; mvMsg('err',`✖ Sem saldo em ${esc(MV.addr)}<span class="lsean">${esc(g)} ${esc(cut(p?p.descr:'',40))}</span>`); return; }
+    if(it&&it.qtd+1>sis){ beep(false); mvMsg('err',`✖ Excede o saldo do endereço (${fmt(sis)})<span class="lsean">${esc(g)} ${esc(cut(it.descr,40))}</span>`); return; }
   }
-  if(!it){ const p=await lookupProd(g); it={gtin:g,descr:p.descr,marca:p.marca,qtd:0,sis,found:p.found}; MV.items.unshift(it); }
-  it.qtd++; beep(it.found!==false);
+  if(!it){ const p=await lookupProd(g); it=MV.items.find(x=>x.gtin===g); if(!it){ it={gtin:g,descr:p.descr,marca:p.marca,qtd:0,sis,found:p.found}; MV.items.unshift(it); } }
+  it.qtd++;
   let tag='';
   if(MV.op==='ROT'){ const d=it.qtd-it.sis; tag=it.sis===0?'<span class="tag t-acc">Fora do endereço</span>':d===0?'<span class="tag t-grn">OK</span>':d>0?`<span class="tag t-red">▲ +${d}</span>`:`<span class="tag t-ylw">▼ ${d}</span>`; }
-  else if(it.found===false) tag='<span class="tag t-ylw">Não cadastrado</span>';
-  $('mv-ls').innerHTML=`<span class="lsean">${esc(g)}</span><span class="lsnm">${esc(cut(it.descr,34))}</span> ${tag} <b>· ${it.qtd} un.</b>`;
+  if(it.found===false){
+    beep(false); mvMsg('warn',`⚠ Produto NÃO CADASTRADO — confira o código <span class="lsean">${esc(g)}</span> <b>· ${it.qtd} un.</b>`);
+  } else {
+    beep(true); mvMsg('ok',`✔ <span class="lsnm">${esc(cut(it.descr,40))}</span> ${tag} <b>· ${it.qtd} un.</b><span class="lsean">${esc(g)}</span>`);
+  }
   renderMovItems();
 }
 function mvTudo(){
@@ -1241,7 +1268,7 @@ async function mvConfirmar(){
   }
   _mvBusy=false; btn.disabled=false;
   if(erros.length){ beep(false); alert(`${ok} item(ns) gravado(s).\n${erros.length} com erro (continuam na lista):\n\n`+erros.join('\n')); renderMov(); }
-  else { beep(true); toast(`✓ ${OP_INFO[op].nome} gravada — ${ok} produto(s)`); MV.addr=null; MV.dest=null; MV.items=[]; $('mv-addr-inp').value=''; $('mv-dest-inp').value=''; $('mv-obs').value=''; $('mv-mot').value=''; $('mv-ls').innerHTML=''; renderMov(); focusLater('mv-addr-inp'); }
+  else { beep(true); toast(`✓ ${OP_INFO[op].nome} gravada — ${ok} produto(s)`); MV.addr=null; MV.dest=null; MV.items=[]; $('mv-addr-inp').value=''; $('mv-dest-inp').value=''; $('mv-obs').value=''; $('mv-mot').value=''; $('mv-ls').innerHTML=''; $('mv-ls').className='lsbar'; renderMov(); focusLater('mv-addr-inp'); }
   loadMyMovs(); renderPos();
 }
 async function mvEnviarRotativa(){
@@ -1255,7 +1282,7 @@ async function mvEnviarRotativa(){
   _mvBusy=false; $('mv-conf').disabled=false;
   if(error){ beep(false); toast('Erro: '+error.message,1,4000); return; }
   beep(true); toast(div?`✓ Enviada — ${div} divergência(s) aguardando aprovação`:'✓ Contagem sem divergências registrada');
-  MV.addr=null; MV.items=[]; $('mv-addr-inp').value=''; $('mv-ls').innerHTML=''; renderMov(); focusLater('mv-addr-inp'); loadPendCount();
+  MV.addr=null; MV.items=[]; $('mv-addr-inp').value=''; $('mv-ls').innerHTML=''; $('mv-ls').className='lsbar'; renderMov(); focusLater('mv-addr-inp'); loadPendCount();
 }
 async function loadMyMovs(){
   if(!CU) return;
@@ -1408,6 +1435,21 @@ function endRender(A){
       <button class="btn btn-ghost btn-sm" onclick="mvAtalho('ROT','${esc(A)}')">🔢 Rotativa</button>
     </div>
   </div>`;
+}
+
+// Exporta GRADE x ENDERECO no layout do Protheus (enderecos_protheus_dd-mm-aaaa.xlsx)
+function exportEnderecos(){
+  $('acoes-menu').classList.remove('open');
+  if(typeof XLSX==='undefined') return toast('Biblioteca Excel não carregou',1);
+  const L=SALDO.filter(r=>r.qtd>0&&r.endereco).map(r=>[String(r.gtin),String(r.endereco)])
+    .sort((a,b)=>a[1].localeCompare(b[1])||a[0].localeCompare(b[0]));
+  if(!L.length) return toast('Nenhum endereço com saldo',1);
+  const ws=XLSX.utils.aoa_to_sheet([['GRADE','ENDERECO'],...L]);
+  for(let i=2;i<=L.length+1;i++){ ['A','B'].forEach(c=>{ const x=ws[c+i]; if(x){ x.t='s'; x.z='@'; } }); }
+  ws['!cols']=[{wch:20.8},{wch:16.8}];
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Endereços');
+  XLSX.writeFile(wb,'enderecos_protheus_'+new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')+'.xlsx');
+  toast('✓ '+fmt(L.length)+' linha(s) exportada(s)');
 }
 
 // ═════════════════════ KARDEX ═════════════════════
