@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Controle de Mercadoria | V1.10</title>
+<title>Controle de Mercadoria | V1.11</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--navy:#0d2167;--navy2:#07142a;--brand:#8b1111;--bg:#f2f4f8;--bg2:#fff;--bg3:#f6f8fc;--acc:#2463cc;--grn:#16a34a;--red:#dc2626;--ylw:#ea580c;--pur:#7c3aed;--cyn:#0d9488;--txt:#1a2035;--mut:#6b7a99;--bdr:#dde2ec;--r:10px}
@@ -325,6 +325,17 @@ body:not(.adm) .adm-only{display:none!important}
 .pos-ean-m{display:none}
 @media(max-width:600px){.pos-wrap .c-ean{display:none}.pos-ean-m{display:block}.pos-wrap .tbl td,.pos-wrap .tbl th{padding:6px 5px}}
 
+/* V1.11 — devolução x venda */
+.venda-box{background:#eef2fb;border:1px solid #c7d2fe;border-radius:10px;padding:10px 12px;margin-bottom:12px}
+.venda-res{background:#fff;border:1px solid var(--bdr);border-radius:8px;padding:8px 10px;margin-top:6px;color:var(--txt);font-size:13px}
+.venda-res .info-g{gap:4px 12px}
+#dd-ls.lsbar{border-radius:8px;padding:8px 10px;font-size:14px;min-height:0}
+#dd-ls.lsbar:empty{padding:0}
+#dd-ls.ok{background:#f0fdf4;border:1.5px solid #86efac;color:#166534}
+#dd-ls.warn{background:#fff7ed;border:1.5px solid #fdba74;color:#9a3412;font-weight:700}
+#dd-ls.err{background:#fef2f2;border:2px solid #f87171;color:#b91c1c;font-weight:800;font-size:16px}
+#dd-ls .lsean{margin-top:2px;font-weight:400}
+.sug-end{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 /* V1.10 — feedback de bipagem */
 #mv-ls.lsbar{border-radius:8px;padding:8px 10px;font-size:14px;min-height:0}
 #mv-ls.lsbar:empty{padding:0}
@@ -497,6 +508,14 @@ body:not(.adm) .adm-only{display:none!important}
     <div id="dv-new-view" class="hide" style="display:flex;flex-direction:column;gap:10px">
       <div class="card">
         <div class="ct"><span>➕ Nova devolução</span><button class="btn-troca" onclick="devVoltarLista()">◀ Voltar</button></div>
+        <div class="venda-box">
+          <label class="flbl">🔗 Venda de origem (Dashboard Expedição)</label>
+          <div class="row">
+            <input id="dn-venda" class="scan-inp" type="text" placeholder="NF de venda ou chave da NF de venda..." autocomplete="off" autocorrect="off" spellcheck="false">
+            <button class="btn-go blue" onclick="dnVendaBuscar()">🔍</button>
+          </div>
+          <div id="dn-venda-info" class="sh-sub" style="margin-top:6px">Puxa cliente, transportadora, volumes e itens da venda.</div>
+        </div>
         <div class="seg">
           <div class="seg-b on" id="dn-m-CHAVE" onclick="dnModo('CHAVE')">🔑 Chave de acesso</div>
           <div class="seg-b" id="dn-m-MANUAL" onclick="dnModo('MANUAL')">✍ Manual</div>
@@ -548,10 +567,14 @@ body:not(.adm) .adm-only{display:none!important}
           <button class="btn btn-ghost btn-sm" style="color:var(--red);border-color:var(--red)" id="dd-cancel" onclick="devCancelar()">⊘ Cancelar devolução</button>
         </div>
       </div>
+      <div class="card hide" id="dd-venda-card">
+        <div class="ct"><span>🧾 Itens da venda <span id="dd-venda-nf" class="c-acc"></span></span><span id="dd-venda-tot" class="c-mut" style="text-transform:none;letter-spacing:0"></span></div>
+        <div id="dd-venda"></div>
+      </div>
       <div class="card" id="dd-scan-card">
         <div class="ct">📷 Conferência — bipar produtos recebidos</div>
         <div class="row">
-          <input id="dd-scan" class="scan-inp" type="text" inputmode="numeric" placeholder="Código de barras..." autocomplete="off" autocorrect="off" spellcheck="false">
+          <input id="dd-scan" class="scan-inp" type="text" inputmode="numeric" oninput="devScanAuto()" placeholder="Código de barras..." autocomplete="off" autocorrect="off" spellcheck="false">
           <button class="btn-go blue" onclick="devScan()">+</button>
         </div>
         <div class="lsbar" id="dd-ls"></div>
@@ -738,6 +761,7 @@ body:not(.adm) .adm-only{display:none!important}
       <label class="flbl" style="margin-top:6px">Endereço de guarda (retorno ao estoque)</label>
       <input id="tr-end" class="scan-inp addr" style="width:100%" type="text" placeholder="Bipe o endereço..." autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
       <div class="sh-sub" id="tr-end-info" style="margin-top:4px"></div>
+      <div class="sug-end" id="tr-sug"></div>
     </div>
     <label class="flbl" style="margin-top:6px">Observação</label>
     <input id="tr-obs" class="inp" type="text" autocomplete="off" placeholder="Opcional" style="margin-bottom:4px">
@@ -830,7 +854,7 @@ body:not(.adm) .adm-only{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.10';
+const APP_VERSION='V1.11';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -1636,6 +1660,64 @@ function vbExport(){
   xlsxSave([['Baixas de venda',aoa,[17,10,6,11,10,16,40,9,8,9,9,8,11,30,16,30]]],'baixas_venda');
 }
 
+// ═════════════ DEVOLUÇÃO × VENDA (Dashboard Expedição: avacy_records / avacy_status) ═════════════
+let DN_VENDA=null, _dnChaveTent='', DEV_VITENS=null, _ddTmr=0;
+function ddMsg(tipo,html){ const el=$('dd-ls'); el.className='lsbar '+tipo; el.innerHTML=html; if(tipo==='err'){ const c=$('dd-scan-card'); c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake'); } }
+function devScanAuto(){ clearTimeout(_ddTmr); const v=$('dd-scan').value.trim(); if(/^\d{8}$|^\d{12,14}$/.test(v)) _ddTmr=setTimeout(devScan,v.length===14?60:350); }
+async function dnVendaBuscar(val,silent){
+  const raw=String(val??$('dn-venda').value).trim(); if(!raw) return;
+  const k=limpaChave(raw); const sb=getSB(); let rows=[];
+  $('dn-venda-info').innerHTML='Buscando venda...';
+  try{
+    if(k.length===44){ const {data,error}=await sb.from('avacy_records').select('*').eq('chave_nfe',k).limit(5); if(error) throw error; rows=data||[]; }
+    if(!rows.length){
+      const d=(k.length===44?parseChave(k).nf:raw).replace(/\D/g,'');
+      if(d){ const vs=[...new Set([d,d.replace(/^0+/,''),d.replace(/^0+/,'').padStart(9,'0')])];
+        const {data,error}=await sb.from('avacy_records').select('*').in('nota',vs).limit(5); if(error) throw error; rows=data||[]; }
+    }
+  }catch(e){ $('dn-venda-info').innerHTML='<span class="c-red">Erro ao buscar no Dashboard Expedição: '+esc(e.message||e)+'</span>'; return; }
+  if(!rows.length){ if(!silent){ beep(false); $('dn-venda-info').innerHTML='<span class="c-red">✖ Venda não encontrada no Dashboard Expedição.</span> Confira o número ou preencha manualmente.'; } else $('dn-venda-info').innerHTML='Puxa cliente, transportadora, volumes e itens da venda.'; return; }
+  const v=rows[0]; let st=null;
+  try{ const {data}=await sb.from('avacy_status').select('status,ts_exp').eq('nota',v.nota).limit(1); st=data&&data[0]; }catch(e){}
+  beep(true); dnVendaUsar(v,st);
+}
+function dnVendaUsar(v,st){
+  DN_VENDA=v; $('dn-venda').value=String(v.nota).replace(/^0+/,'');
+  if(!$('dn-cli').value.trim()) $('dn-cli').value=v.nome_cliente||'';
+  if(!$('dn-transp').value.trim()) $('dn-transp').value=v.transportadora||'';
+  if(!$('dn-vol').value&&parseInt(v.volume)) $('dn-vol').value=parseInt(v.volume);
+  dnVendaRender(v,st);
+}
+function dnVendaRender(v,st,edit){
+  const f=(l,x)=>x?`<div><div class="il">${l}</div><div class="iv">${esc(x)}</div></div>`:'';
+  $('dn-venda-info').innerHTML=`<div class="venda-res"><div class="row" style="justify-content:space-between"><b class="c-grn">✓ Venda vinculada — NF ${esc(String(v.nota).replace(/^0+/,''))}</b><button class="btn-troca" onclick="dnVendaDesvincular()">Desvincular</button></div>
+    <div class="info-g" style="margin-top:6px">${f('Cliente',v.nome_cliente)}${f('Emissão',v.data_emissao)}${f('Vendedor',v.vendedor)}${f('Transportadora',v.transportadora)}${f('Romaneio',v.romaneio)}${f('Volumes',v.volume)}${f('Status expedição',st&&st.status)}</div>
+    ${v.chave_nfe?`<div class="mono c-mut" style="margin-top:4px">${esc(v.chave_nfe)}</div>`:''}</div>`;
+}
+function dnVendaDesvincular(){ DN_VENDA=null; $('dn-venda').value=''; $('dn-venda-info').innerHTML='Puxa cliente, transportadora, volumes e itens da venda.'; }
+async function devVendaItens(){
+  const d=DEV_CUR; const card=$('dd-venda-card');
+  if(!d||!d.venda_nf){ card.classList.add('hide'); DEV_VITENS=null; return; }
+  card.classList.remove('hide'); $('dd-venda-nf').textContent='· NF '+String(d.venda_nf).replace(/^0+/,'');
+  $('dd-venda').innerHTML='<div class="empty">Carregando...</div>';
+  const nf=String(d.venda_nf).replace(/^0+/,'');
+  try{ const {data,error}=await getSB().from('est_venda_baixa').select('gtin,descricao,qtd_pares,qtd_vol,pares_grade,enderecos,status').eq('nf',nf); if(error) throw error; DEV_VITENS=data||[]; }
+  catch(e){ DEV_VITENS=[]; }
+  renderVendaItens();
+}
+function renderVendaItens(){
+  if(!DEV_CUR||!DEV_CUR.venda_nf||!DEV_VITENS) return;
+  if(!DEV_VITENS.length){ $('dd-venda').innerHTML='<div class="sh-sub">Itens não disponíveis — só aparecem os produtos controlados no app que já passaram pela <b>Baixa de vendas</b>. Bipe normalmente os produtos recebidos.</div>'; $('dd-venda-tot').textContent=''; return; }
+  const G={}; DEV_VITENS.forEach(v=>{ const x=G[v.gtin]=G[v.gtin]||{gtin:v.gtin,descr:v.descricao,pares:0,vol:0,ends:[]}; x.pares+=Number(v.qtd_pares)||0; x.vol+=Number(v.qtd_vol)||0; (v.enderecos||[]).forEach(e=>x.ends.push(e.endereco)); });
+  const L=Object.values(G); let tv=0, td=0;
+  $('dd-venda').innerHTML=`<div class="pos-wrap"><table class="tbl"><thead><tr><th class="c-ean">EAN</th><th>Descrição</th><th class="r">Vendido (vol.)</th><th class="r">Devolvido</th><th></th></tr></thead><tbody>${L.map(x=>{
+    const dv=DEV_ITENS.filter(i=>i.gtin===x.gtin).reduce((s,i)=>s+Number(i.qtd),0); tv+=x.vol; td+=dv;
+    const tag=dv===0?'<span class="tag t-mut">—</span>':dv<x.vol?'<span class="tag t-ylw">parcial</span>':dv===x.vol?'<span class="tag t-grn">total</span>':'<span class="tag t-red">acima</span>';
+    return `<tr><td class="c-ean pos-ean">${esc(x.gtin)}</td><td><span class="pos-ean pos-ean-m">${esc(x.gtin)}</span>${esc(x.descr||'')}<div class="pos-sub">${fmt(x.pares)} pares${x.ends.length?' · saiu de '+esc([...new Set(x.ends)].join(', ')):''}</div></td><td class="r"><b>${fmt(x.vol)}</b></td><td class="r"><b class="${dv?'c-grn':''}">${fmt(dv)}</b></td><td class="r">${tag}</td></tr>`;}).join('')}</tbody></table></div>`;
+  const fora=DEV_ITENS.filter(i=>!G[i.gtin]).reduce((s,i)=>s+Number(i.qtd),0);
+  $('dd-venda-tot').textContent=`devolvido ${fmt(td)} de ${fmt(Math.round(tv*100)/100)} vol.${fora?' · '+fmt(fora)+' fora da NF':''}`;
+}
+
 // ═════════════════════ OVERLAY NUM ═════════════════════
 let _numCb=null;
 function openNum(ttl,sub,val,cb){ $('num-ttl').textContent=ttl; $('num-sub').textContent=sub||''; $('num-inp').value=val; _numCb=cb; $('num-ovl').classList.remove('hide'); setTimeout(()=>{$('num-inp').focus();$('num-inp').select();},80); }
@@ -1695,7 +1777,7 @@ async function devQuick(){
 }
 function devShow(view){ ['list','new','det'].forEach(v=>$('dv-'+v+'-view').classList.toggle('hide',v!==view)); $('p-dev').scrollTop=0; }
 function devVoltarLista(){ DEV_CUR=null; DEV_EDIT_ID=null; devShow('list'); devCarregar(); focusLater('dv-quick'); }
-function dnLimpar(){ ['dn-chave','dn-nf','dn-serie','dn-cnpj','dn-emis','dn-cli','dn-transp','dn-vol','dn-obs'].forEach(i=>$(i).value=''); $('dn-mot').value=''; DN_PARSE=null; $('dn-chave-info').innerHTML='<span class="c-mut">Aguardando chave...</span>'; }
+function dnLimpar(){ DN_VENDA=null; if($('dn-venda')){ $('dn-venda').value=''; $('dn-venda-info').innerHTML='Puxa cliente, transportadora, volumes e itens da venda.'; } ['dn-chave','dn-nf','dn-serie','dn-cnpj','dn-emis','dn-cli','dn-transp','dn-vol','dn-obs'].forEach(i=>$(i).value=''); $('dn-mot').value=''; DN_PARSE=null; $('dn-chave-info').innerHTML='<span class="c-mut">Aguardando chave...</span>'; }
 function devNova(chave){
   DEV_EDIT_ID=null; dnLimpar(); dnModo('CHAVE'); $('dn-save').textContent='✓ REGISTRAR CHEGADA';
   devShow('new');
@@ -1712,6 +1794,7 @@ function dnChaveInput(){
     <div><div class="il">Emitente</div><div class="iv">${esc(fmtDoc(p.cnpj))}</div></div>
     <div><div class="il">Modelo</div><div class="iv">${p.modelo==='55'?'NF-e (55)':p.modelo==='65'?'NFC-e (65)':esc(p.modelo)}</div></div></div>`;
   $('dn-nf').value=p.nf; $('dn-serie').value=p.serie; $('dn-cnpj').value=fmtDoc(p.cnpj); $('dn-emis').value=p.emisTxt;
+  if(!DN_VENDA&&p.k!==_dnChaveTent){ _dnChaveTent=p.k; dnVendaBuscar(p.k,true); }
 }
 async function devSalvarNova(){
   const rec={
@@ -1722,6 +1805,8 @@ async function devSalvarNova(){
     cliente:$('dn-cli').value.trim()||null, motivo:$('dn-mot').value||null, transportadora:$('dn-transp').value.trim()||null,
     volumes:parseInt($('dn-vol').value)||null, obs:$('dn-obs').value.trim()||null
   };
+  if(DN_VENDA){ Object.assign(rec,{venda_nf:DN_VENDA.nota,venda_chave:DN_VENDA.chave_nfe||null,venda_emissao:DN_VENDA.data_emissao||null,venda_vendedor:DN_VENDA.vendedor||null,venda_romaneio:DN_VENDA.romaneio||null}); }
+  else if(DEV_EDIT_ID&&DEV_CUR&&DEV_CUR.venda_nf&&!$('dn-venda').value.trim()){ Object.assign(rec,{venda_nf:null,venda_chave:null,venda_emissao:null,venda_vendedor:null,venda_romaneio:null}); }
   if(DN_MODO==='CHAVE'){
     if(!DN_PARSE){ toast('Chave de acesso incompleta (44 posições)',1); $('dn-chave').focus(); return; }
     if(!DN_PARSE.dvOk&&!confirm('O dígito verificador da chave não confere. Salvar mesmo assim?')) return;
@@ -1741,7 +1826,7 @@ async function devSalvarNova(){
     const {data,error}=await sb.from('dev_devolucoes').insert(rec).select().single(); if(error) throw error;
     beep(true); toast('✓ Chegada registrada — bipe os produtos');
     await devAbrir(data.id);
-  }catch(e){ beep(false); toast('Erro: '+(e.message||e),1,4000); }
+  }catch(e){ beep(false); const m=e.message||String(e); toast(/venda_/.test(m)?'Rode o script controle_mercadoria_V1.11_devolucao_venda.sql no Supabase':'Erro: '+m,1,5000); }
   finally{ $('dn-save').disabled=false; }
 }
 async function devAbrir(id){
@@ -1751,18 +1836,19 @@ async function devAbrir(id){
     sb.from('dev_itens').select('*').eq('dev_id',id).order('id',{ascending:true})
   ]);
   if(e1||e2){ toast('Erro ao abrir devolução',1); return; }
-  DEV_CUR=d; DEV_ITENS=its||[]; $('dd-ls').innerHTML='';
-  devShow('det'); renderDevDet(); renderDevItens();
+  DEV_CUR=d; DEV_ITENS=its||[]; $('dd-ls').innerHTML=''; $('dd-ls').className='lsbar'; DEV_VITENS=null;
+  devShow('det'); renderDevDet(); renderDevItens(); devVendaItens();
   if(d.status!=='CANCELADA') focusLater('dd-scan');
 }
 function renderDevDet(){
   const d=DEV_CUR;
-  $('dd-ttl').textContent=d.nf_numero?('NF '+d.nf_numero+(d.nf_serie?' · Série '+d.nf_serie:'')):'Devolução #'+d.id;
+  $('dd-ttl').textContent=d.nf_numero?('NF '+d.nf_numero+(d.nf_serie?' · Série '+d.nf_serie:'')):d.venda_nf?('Devolução da venda NF '+String(d.venda_nf).replace(/^0+/,'')):'Devolução #'+d.id;
   $('dd-st').innerHTML=`<span class="c-mut" style="font-size:11px;margin-right:6px">#${d.id}</span>`+stTag(d.status);
   const f=(l,v,full)=>v?`<div ${full?'style="grid-column:1/-1"':''}><div class="il">${l}</div><div class="iv ${full?'mono':''}">${v}</div></div>`:'';
   $('dd-info').innerHTML=f('Cliente / remetente',esc(d.cliente))+f('Motivo',esc(d.motivo))+f('Emitente',esc(fmtDoc(d.cnpj_emit)))+f('Emissão',esc(d.emissao)+(d.uf?' · '+esc(d.uf):''))+
     f('Transportadora',esc(d.transportadora))+f('Volumes',d.volumes!=null?fmt(d.volumes):'')+f('Recebido',fmtDT(d.recebido_em)+' · '+esc(d.recebido_por||''))+
-    f('Concluído',d.concluido_em?fmtDT(d.concluido_em):'')+f('Lançamento',d.origem==='CHAVE'?'Chave de acesso':'Manual')+f('Chave de acesso',esc(d.chave),true)+f('Observação',esc(d.obs),true);
+    f('Concluído',d.concluido_em?fmtDT(d.concluido_em):'')+f('Lançamento',d.origem==='CHAVE'?'Chave de acesso':'Manual')+f('Chave de acesso',esc(d.chave),true)+f('Observação',esc(d.obs),true)+
+    f('🔗 Venda de origem',d.venda_nf?('NF '+esc(String(d.venda_nf).replace(/^0+/,''))+(d.venda_emissao?' · '+esc(d.venda_emissao):'')+(d.venda_vendedor?' · Vend. '+esc(d.venda_vendedor):'')+(d.venda_romaneio?' · Rom. '+esc(d.venda_romaneio):'')):'',true)+f('Chave NF de venda',esc(d.venda_chave),true);
   $('dd-scan-card').classList.toggle('hide',d.status==='CANCELADA');
   $('dd-cancel').textContent=d.status==='CANCELADA'?'↺ Reabrir devolução':'⊘ Cancelar devolução';
 }
@@ -1788,7 +1874,8 @@ async function devRefreshHead(){
 let DEV_Q=Promise.resolve();
 function devScan(){
   const inp=$('dd-scan'); const raw=inp.value.trim(); inp.value=''; inp.focus(); if(!raw) return;
-  if(!isCode(raw)){ beep(false); $('dd-ls').innerHTML='<span class="tag t-red">Código inválido: '+esc(raw)+'</span>'; return; }
+  clearTimeout(_ddTmr);
+  if(!isCode(raw)){ beep(false); ddMsg('err','✖ Código inválido: <b>'+esc(raw)+'</b>'); return; }
   const g=normG(raw), devId=DEV_CUR.id;
   DEV_Q=DEV_Q.then(()=>devAddItem(g,devId)).catch(e=>{ beep(false); toast('Erro: '+(e.message||e),1,4000); });
 }
@@ -1798,9 +1885,15 @@ async function devAddItem(g,devId){
   let it=DEV_ITENS.find(x=>x.gtin===g&&x.tratativa==='PENDENTE');
   if(it){ const {error}=await sb.from('dev_itens').update({qtd:Number(it.qtd)+1}).eq('id',it.id); if(error) throw error; it.qtd=Number(it.qtd)+1; }
   else { const {data,error}=await sb.from('dev_itens').insert({dev_id:devId,gtin:g,descricao:p.descr,marca:p.marca||''}).select().single(); if(error) throw error; DEV_ITENS.push(data); it=data; }
-  beep(p.found);
-  $('dd-ls').innerHTML=`<span class="lsean">${esc(g)}</span><span class="lsnm">${esc(cut(p.descr,36))}</span> ${p.found?'':'<span class="tag t-ylw">Não cadastrado</span>'} <b>· ${fmt(it.qtd)} un.</b>`;
-  renderDevItens();
+  const est=(BY_GTIN[g]||[]).filter(r=>r.qtd>0).sort((a,b)=>b.qtd-a.qtd);
+  const estTxt=est.length?`Estoque: ${fmt(est.reduce((s,r)=>s+r.qtd,0))} vol. em ${est.slice(0,3).map(r=>esc(r.endereco)).join(', ')}${est.length>3?'…':''}`:'Sem saldo no estoque do app';
+  const vend=DEV_VITENS&&DEV_VITENS.length?DEV_VITENS.find(v=>v.gtin===g):null;
+  if(!p.found){ beep(false); ddMsg('warn',`⚠ Produto NÃO CADASTRADO — confira o código <b>· ${fmt(it.qtd)} un.</b><span class="lsean">${esc(g)}</span>`); }
+  else if(DEV_VITENS&&DEV_VITENS.length&&!vend){ beep(false); ddMsg('warn',`⚠ Produto NÃO consta na NF de venda — ${esc(cut(p.descr,36))} <b>· ${fmt(it.qtd)} un.</b><span class="lsean">${esc(g)} · ${estTxt}</span>`); }
+  else { const devd=DEV_ITENS.filter(x=>x.gtin===g).reduce((s,x)=>s+Number(x.qtd),0);
+    if(vend&&devd>Number(vend.qtd_vol)){ beep(false); ddMsg('warn',`⚠ Devolvendo mais que o vendido (${fmt(devd)} de ${fmt(vend.qtd_vol)} vol.) — ${esc(cut(p.descr,30))}<span class="lsean">${esc(g)}</span>`); }
+    else { beep(true); ddMsg('ok',`✔ <span class="lsnm">${esc(cut(p.descr,40))}</span> <b>· ${fmt(it.qtd)} un.</b>${vend?` <span class="tag t-grn">${fmt(devd)}/${fmt(vend.qtd_vol)} da venda</span>`:''}<span class="lsean">${esc(g)} · ${estTxt}</span>`); } }
+  renderDevItens(); renderVendaItens();
   if(DEV_CUR.status!=='RECEBIDA'&&DEV_CUR.status!=='EM TRATATIVA') devRefreshHead();
 }
 function devEditQtd(id){
@@ -1810,13 +1903,13 @@ function devEditQtd(id){
     const sb=getSB();
     if(v===0){ const {error}=await sb.from('dev_itens').delete().eq('id',id); if(error) return toast('Erro: '+error.message,1); DEV_ITENS=DEV_ITENS.filter(x=>x.id!==id); }
     else { const {error}=await sb.from('dev_itens').update({qtd:v}).eq('id',id); if(error) return toast('Erro: '+error.message,1); it.qtd=v; }
-    renderDevItens(); devRefreshHead();
+    renderDevItens(); renderVendaItens(); devRefreshHead();
   });
 }
 async function devDelItem(id){
   const it=DEV_ITENS.find(x=>x.id===id); if(!confirm('Remover '+cut(it.descricao,40)+' ('+fmt(it.qtd)+' un.)?')) return;
   const {error}=await getSB().from('dev_itens').delete().eq('id',id); if(error) return toast('Erro: '+error.message,1);
-  DEV_ITENS=DEV_ITENS.filter(x=>x.id!==id); renderDevItens(); devRefreshHead();
+  DEV_ITENS=DEV_ITENS.filter(x=>x.id!==id); renderDevItens(); renderVendaItens(); devRefreshHead();
 }
 function devEditar(){
   const d=DEV_CUR; DEV_EDIT_ID=d.id; dnLimpar();
@@ -1824,6 +1917,7 @@ function devEditar(){
   if(d.chave){ $('dn-chave').value=d.chave; dnChaveInput(); }
   $('dn-nf').value=d.nf_numero||''; $('dn-serie').value=d.nf_serie||''; $('dn-cnpj').value=fmtDoc(d.cnpj_emit||''); $('dn-emis').value=d.emissao||'';
   $('dn-cli').value=d.cliente||''; $('dn-mot').value=d.motivo||''; $('dn-transp').value=d.transportadora||''; $('dn-vol').value=d.volumes??''; $('dn-obs').value=d.obs||'';
+  if(d.venda_nf){ DN_VENDA={nota:d.venda_nf,chave_nfe:d.venda_chave,data_emissao:d.venda_emissao,vendedor:d.venda_vendedor,romaneio:d.venda_romaneio,nome_cliente:d.cliente,transportadora:d.transportadora}; $('dn-venda').value=d.venda_nf; dnVendaRender(DN_VENDA,null,true); }
   $('dn-save').textContent='✓ SALVAR ALTERAÇÕES'; devShow('new');
 }
 async function devCancelar(){
@@ -1857,6 +1951,10 @@ function openTrat(id){
   $('tr-opts').innerHTML=TRATATIVAS.map(t=>`<div class="trat-b" data-t="${t}" onclick="selTrat('${t}')">${t==='RETORNO ESTOQUE'?'📦 ':t==='AVARIA'?'💥 ':t==='DESCARTE'?'🗑 ':t==='DEVOLVER FORNECEDOR'?'🏭 ':t==='REFATURAR'?'🧾 ':'• '}${t}</div>`).join('');
   $('tr-end').value=''; $('tr-end-info').textContent=''; $('tr-obs').value='';
   $('tr-end-wrap').classList.add('hide');
+  { const gs=id===null?[...new Set(pend.map(i=>i.gtin))]:[DEV_ITENS.find(x=>x.id===id).gtin];
+    const E={}; gs.forEach(g=>(BY_GTIN[g]||[]).filter(r=>r.qtd>0).forEach(r=>{E[r.endereco]=(E[r.endereco]||0)+r.qtd;}));
+    const ks=Object.keys(E).sort((a,b)=>E[b]-E[a]).slice(0,8);
+    $('tr-sug').innerHTML=ks.length?'<span class="sh-sub" style="width:100%">Onde este produto já está guardado:</span>'+ks.map(a=>`<button class="chip" onclick="$('tr-end').value='${esc(a)}';trEndInfo()">📍 ${esc(a)} · ${fmt(E[a])}</button>`).join(''):'<span class="sh-sub">Produto sem saldo em endereços — bipe o endereço de guarda.</span>'; }
   $('tr-ovl').classList.remove('hide');
 }
 function closeTrat(){ $('tr-ovl').classList.add('hide'); focusLater('dd-scan'); }
@@ -2298,6 +2396,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   $('dn-chave').addEventListener('input',dnChaveInput);
   onEnter('dn-chave',()=>{ dnChaveInput(); if(DN_PARSE){ beep(DN_PARSE.dvOk); $('dn-cli').focus(); } else beep(false); });
   onEnter('dd-scan',devScan);
+  onEnter('dn-venda',()=>dnVendaBuscar());
   onEnter('tr-end',trEndInfo); $('tr-end').addEventListener('blur',trEndInfo);
   onEnter('num-inp',confirmNum);
   onEnter('tr-qtd',()=>{});
