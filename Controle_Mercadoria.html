@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Controle de Mercadoria | V1.6</title>
+<title>Controle de Mercadoria | V1.7</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--navy:#0d2167;--navy2:#07142a;--brand:#8b1111;--bg:#f2f4f8;--bg2:#fff;--bg3:#f6f8fc;--acc:#2463cc;--grn:#16a34a;--red:#dc2626;--ylw:#ea580c;--pur:#7c3aed;--cyn:#0d9488;--txt:#1a2035;--mut:#6b7a99;--bdr:#dde2ec;--r:10px}
@@ -301,6 +301,29 @@ body:not(.adm) .adm-only{display:none!important}
 .prt-box{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:var(--bg3);border:1px solid var(--bdr);border-radius:8px;padding:8px 12px;margin:4px 0 8px}
 .prt-box .il{font-size:10px;font-weight:700;color:var(--mut);text-transform:uppercase}.prt-box .iv{font-size:17px;font-weight:800}
 @media(max-width:520px){.gl-col{min-width:46px;font-size:13px}.gl-lb{font-size:8.5px}}
+
+/* V1.7 — modal de movimentação + posição de estoque */
+.op-c{transition:border-color .12s,transform .08s}
+.op-c:hover{border-color:var(--navy);color:var(--navy)}
+.op-c:active{transform:scale(.97)}
+.mv-sheet{max-width:680px;background:var(--bg);gap:10px}
+.mv-sheet .sh-title{font-size:17px}
+.mv-sheet.ENT .sh-title{color:var(--grn)}.mv-sheet.SAI .sh-title{color:var(--red)}.mv-sheet.TRF .sh-title{color:var(--cyn)}.mv-sheet.ROT .sh-title{color:var(--pur)}
+@media(max-width:600px){#mv-ovl.ovl.center{padding:0}#mv-ovl .sheet{max-width:none;max-height:100vh;height:100%;border-radius:0;border:none}}
+.pos-wrap{max-height:62vh;overflow:auto;border:1px solid var(--bdr);border-radius:8px}
+.pos-wrap table.tbl td{vertical-align:middle}
+.pos-wrap .tbl td.n{font-weight:800;font-size:14px;text-align:right;white-space:nowrap}
+.pos-wrap tr.pr{cursor:pointer}
+.pos-wrap tr.pr.open td{background:#eef2fb}
+.pos-wrap tr.pd td{background:var(--bg3);padding:6px 10px 10px 18px}
+.pos-ean{font-family:Consolas,monospace;font-size:12px;color:var(--mut);white-space:nowrap}
+.pos-sub{font-size:11px;color:var(--mut)}
+.pos-ends{display:flex;gap:6px;flex-wrap:wrap}
+.pos-end{background:#fff;border:1px solid var(--bdr);border-radius:6px;padding:3px 8px;font-size:12px}
+.pos-end b{color:#c2410c}
+.pos-more{text-align:center;padding:10px}
+.pos-ean-m{display:none}
+@media(max-width:600px){.pos-wrap .c-ean{display:none}.pos-ean-m{display:block}.pos-wrap .tbl td,.pos-wrap .tbl th{padding:6px 5px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -398,70 +421,25 @@ body:not(.adm) .adm-only{display:none!important}
       <div class="op-c TRF" id="op-TRF" onclick="selOp('TRF')"><span class="ico">🔄</span>Transferir</div>
       <div class="op-c ROT" id="op-ROT" onclick="selOp('ROT')"><span class="ico">🔢</span>Rotativa</div>
     </div>
-    <div class="card" id="mv-hint"><div class="empty" style="padding:6px 0">Escolha a operação acima</div></div>
-
-    <div class="card hide" id="mv-addr-card">
-      <div class="ct" id="mv-addr-lbl">📍 Endereço</div>
-      <div class="row">
-        <input id="mv-addr-inp" class="scan-inp addr" type="text" placeholder="Bipe o endereço..." autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
-        <button class="btn-go" onclick="mvSetAddr()">OK ▶</button>
-      </div>
-    </div>
-    <div class="addr-banner hide" id="mv-addr-ban">
-      <span style="font-size:20px">📍</span>
-      <div style="flex:1;min-width:0"><div class="addr-code" id="mv-addr-code">—</div><div class="addr-meta" id="mv-addr-meta">—</div></div>
-      <button class="btn-troca" onclick="mvTrocarAddr()">Trocar</button>
-    </div>
-
-    <div class="card hide" id="mv-scan-card">
-      <div class="ct"><span>📷 Bipar produto (EAN)</span><button class="btn btn-ghost btn-sm hide" id="mv-tudo" onclick="mvTudo()">⇉ Tudo do endereço</button></div>
-      <div class="row">
-        <input id="mv-scan" class="scan-inp" type="text" inputmode="numeric" placeholder="Código de barras..." autocomplete="off" autocorrect="off" spellcheck="false">
-        <button class="btn-go blue" onclick="mvScan()">+</button>
-      </div>
-      <div class="lsbar" id="mv-ls"></div>
-    </div>
-
-    <div class="card hide" id="mv-items-card">
-      <div class="ct"><span id="mv-items-ttl">Itens</span><span id="mv-items-tot" class="c-acc" style="font-weight:700"></span></div>
-      <div id="mv-items"></div>
-    </div>
-    <div class="card hide" id="mv-nb-card">
-      <div class="ct"><span>⚠️ Com saldo e não bipados</span><span id="mv-nb-tot" class="c-ylw" style="font-weight:700"></span></div>
-      <div id="mv-nb"></div>
-    </div>
-
-    <div class="card hide" id="mv-dest-card">
-      <div class="ct">🎯 Endereço destino</div>
-      <div class="row">
-        <input id="mv-dest-inp" class="scan-inp addr" type="text" placeholder="Bipe o endereço destino..." autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
-        <button class="btn-go" style="background:var(--cyn)" onclick="mvSetDest()">OK ▶</button>
-      </div>
-    </div>
-    <div class="addr-banner dest hide" id="mv-dest-ban">
-      <span style="font-size:20px">🎯</span>
-      <div style="flex:1;min-width:0"><div class="addr-code" id="mv-dest-code">—</div><div class="addr-meta">Destino</div></div>
-      <button class="btn-troca" onclick="mvTrocarDest()">Trocar</button>
-    </div>
-
-    <div class="card hide" id="mv-mot-card">
-      <div id="mv-mot-wrap">
-        <label class="flbl">Motivo da saída</label>
-        <select id="mv-mot" class="inp">
-          <option value="">— selecione —</option>
-          <option>Separação / venda</option>
-          <option>Avaria</option>
-          <option>Uso e consumo</option>
-          <option>Ajuste de estoque</option>
-          <option>Amostra / brinde</option>
-          <option>Outros</option>
+    <div class="card" id="pos-card">
+      <div class="ct"><span>📦 Posição de estoque — Inventariado × Protheus</span><button class="btn btn-ghost btn-sm" onclick="posExport()">⬇ XLSX</button></div>
+      <div class="kpi-g" id="pos-kpi" style="margin-bottom:10px"></div>
+      <div class="row" style="margin-bottom:8px;flex-wrap:wrap">
+        <input id="pos-q" class="inp" style="margin:0;flex:1;min-width:180px" type="text" placeholder="Filtrar por EAN, descrição ou endereço..." oninput="POS_LIM=200;renderPos()" autocomplete="off">
+        <select id="pos-ord" class="inp" style="margin:0;width:auto" onchange="renderPos()">
+          <option value="DIF">Maior divergência</option><option value="DES">Descrição A-Z</option><option value="INV">Maior saldo inventariado</option><option value="PRT">Maior saldo Protheus</option>
         </select>
       </div>
-      <label class="flbl" id="mv-obs-lbl">Observação / documento</label>
-      <input id="mv-obs" class="inp" type="text" placeholder="Opcional (NF, pedido...)" autocomplete="off" style="margin-bottom:0">
+      <div class="chips" id="pos-chips" style="margin-bottom:8px">
+        <button class="chip on" data-f="TODOS" onclick="posFiltro('TODOS')">Todos</button>
+        <button class="chip" data-f="DIV" onclick="posFiltro('DIV')">Com divergência</button>
+        <button class="chip" data-f="OK" onclick="posFiltro('OK')">Batendo</button>
+        <button class="chip" data-f="SO_EST" onclick="posFiltro('SO_EST')">Só inventariado</button>
+        <button class="chip" data-f="SO_PRT" onclick="posFiltro('SO_PRT')">Só Protheus</button>
+      </div>
+      <div class="sh-sub hide" id="pos-noprt" style="margin-bottom:8px">⚠ Saldo Protheus ainda não importado — use <b>Ações › Importar saldo Protheus (qry001)</b>.</div>
+      <div class="pos-wrap" id="pos-list"></div>
     </div>
-
-    <button class="btn btn-grn hide" id="mv-conf" onclick="mvConfirmar()">✓ CONFIRMAR</button>
 
     <div class="card" id="mv-hist-card">
       <div class="ct"><span>🕓 Meus movimentos de hoje</span><span class="c-mut" style="text-transform:none;letter-spacing:0">agrupado por grade</span></div>
@@ -597,6 +575,78 @@ body:not(.adm) .adm-only{display:none!important}
   </div><!-- /content -->
 </div><!-- /s-main -->
 
+<!-- ══════════ OVERLAY: MOVIMENTAÇÃO (Entrada / Saída / Transferir / Rotativa) ══════════ -->
+<div class="ovl center hide" id="mv-ovl" onclick="if(event.target===this)mvFechar()">
+  <div class="sheet mv-sheet" id="mv-sheet">
+    <div class="sh-title"><span id="mv-ovl-ttl">Movimentação</span><button class="sh-x" onclick="mvFechar()">✕</button></div>
+    <div class="card" id="mv-hint"><div class="empty" style="padding:6px 0">Escolha a operação acima</div></div>
+
+    <div class="card hide" id="mv-addr-card">
+      <div class="ct" id="mv-addr-lbl">📍 Endereço</div>
+      <div class="row">
+        <input id="mv-addr-inp" class="scan-inp addr" type="text" placeholder="Bipe o endereço..." autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+        <button class="btn-go" onclick="mvSetAddr()">OK ▶</button>
+      </div>
+    </div>
+    <div class="addr-banner hide" id="mv-addr-ban">
+      <span style="font-size:20px">📍</span>
+      <div style="flex:1;min-width:0"><div class="addr-code" id="mv-addr-code">—</div><div class="addr-meta" id="mv-addr-meta">—</div></div>
+      <button class="btn-troca" onclick="mvTrocarAddr()">Trocar</button>
+    </div>
+
+    <div class="card hide" id="mv-scan-card">
+      <div class="ct"><span>📷 Bipar produto (EAN)</span><button class="btn btn-ghost btn-sm hide" id="mv-tudo" onclick="mvTudo()">⇉ Tudo do endereço</button></div>
+      <div class="row">
+        <input id="mv-scan" class="scan-inp" type="text" inputmode="numeric" placeholder="Código de barras..." autocomplete="off" autocorrect="off" spellcheck="false">
+        <button class="btn-go blue" onclick="mvScan()">+</button>
+      </div>
+      <div class="lsbar" id="mv-ls"></div>
+    </div>
+
+    <div class="card hide" id="mv-items-card">
+      <div class="ct"><span id="mv-items-ttl">Itens</span><span id="mv-items-tot" class="c-acc" style="font-weight:700"></span></div>
+      <div id="mv-items"></div>
+    </div>
+    <div class="card hide" id="mv-nb-card">
+      <div class="ct"><span>⚠️ Com saldo e não bipados</span><span id="mv-nb-tot" class="c-ylw" style="font-weight:700"></span></div>
+      <div id="mv-nb"></div>
+    </div>
+
+    <div class="card hide" id="mv-dest-card">
+      <div class="ct">🎯 Endereço destino</div>
+      <div class="row">
+        <input id="mv-dest-inp" class="scan-inp addr" type="text" placeholder="Bipe o endereço destino..." autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+        <button class="btn-go" style="background:var(--cyn)" onclick="mvSetDest()">OK ▶</button>
+      </div>
+    </div>
+    <div class="addr-banner dest hide" id="mv-dest-ban">
+      <span style="font-size:20px">🎯</span>
+      <div style="flex:1;min-width:0"><div class="addr-code" id="mv-dest-code">—</div><div class="addr-meta">Destino</div></div>
+      <button class="btn-troca" onclick="mvTrocarDest()">Trocar</button>
+    </div>
+
+    <div class="card hide" id="mv-mot-card">
+      <div id="mv-mot-wrap">
+        <label class="flbl">Motivo da saída</label>
+        <select id="mv-mot" class="inp">
+          <option value="">— selecione —</option>
+          <option>Separação / venda</option>
+          <option>Avaria</option>
+          <option>Uso e consumo</option>
+          <option>Ajuste de estoque</option>
+          <option>Amostra / brinde</option>
+          <option>Outros</option>
+        </select>
+      </div>
+      <label class="flbl" id="mv-obs-lbl">Observação / documento</label>
+      <input id="mv-obs" class="inp" type="text" placeholder="Opcional (NF, pedido...)" autocomplete="off" style="margin-bottom:0">
+    </div>
+
+    <button class="btn btn-grn hide" id="mv-conf" onclick="mvConfirmar()">✓ CONFIRMAR</button>
+
+  </div>
+</div>
+
 <!-- ══════════ OVERLAY: QUANTIDADE ══════════ -->
 <div class="ovl hide" id="num-ovl" onclick="if(event.target===this)closeNum()">
   <div class="sheet">
@@ -695,7 +745,7 @@ body:not(.adm) .adm-only{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.6';
+const APP_VERSION='V1.7';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -877,7 +927,7 @@ function goTab(t){
   $('h-title').textContent={con:'Consulta',mov:'Estoque',dev:'Devoluções',his:'Histórico',apr:'Aprovações'}[t];
   toggleSb(false); loadDevPill();
   if(t==='con'){ renderKpis(); focusLater('con-inp'); }
-  if(t==='mov'){ renderMov(); loadMyMovs(); }
+  if(t==='mov'){ renderMov(); loadMyMovs(); renderPos(); }
   if(t==='dev'){ if(DEV_CUR) devAbrir(DEV_CUR.id); else { devVoltarLista(); } }
   if(t==='his') loadHist();
   if(t==='apr') loadApr();
@@ -888,7 +938,7 @@ async function doSync(btn){
   try{
     await loadSaldo(); loadPendCount();
     if(CUR_TAB==='con'){ renderKpis(); if($('con-inp').value.trim()) consultar(true); }
-    if(CUR_TAB==='mov'){ renderMov(); loadMyMovs(); }
+    if(CUR_TAB==='mov'){ renderMov(); loadMyMovs(); renderPos(); }
     if(CUR_TAB==='dev'){ if(DEV_CUR) await devAbrir(DEV_CUR.id); else await devCarregar(); }
     if(CUR_TAB==='his') loadHist();
     if(CUR_TAB==='apr') loadApr();
@@ -974,8 +1024,18 @@ function selOp(op,force){
   if(!force&&MV.items.length&&MV.op!==op&&!confirm('Descartar os itens bipados?')) return;
   MV={op,addr:null,dest:null,items:[]};
   $('mv-addr-inp').value=''; $('mv-dest-inp').value=''; $('mv-obs').value=''; $('mv-mot').value=''; $('mv-ls').innerHTML='';
+  const ico={ENT:'📥',SAI:'📤',TRF:'🔄',ROT:'🔢'}[op];
+  $('mv-ovl-ttl').textContent=ico+' '+OP_INFO[op].nome;
+  $('mv-sheet').className='sheet mv-sheet '+op;
+  $('mv-ovl').classList.remove('hide');
   renderMov(); focusLater('mv-addr-inp');
 }
+function mvFechar(){
+  if(MV.items.length&&!confirm('Fechar e descartar os itens bipados?')) return;
+  MV={op:null,addr:null,dest:null,items:[]};
+  $('mv-ovl').classList.add('hide'); renderMov(); renderPos();
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!$('mv-ovl').classList.contains('hide')&&$('num-ovl').classList.contains('hide')) mvFechar(); });
 function mvAtalho(op,addr){ goTab('mov'); selOp(op,true); $('mv-addr-inp').value=addr; mvSetAddr(); }
 function mvSetAddr(){
   const A=normAddr($('mv-addr-inp').value); if(!A) return;
@@ -1101,7 +1161,7 @@ async function mvConfirmar(){
   _mvBusy=false; btn.disabled=false;
   if(erros.length){ beep(false); alert(`${ok} item(ns) gravado(s).\n${erros.length} com erro (continuam na lista):\n\n`+erros.join('\n')); renderMov(); }
   else { beep(true); toast(`✓ ${OP_INFO[op].nome} gravada — ${ok} produto(s)`); MV.addr=null; MV.dest=null; MV.items=[]; $('mv-addr-inp').value=''; $('mv-dest-inp').value=''; $('mv-obs').value=''; $('mv-mot').value=''; $('mv-ls').innerHTML=''; renderMov(); focusLater('mv-addr-inp'); }
-  loadMyMovs();
+  loadMyMovs(); renderPos();
 }
 async function mvEnviarRotativa(){
   const A=MV.addr; const base=addrItems(A);
@@ -1167,6 +1227,79 @@ function movRow(m){
   return `<div class="irow"><div class="ibody"><div class="row" style="gap:6px"><span class="tag ${TIPO_TAG[m.tipo]||'t-mut'}">${TIPO_LBL[m.tipo]||m.tipo}</span><span style="font-size:13px;font-weight:700;color:var(--ylw)">${rota}</span></div>
     <div class="inm" style="margin-top:2px">${esc(m.descricao||'')}</div><div class="isub">${esc(m.gtin||'')} · ${fmtDT(m.criado_em)}${m.motivo?' · '+esc(m.motivo):''}</div></div>
     <div class="iright"><div class="iqty ${neg?'c-red':'c-grn'}">${txt}</div>${aj}</div></div>`;
+}
+
+// ═════════════════════ POSIÇÃO DE ESTOQUE (Inventariado × Protheus) ═════════════════════
+let POS_F='TODOS', POS_LIM=200; const POS_OPEN=new Set(); let _posBusy=false;
+function posData(){
+  const M={};
+  for(const r of SALDO){ if(r.qtd<=0) continue; const g=M[r.gtin]=M[r.gtin]||{gtin:r.gtin,descr:'',inv:0,ends:[]}; g.inv+=r.qtd; g.ends.push(r); if(!g.descr&&r.descricao) g.descr=r.descricao; }
+  if(PROT_OK) for(const k in PROT){ if(!M[k]&&PROT[k].vol) M[k]={gtin:k,descr:'',inv:0,ends:[]}; }
+  return Object.values(M).map(x=>{
+    x.prot=PROT_OK?protVol(x.gtin):0; x.dif=Math.round((x.inv-x.prot)*100)/100;
+    if(!x.descr) x.descr=(PROD[x.gtin]&&PROD[x.gtin].descr)||(GRADE[x.gtin]&&GRADE[x.gtin].descr)||'';
+    x.ends.sort((a,b)=>a.endereco.localeCompare(b.endereco)); return x;
+  });
+}
+async function posFillDescr(L){
+  if(_posBusy) return;
+  const falta=L.filter(x=>!x.descr&&!(x.gtin in GRADE)).map(x=>x.gtin);
+  if(!falta.length) return;
+  _posBusy=true;
+  try{
+    for(let i=0;i<falta.length;i+=150){
+      const ch=falta.slice(i,i+150);
+      const {data}=await getSB().from('est_grade').select('gtin,descricao,pares,fabricante').in('gtin',ch);
+      ch.forEach(g=>{ if(!(g in GRADE)) GRADE[g]=null; });
+      (data||[]).forEach(d=>GRADE[d.gtin]={descr:d.descricao||'',pares:d.pares,fab:d.fabricante||''});
+    }
+  }catch(e){}
+  _posBusy=false;
+  if(CUR_TAB==='mov') renderPos();
+}
+function posFiltro(f){ POS_F=f; POS_LIM=200; document.querySelectorAll('#pos-chips .chip').forEach(c=>c.classList.toggle('on',c.dataset.f===f)); renderPos(); }
+function posLista(){
+  const all=posData();
+  const q=($('pos-q').value||'').trim().toUpperCase(), qa=normAddr(q);
+  let L=all.filter(x=>POS_F==='TODOS'?true:POS_F==='DIV'?x.dif!==0:POS_F==='OK'?x.dif===0:POS_F==='SO_EST'?(x.inv>0&&!x.prot):(x.prot>0&&!x.inv));
+  if(q) L=L.filter(x=>x.gtin.includes(q)||x.descr.toUpperCase().includes(q)||x.ends.some(r=>r.endereco.includes(qa)));
+  const o=$('pos-ord').value;
+  L.sort(o==='DES'?(a,b)=>a.descr.localeCompare(b.descr):o==='INV'?(a,b)=>b.inv-a.inv:o==='PRT'?(a,b)=>b.prot-a.prot:(a,b)=>Math.abs(b.dif)-Math.abs(a.dif)||a.descr.localeCompare(b.descr));
+  return {all,L};
+}
+function renderPos(){
+  if(!$('pos-list')) return;
+  $('pos-chips').classList.toggle('hide',!PROT_OK);
+  $('pos-noprt').classList.toggle('hide',PROT_OK);
+  const {all,L}=posLista();
+  const ti=all.reduce((s,x)=>s+x.inv,0), tp=all.reduce((s,x)=>s+x.prot,0), nd=all.filter(x=>x.dif!==0).length;
+  $('pos-kpi').innerHTML=`<div class="kpi"><div class="kn c-acc">${fmt(all.length)}</div><div class="kl">Produtos</div></div>
+    <div class="kpi"><div class="kn c-grn">${fmt(ti)}</div><div class="kl">Inventariado</div></div>
+    <div class="kpi"><div class="kn c-pur">${PROT_OK?fmt(tp):'—'}</div><div class="kl">Protheus${PROT_TS?' · '+fmtDT(PROT_TS):''}</div></div>
+    <div class="kpi"><div class="kn ${nd?'c-red':'c-grn'}">${PROT_OK?fmt(nd):'—'}</div><div class="kl">Com divergência</div></div>`;
+  posFillDescr(L.slice(0,POS_LIM));
+  if(!L.length){ $('pos-list').innerHTML='<div class="empty">Nenhum produto '+(all.length?'neste filtro':'com saldo')+'</div>'; return; }
+  const rows=L.slice(0,POS_LIM).map(x=>{
+    const op=POS_OPEN.has(x.gtin);
+    const dif=PROT_OK?difTag(x.inv,x.prot):'—';
+    return `<tr class="pr${op?' open':''}" onclick="posToggle('${esc(x.gtin)}')">
+      <td class="c-ean pos-ean">${esc(x.gtin)}</td>
+      <td><span class="pos-ean pos-ean-m">${esc(x.gtin)}</span>${esc(x.descr||'—')}<div class="pos-sub">${x.ends.length?x.ends.length+' endereço(s) '+(op?'▲':'▼'):'sem endereço no estoque'}</div></td>
+      <td class="n c-grn">${fmt(x.inv)}</td>
+      <td class="n">${PROT_OK?fmt(x.prot):'—'}</td>
+      <td class="r">${dif}</td></tr>`+
+      (op&&x.ends.length?`<tr class="pd"><td colspan="5"><div class="pos-ends">${x.ends.map(r=>`<span class="pos-end">📍 <b>${esc(r.endereco)}</b> · ${fmt(r.qtd)}</span>`).join('')}</div></td></tr>`:'');
+  }).join('');
+  $('pos-list').innerHTML=`<table class="tbl"><thead><tr><th class="c-ean">EAN</th><th>Descrição</th><th class="r">Inventariado</th><th class="r">Protheus</th><th class="r">Dif.</th></tr></thead><tbody>${rows}</tbody></table>`+
+    (L.length>POS_LIM?`<div class="pos-more"><button class="btn btn-ghost btn-sm" onclick="POS_LIM+=300;renderPos()">Mostrar mais (${fmt(L.length-POS_LIM)} restantes)</button></div>`:'');
+}
+function posToggle(g){ if(POS_OPEN.has(g)) POS_OPEN.delete(g); else POS_OPEN.add(g); renderPos(); }
+function posExport(){
+  const {L}=posLista();
+  if(!L.length) return toast('Nada para exportar',1);
+  const rows=L.map(x=>({EAN:x.gtin,DESCRICAO:x.descr,ENDERECOS:x.ends.map(r=>r.endereco+' ('+r.qtd+')').join(', '),INVENTARIADO:x.inv,PROTHEUS:PROT_OK?x.prot:'',DIFERENCA:PROT_OK?x.dif:''}));
+  const ws=XLSX.utils.json_to_sheet(rows), wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Posicao');
+  XLSX.writeFile(wb,'Posicao_Estoque_x_Protheus_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 
 // ═════════════════════ OVERLAY NUM ═════════════════════
