@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Controle de Mercadoria | V1.11</title>
+<title>Controle de Mercadoria | V1.12</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--navy:#0d2167;--navy2:#07142a;--brand:#8b1111;--bg:#f2f4f8;--bg2:#fff;--bg3:#f6f8fc;--acc:#2463cc;--grn:#16a34a;--red:#dc2626;--ylw:#ea580c;--pur:#7c3aed;--cyn:#0d9488;--txt:#1a2035;--mut:#6b7a99;--bdr:#dde2ec;--r:10px}
@@ -129,6 +129,7 @@ textarea.inp{resize:vertical;min-height:60px}
 .dcard:active{background:var(--bg3)}
 .dcard.RECEBIDA{border-left-color:var(--ylw)}
 .dcard.EM{border-left-color:var(--acc)}
+.dcard.AGUARDANDO{border-left-color:var(--pur)}
 .dcard.CONCLUIDA{border-left-color:var(--grn)}
 .dcard.CANCELADA{border-left-color:var(--red);opacity:.7}
 .dc-top{display:flex;align-items:center;gap:8px}
@@ -401,6 +402,7 @@ body:not(.adm) .adm-only{display:none!important}
       <div class="sbSec adm-only">Administração</div>
       <button class="nav-it adm-only" id="t-his" onclick="goTab('his')"><i><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 3"/></svg></i><span class="lb">Histórico</span></button>
       <button class="nav-it adm-only" id="t-vnd" onclick="goTab('vnd')"><i><svg viewBox="0 0 24 24"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg></i><span class="lb">Baixa de vendas</span></button>
+      <button class="nav-it adm-only" id="t-prt" onclick="goTab('prt')"><i><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/><path d="M14 16l2 2 4-4"/></svg></i><span class="lb">Ajuste Protheus</span><span class="pill alert hide" id="prt-pill">0</span></button>
       <button class="nav-it adm-only" id="t-apr" onclick="goTab('apr')"><i><svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></i><span class="lb">Aprovações</span><span class="pill alert hide" id="apr-badge">0</span></button>
     </nav>
     <div class="sbVer">Controle de Mercadoria <span class="app-ver"></span></div>
@@ -496,6 +498,7 @@ body:not(.adm) .adm-only{display:none!important}
         </div>
         <div class="chips" id="dv-chips">
           <button class="chip on" data-f="ABERTAS" onclick="devFiltro('ABERTAS')">Em aberto</button>
+          <button class="chip" data-f="AGUARDANDO PROTHEUS" onclick="devFiltro('AGUARDANDO PROTHEUS')">Aguard. Protheus</button>
           <button class="chip" data-f="CONCLUIDA" onclick="devFiltro('CONCLUIDA')">Concluídas</button>
           <button class="chip" data-f="CANCELADA" onclick="devFiltro('CANCELADA')">Canceladas</button>
           <button class="chip" data-f="TODAS" onclick="devFiltro('TODAS')">Todas</button>
@@ -631,6 +634,19 @@ body:not(.adm) .adm-only{display:none!important}
       </div>
     </div>
     <div id="end-res"></div>
+  </div>
+
+  <!-- ── AJUSTE PROTHEUS (adm) ── -->
+  <div class="pg hide" id="p-prt">
+    <div class="card">
+      <div class="ct"><span>🏢 Itens de devolução aguardando ajuste no Protheus</span><span id="pa-n" class="c-pur"></span></div>
+      <div class="sh-sub" style="margin-bottom:8px">Depois de ajustar o item no Protheus, dê o <b>OK</b> item por item. A devolução só fica <b>Concluída</b> quando todos os itens tiverem o OK.</div>
+      <div class="row" style="flex-wrap:wrap">
+        <input id="pa-q" class="inp" style="margin:0;flex:1;min-width:180px" type="text" placeholder="Filtrar por NF, cliente, EAN, endereço..." oninput="renderPrtA()" autocomplete="off">
+        <div class="chips"><button class="chip on" id="pa-f-P" onclick="prtFiltro(false)">Pendentes</button><button class="chip" id="pa-f-T" onclick="prtFiltro(true)">OK nos últimos 30 dias</button></div>
+      </div>
+    </div>
+    <div class="card"><div class="pos-wrap" id="pa-list"></div></div>
   </div>
 
   <!-- ── KARDEX ── -->
@@ -854,7 +870,7 @@ body:not(.adm) .adm-only{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.11';
+const APP_VERSION='V1.12';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -1026,15 +1042,15 @@ function toggleSb(on){ document.body.classList.toggle('sbOpen',!!on); }
 function colapsaSb(){ document.body.classList.toggle('sbMini'); try{localStorage.setItem('cm_sbMini',document.body.classList.contains('sbMini')?'1':'');}catch(e){} }
 try{ if(localStorage.getItem('cm_sbMini')) document.body.classList.add('sbMini'); }catch(e){}
 async function loadDevPill(){
-  try{ const {count}=await getSB().from('dev_devolucoes').select('id',{count:'exact',head:true}).in('status',['RECEBIDA','EM TRATATIVA']);
+  try{ const {count}=await getSB().from('dev_devolucoes').select('id',{count:'exact',head:true}).in('status',['RECEBIDA','EM TRATATIVA','AGUARDANDO PROTHEUS']);
     const p=$('dev-pill'); p.textContent=count||0; p.classList.toggle('hide',!count); }catch(e){}
 }
 function go(s){ document.querySelectorAll('.scr').forEach(x=>x.classList.remove('on')); $('s-'+s).classList.add('on'); }
 function goTab(t){
   CUR_TAB=t;
-  ['con','mov','end','kdx','dev','his','apr','vnd'].forEach(x=>{ $('t-'+x).classList.toggle('on',x===t); $('p-'+x).classList.toggle('hide',x!==t); });
-  $('h-title').textContent={con:'Consulta',mov:'Estoque',end:'Endereço',kdx:'Kardex',dev:'Devoluções',his:'Histórico',apr:'Aprovações',vnd:'Baixa de vendas'}[t];
-  toggleSb(false); loadDevPill();
+  ['con','mov','end','kdx','dev','his','apr','vnd','prt'].forEach(x=>{ $('t-'+x).classList.toggle('on',x===t); $('p-'+x).classList.toggle('hide',x!==t); });
+  $('h-title').textContent={con:'Consulta',mov:'Estoque',end:'Endereço',kdx:'Kardex',dev:'Devoluções',his:'Histórico',apr:'Aprovações',vnd:'Baixa de vendas',prt:'Ajuste Protheus'}[t];
+  toggleSb(false); loadDevPill(); prtPill();
   if(t==='con'){ renderKpis(); focusLater('con-inp'); }
   if(t==='mov'){ renderMov(); renderPos(); }
   if(t==='end'){ if($('end-inp').value.trim()) endBuscar(true); else { endBuscar(true); focusLater('end-inp'); } }
@@ -1043,6 +1059,7 @@ function goTab(t){
   if(t==='apr') loadApr();
   if(t==='kdx'){ if($('kdx-inp').value.trim()) kdxBuscar(); else focusLater('kdx-inp'); }
   if(t==='vnd') vbCarregar();
+  if(t==='prt') prtCarregar();
 }
 async function doSync(btn){
   if(btn.disabled) return;
@@ -1057,6 +1074,7 @@ async function doSync(btn){
     if(CUR_TAB==='apr') loadApr();
     if(CUR_TAB==='kdx'&&$('kdx-inp').value.trim()) await kdxBuscar();
     if(CUR_TAB==='vnd') await vbCarregar();
+    if(CUR_TAB==='prt') await prtCarregar();
     toast('✓ Dados atualizados');
   }catch(e){ toast('Erro ao sincronizar',1); }
   finally{ btn.disabled=false; btn.textContent='↻'; }
@@ -1072,7 +1090,7 @@ async function renderKpis(){
   for(const r of SALDO){ if(r.qtd>0){ addrs.add(r.endereco); skus.add(r.gtin); tot+=r.qtd; } }
   $('k-end').textContent=fmt(addrs.size); $('k-sku').textContent=fmt(skus.size); $('k-qtd').textContent=fmt(tot);
   try{
-    const {count}=await getSB().from('dev_devolucoes').select('id',{count:'exact',head:true}).in('status',['RECEBIDA','EM TRATATIVA']);
+    const {count}=await getSB().from('dev_devolucoes').select('id',{count:'exact',head:true}).in('status',['RECEBIDA','EM TRATATIVA','AGUARDANDO PROTHEUS']);
     $('k-dev').textContent=fmt(count||0);
   }catch(e){}
 }
@@ -1718,6 +1736,49 @@ function renderVendaItens(){
   $('dd-venda-tot').textContent=`devolvido ${fmt(td)} de ${fmt(Math.round(tv*100)/100)} vol.${fora?' · '+fmt(fora)+' fora da NF':''}`;
 }
 
+// ═════════════════════ AJUSTE PROTHEUS (OK item a item da devolução) ═════════════════════
+let PA=[], PA_OK=false;
+async function prtPill(){
+  if(!isAdm()) return;
+  try{ const {count}=await getSB().from('dev_itens').select('id',{count:'exact',head:true}).neq('tratativa','PENDENTE').eq('protheus_ok',false);
+    const p=$('prt-pill'); p.textContent=count||0; p.classList.toggle('hide',!count); }catch(e){}
+}
+function prtFiltro(ok){ PA_OK=ok; $('pa-f-P').classList.toggle('on',!ok); $('pa-f-T').classList.toggle('on',ok); prtCarregar(); }
+async function prtCarregar(){
+  $('pa-list').innerHTML='<div class="empty">Carregando...</div>';
+  try{
+    let q=getSB().from('dev_itens').select('*, dev_devolucoes(id,nf_numero,nf_serie,venda_nf,cliente,status)').neq('tratativa','PENDENTE').eq('protheus_ok',PA_OK);
+    if(PA_OK){ const t=new Date(); t.setDate(t.getDate()-30); q=q.gte('protheus_em',t.toISOString()); }
+    const {data,error}=await q.order('tratado_em',{ascending:true}).limit(1000); if(error) throw error;
+    PA=(data||[]).filter(i=>!i.dev_devolucoes||i.dev_devolucoes.status!=='CANCELADA');
+  }catch(e){ PA=[]; $('pa-list').innerHTML='<div class="empty c-red">'+(/protheus_ok/.test(e.message||'')?'Rode o script controle_mercadoria_V1.12_ok_protheus.sql no Supabase.':'Erro: '+esc(e.message||e))+'</div>'; return; }
+  renderPrtA(); prtPill();
+}
+function renderPrtA(){
+  const q=($('pa-q').value||'').trim().toUpperCase();
+  const L=PA.filter(i=>{ const d=i.dev_devolucoes||{}; return !q||[i.gtin,i.descricao,i.endereco,i.tratativa,d.nf_numero,d.venda_nf,d.cliente,'#'+d.id].some(x=>String(x||'').toUpperCase().includes(q)); });
+  $('pa-n').textContent=fmt(L.length)+' item(ns)';
+  if(!L.length){ $('pa-list').innerHTML='<div class="empty">'+(PA_OK?'Nenhum OK nos últimos 30 dias':'Nada aguardando ajuste ✓')+'</div>'; return; }
+  $('pa-list').innerHTML=`<table class="tbl"><thead><tr><th>Devolução</th><th>EAN</th><th>Descrição</th><th class="r">Qtd</th><th>Tratativa</th><th>Tratado</th><th></th></tr></thead><tbody>${L.map(i=>{ const d=i.dev_devolucoes||{};
+    return `<tr><td style="white-space:nowrap"><a href="#" onclick="goTab('dev');devAbrir(${d.id});return false" style="color:var(--acc);font-weight:700">#${d.id}</a> ${d.nf_numero?'NF '+esc(d.nf_numero):''}${d.venda_nf?'<div class="pos-sub">venda '+esc(String(d.venda_nf).replace(/^0+/,''))+'</div>':''}<div class="pos-sub">${esc(cut(d.cliente||'',26))}</div></td>
+      <td class="pos-ean">${esc(i.gtin)}</td><td>${esc(i.descricao||'')}</td><td class="r"><b>${fmt(i.qtd)}</b></td>
+      <td><span class="tag ${i.tratativa==='RETORNO ESTOQUE'?'t-grn':i.tratativa==='AVARIA'||i.tratativa==='DESCARTE'?'t-red':'t-pur'}">${esc(i.tratativa)}</span>${i.endereco?'<div class="pos-sub">📍 <b class="c-ylw">'+esc(i.endereco)+'</b></div>':''}</td>
+      <td style="white-space:nowrap" class="pos-sub">${esc(i.tratado_por||'')}<br>${fmtDT(i.tratado_em)}${i.protheus_ok?`<br><span class="c-grn">OK ${esc(i.protheus_por||'')} ${fmtDT(i.protheus_em)}</span>`:''}</td>
+      <td class="r">${i.protheus_ok?`<button class="btn btn-ghost btn-sm" onclick="prtOk(${i.id},false)">Desfazer</button>`:`<button class="btn btn-pur btn-sm" onclick="prtOk(${i.id},true)">✓ OK</button>`}</td></tr>`;}).join('')}</tbody></table>`;
+}
+async function prtOk(id,ok){
+  if(!isAdm()) return;
+  if(!ok&&!confirm('Desfazer o OK do Protheus deste item? A devolução volta para "Aguardando Protheus".')) return;
+  const upd=ok?{protheus_ok:true,protheus_por:CU.name,protheus_em:new Date().toISOString()}:{protheus_ok:false,protheus_por:null,protheus_em:null};
+  const {error}=await getSB().from('dev_itens').update(upd).eq('id',id);
+  if(error){ beep(false); return toast(/protheus_/.test(error.message)?'Rode o script controle_mercadoria_V1.12_ok_protheus.sql no Supabase':'Erro: '+error.message,1,5000); }
+  beep(true); toast(ok?'✓ OK Protheus registrado':'OK desfeito');
+  const it=DEV_ITENS.find(x=>x.id===id); if(it) Object.assign(it,upd);
+  if(CUR_TAB==='prt'){ PA=PA.filter(x=>x.id!==id); renderPrtA(); prtPill(); }
+  if(CUR_TAB==='dev'&&DEV_CUR){ renderDevItens(); devRefreshHead(); }
+  loadDevPill(); prtPill();
+}
+
 // ═════════════════════ OVERLAY NUM ═════════════════════
 let _numCb=null;
 function openNum(ttl,sub,val,cb){ $('num-ttl').textContent=ttl; $('num-sub').textContent=sub||''; $('num-inp').value=val; _numCb=cb; $('num-ovl').classList.remove('hide'); setTimeout(()=>{$('num-inp').focus();$('num-inp').select();},80); }
@@ -1727,7 +1788,7 @@ function confirmNum(){ const v=parseNum($('num-inp').value); const cb=_numCb; cl
 <script>
 // ═════════════════════ DEVOLUÇÕES ═════════════════════
 let DEVS=[], DEV_F='ABERTAS', DEV_CUR=null, DEV_ITENS=[], DN_MODO='CHAVE', DN_PARSE=null, DEV_EDIT_ID=null;
-const ST_TAG={'RECEBIDA':['t-ylw','Recebida'],'EM TRATATIVA':['t-acc','Em tratativa'],'CONCLUIDA':['t-grn','Concluída'],'CANCELADA':['t-red','Cancelada']};
+const ST_TAG={'AGUARDANDO PROTHEUS':['t-pur','Aguardando Protheus'],'RECEBIDA':['t-ylw','Recebida'],'EM TRATATIVA':['t-acc','Em tratativa'],'CONCLUIDA':['t-grn','Concluída'],'CANCELADA':['t-red','Cancelada']};
 const UF_COD={11:'RO',12:'AC',13:'AM',14:'RR',15:'PA',16:'AP',17:'TO',21:'MA',22:'PI',23:'CE',24:'RN',25:'PB',26:'PE',27:'AL',28:'SE',29:'BA',31:'MG',32:'ES',33:'RJ',35:'SP',41:'PR',42:'SC',43:'RS',50:'MS',51:'MT',52:'GO',53:'DF'};
 function stTag(s){ const t=ST_TAG[s]||['t-mut',s]; return `<span class="tag ${t[0]}">${t[1]}</span>`; }
 function fmtDoc(c){ c=String(c||''); if(c.length===14) return c.replace(/^(.{2})(.{3})(.{3})(.{4})(.{2})$/,'$1.$2.$3/$4-$5'); if(c.length===11) return c.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/,'$1.$2.$3-$4'); return c; }
@@ -1745,7 +1806,7 @@ function parseChave(raw){
 }
 async function devCarregar(){
   try{
-    const {data,error}=await getSB().from('dev_devolucoes').select('*, dev_itens(id,qtd,tratativa)').order('recebido_em',{ascending:false}).limit(500);
+    const {data,error}=await getSB().from('dev_devolucoes').select('*, dev_itens(id,qtd,tratativa,protheus_ok)').order('recebido_em',{ascending:false}).limit(500);
     if(error) throw error; DEVS=data||[];
   }catch(e){ toast('Erro ao carregar devoluções: '+(e.message||e),1,4000); }
   renderDevList();
@@ -1754,14 +1815,14 @@ function devFiltro(f){ DEV_F=f; document.querySelectorAll('#dv-chips .chip').for
 function renderDevList(){
   const q=$('dv-quick').value.trim().toUpperCase();
   const qk=limpaChave(q);
-  let L=DEVS.filter(d=>DEV_F==='TODAS'?true:DEV_F==='ABERTAS'?(d.status==='RECEBIDA'||d.status==='EM TRATATIVA'):d.status===DEV_F);
+  let L=DEVS.filter(d=>DEV_F==='TODAS'?true:DEV_F==='ABERTAS'?(d.status==='RECEBIDA'||d.status==='EM TRATATIVA'||d.status==='AGUARDANDO PROTHEUS'):d.status===DEV_F);
   if(q) L=DEVS.filter(d=>[d.nf_numero,d.cliente,d.chave,d.motivo,d.transportadora,d.cnpj_emit,'#'+d.id].some(x=>String(x||'').toUpperCase().includes(q))||(qk.length>=6&&String(d.chave||'').includes(qk)));
   $('dv-list').innerHTML=L.length?L.map(d=>{
-    const its=d.dev_itens||[]; const pend=its.filter(i=>i.tratativa==='PENDENTE').reduce((s,i)=>s+Number(i.qtd),0); const tot=its.reduce((s,i)=>s+Number(i.qtd),0);
+    const its=d.dev_itens||[]; const pend=its.filter(i=>i.tratativa==='PENDENTE').reduce((s,i)=>s+Number(i.qtd),0); const tot=its.reduce((s,i)=>s+Number(i.qtd),0); const aprt=its.filter(i=>i.tratativa!=='PENDENTE'&&!i.protheus_ok).length;
     return `<div class="dcard ${esc((d.status||'').split(' ')[0])}" onclick="devAbrir(${d.id})">
       <div class="dc-top"><div class="dc-nf">${d.nf_numero?'NF '+esc(d.nf_numero):'Devolução #'+d.id}${d.nf_serie?' <span class="c-mut" style="font-size:12px;font-weight:400">série '+esc(d.nf_serie)+'</span>':''}</div>${stTag(d.status)}</div>
       <div class="dc-l">${esc(d.cliente||'—')} · ${esc(d.motivo||'sem motivo')}</div>
-      <div class="dc-l">📅 ${fmtDT(d.recebido_em)} · ${esc(d.recebido_por||'')} · ${tot?`<b class="${pend?'c-ylw':'c-grn'}">${fmt(pend)} pend.</b> / ${fmt(tot)} un.`:'<span class="c-ylw">sem itens conferidos</span>'}</div>
+      <div class="dc-l">📅 ${fmtDT(d.recebido_em)} · ${esc(d.recebido_por||'')} · ${tot?`<b class="${pend?'c-ylw':'c-grn'}">${fmt(pend)} pend.</b> / ${fmt(tot)} un.${aprt?` · <b class="c-pur">${aprt} aguard. Protheus</b>`:''}`:'<span class="c-ylw">sem itens conferidos</span>'}</div>
     </div>`;}).join(''):'<div class="card"><div class="empty">Nenhuma devolução '+(q?'encontrada':'neste filtro')+'</div></div>';
 }
 async function devQuick(){
@@ -1864,8 +1925,10 @@ function renderDevItens(){
     :'<div class="empty">'+(DEV_ITENS.length?'Tudo tratado ✓':'Bipe os produtos que chegaram')+'</div>';
   $('dd-trat').innerHTML=trat.length?trat.map(i=>`<div class="irow"><div class="ibody"><div class="iean">${esc(i.gtin)}</div><div class="inm">${esc(i.descricao)}</div>
       <div class="isub"><span class="tag ${i.tratativa==='RETORNO ESTOQUE'?'t-grn':i.tratativa==='AVARIA'||i.tratativa==='DESCARTE'?'t-red':'t-pur'}">${esc(i.tratativa)}</span>${i.endereco?' 📍 <b class="c-ylw">'+esc(i.endereco)+'</b>':''}</div>
-      <div class="isub">${esc(i.tratado_por||'')} · ${fmtDT(i.tratado_em)}${i.obs?' · '+esc(i.obs):''}</div></div>
-      <div class="iright"><div class="iqty">${fmt(i.qtd)}</div></div></div>`).join(''):'<div class="empty">Nenhum item tratado</div>';
+      <div class="isub">${esc(i.tratado_por||'')} · ${fmtDT(i.tratado_em)}${i.obs?' · '+esc(i.obs):''}</div>
+      <div class="isub">${i.protheus_ok?`<span class="tag t-grn">✓ Protheus OK</span> ${esc(i.protheus_por||'')} · ${fmtDT(i.protheus_em)}`:'<span class="tag t-pur">⏳ Aguardando ajuste no Protheus</span>'}</div></div>
+      <div class="iright"><div class="iqty">${fmt(i.qtd)}</div></div>
+      ${canc?'':isAdm()?(i.protheus_ok?`<button class="btn btn-ghost btn-sm" onclick="prtOk(${i.id},false)">Desfazer</button>`:`<button class="btn btn-pur btn-sm" onclick="prtOk(${i.id},true)">✓ OK Protheus</button>`):''}</div>`).join(''):'<div class="empty">Nenhum item tratado</div>';
 }
 async function devRefreshHead(){
   const {data}=await getSB().from('dev_devolucoes').select('*').eq('id',DEV_CUR.id).single();
@@ -1925,7 +1988,8 @@ async function devCancelar(){
   if(d.status==='CANCELADA'){
     if(!confirm('Reabrir a devolução?')) return;
     const tot=DEV_ITENS.length, pend=DEV_ITENS.filter(i=>i.tratativa==='PENDENTE').length;
-    novo=(!tot||pend===tot)?'RECEBIDA':pend===0?'CONCLUIDA':'EM TRATATIVA';
+    const aprt=DEV_ITENS.filter(i=>i.tratativa!=='PENDENTE'&&!i.protheus_ok).length;
+    novo=(!tot||pend===tot)?'RECEBIDA':pend>0?'EM TRATATIVA':aprt?'AGUARDANDO PROTHEUS':'CONCLUIDA';
   } else {
     if(DEV_ITENS.some(i=>i.tratativa==='RETORNO ESTOQUE')&&!confirm('Atenção: itens já retornaram ao estoque e NÃO serão estornados automaticamente.\nContinuar?')) return;
     if(!confirm('Cancelar esta devolução?')) return;
