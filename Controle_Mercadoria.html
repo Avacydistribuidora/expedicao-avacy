@@ -1467,12 +1467,12 @@ async function vndParse(aoa,fname){
   const done=new Set(); let semTabela=false;
   try{ for(let i=0;i<gs.length;i+=150){ const {data,error}=await getSB().from('est_venda_baixa').select('gtin,nf,serie').in('gtin',gs.slice(i,i+150)); if(error) throw error; (data||[]).forEach(d=>done.add(d.gtin+'|'+d.nf+'|'+d.serie)); } }
   catch(e){ semTabela=true; }
-  const semGrade=[], dup=[], ok=[]; let antes=0;
+  const semGrade=[], dup=[], ok=[], skip=[]; let antes=0;
   ctl.forEach(x=>{
-    if(corte&&x.emis&&x.emis<corte){ antes++; return; }
-    if(done.has(x.g+'|'+x.nf+'|'+x.serie)){ dup.push(x); return; }
+    if(corte&&x.emis&&x.emis<corte){ antes++; x.mot='Emitida antes de '+vbData(corte); skip.push(x); return; }
+    if(done.has(x.g+'|'+x.nf+'|'+x.serie)){ dup.push(x); x.mot='Já baixada antes'; skip.push(x); return; }
     const pg=(GRADE[x.g]&&GRADE[x.g].pares)||(PROT[x.g]&&PROT[x.g].pares)||null;
-    if(!pg){ semGrade.push(x); return; }
+    if(!pg){ semGrade.push(x); x.mot='Sem cadastro de grade (pares/vol)'; skip.push(x); return; }
     x.pg=Number(pg); x.vol=Math.round(x.pares/x.pg*10000)/10000;
     x.descr=(PROD[x.g]&&PROD[x.g].descr)||(GRADE[x.g]&&GRADE[x.g].descr)||'';
     ok.push(x);
@@ -1489,7 +1489,9 @@ async function vndParse(aoa,fname){
     Produtos fora do controle (sem endereço no app): <b class="c-mut">${fmt(fora)}</b> linha(s) — ignoradas<br>
     ${corte?`Emitidas antes de ${vbData(corte)} (não baixadas): <b class="c-mut">${fmt(antes)}</b><br>`:''}Já baixadas antes: <b class="c-mut">${fmt(dup.length)}</b>${semGrade.length?` · Sem cadastro de grade (pares/vol): <b class="c-red">${fmt(semGrade.length)}</b> — <span class="mono">${esc([...new Set(semGrade.map(x=>x.g))].join(', '))}</span>`:''}<br>
     <b class="c-red">A baixar: ${fmt(ok.length)} linha(s) · ${fmt(r2(totVol))} volume(s)</b>${faltaVol>0?` · <span class="c-ylw">${fmt(r2(faltaVol))} vol. sem saldo no app (fica registrado como falta)</span>`:''}
-    ${pl.length?`<table class="vprev-t"><thead><tr><th>EAN</th><th>Descrição</th><th class="r">NFs</th><th class="r">Pares</th><th class="r">Vol.</th><th class="r">Saldo app</th><th class="r">Após</th></tr></thead><tbody>${pl.map(r=>{const e=estTotal(r.g),a=r2(e-r.vol);return `<tr><td class="mono">${esc(r.g)}</td><td>${esc(cut(r.d,34))}</td><td class="r">${r.n}</td><td class="r">${fmt(r.pares)}</td><td class="r">${fmt(r2(r.vol))}</td><td class="r">${fmt(e)}</td><td class="r ${a<0?'c-red':''}">${a<0?'0 (falta '+fmt(-a)+')':fmt(a)}</td></tr>`;}).join('')}</tbody></table>`:''}`;
+    ${pl.length?`<table class="vprev-t"><thead><tr><th>EAN</th><th>Descrição</th><th class="r">NFs</th><th class="r">Pares</th><th class="r">Vol.</th><th class="r">Saldo app</th><th class="r">Após</th></tr></thead><tbody>${pl.map(r=>{const e=estTotal(r.g),a=r2(e-r.vol);return `<tr><td class="mono">${esc(r.g)}</td><td>${esc(cut(r.d,34))}</td><td class="r">${r.n}</td><td class="r">${fmt(r.pares)}</td><td class="r">${fmt(r2(r.vol))}</td><td class="r">${fmt(e)}</td><td class="r ${a<0?'c-red':''}">${a<0?'0 (falta '+fmt(-a)+')':fmt(a)}</td></tr>`;}).join('')}</tbody></table>`:''}
+    ${skip.length?`<div style="margin-top:8px"><b class="c-ylw">Produtos do app que NÃO serão baixados (${skip.length}):</b><table class="vprev-t"><thead><tr><th>EAN</th><th>NF</th><th>Emissão</th><th class="r">Pares</th><th>Motivo</th></tr></thead><tbody>${skip.slice(0,60).map(x=>`<tr><td class="mono">${esc(x.g)}</td><td>${esc(x.nf)}</td><td>${vbData(x.emis)}</td><td class="r">${fmt(x.pares)}</td><td class="c-ylw">${esc(x.mot)}</td></tr>`).join('')}</tbody></table></div>`:''}
+    ${ok.length?`<div style="margin-top:8px;font-size:12px" class="c-mut">Conversão: pares vendidos ÷ pares por volume da grade. Ex.: ${esc(ok[0].g)} → ${fmt(ok[0].pares)} pares ÷ ${fmt(ok[0].pg)} = <b>${fmt(ok[0].vol)}</b> vol.</div>`:''}`;
   $('vnd-ok').disabled=!ok.length||semTabela;
 }
 async function vndGravar(){
