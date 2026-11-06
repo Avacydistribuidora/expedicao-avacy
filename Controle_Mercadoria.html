@@ -434,8 +434,7 @@ body:not(.adm) .adm-only{display:none!important}
         <button class="chip on" data-f="TODOS" onclick="posFiltro('TODOS')">Todos</button>
         <button class="chip" data-f="DIV" onclick="posFiltro('DIV')">Com divergência</button>
         <button class="chip" data-f="OK" onclick="posFiltro('OK')">Batendo</button>
-        <button class="chip" data-f="SO_EST" onclick="posFiltro('SO_EST')">Só inventariado</button>
-        <button class="chip" data-f="SO_PRT" onclick="posFiltro('SO_PRT')">Só Protheus</button>
+        <button class="chip" data-f="SO_EST" onclick="posFiltro('SO_EST')">Sem saldo no Protheus</button>
       </div>
       <div class="sh-sub hide" id="pos-noprt" style="margin-bottom:8px">⚠ Saldo Protheus ainda não importado — use <b>Ações › Importar saldo Protheus (qry001)</b>.</div>
       <div class="pos-wrap" id="pos-list"></div>
@@ -1233,8 +1232,8 @@ function movRow(m){
 let POS_F='TODOS', POS_LIM=200; const POS_OPEN=new Set(); let _posBusy=false;
 function posData(){
   const M={};
-  for(const r of SALDO){ if(r.qtd<=0) continue; const g=M[r.gtin]=M[r.gtin]||{gtin:r.gtin,descr:'',inv:0,ends:[]}; g.inv+=r.qtd; g.ends.push(r); if(!g.descr&&r.descricao) g.descr=r.descricao; }
-  if(PROT_OK) for(const k in PROT){ if(!M[k]&&PROT[k].vol) M[k]={gtin:k,descr:'',inv:0,ends:[]}; }
+  // só produtos lançados com endereço no app (Entrada/Saída/Transferir/Rotativa/importação de saldo)
+  for(const r of SALDO){ if(!r.endereco) continue; const g=M[r.gtin]=M[r.gtin]||{gtin:r.gtin,descr:'',inv:0,ends:[]}; if(r.qtd>0){ g.inv+=r.qtd; g.ends.push(r); } if(!g.descr&&r.descricao) g.descr=r.descricao; }
   return Object.values(M).map(x=>{
     x.prot=PROT_OK?protVol(x.gtin):0; x.dif=Math.round((x.inv-x.prot)*100)/100;
     if(!x.descr) x.descr=(PROD[x.gtin]&&PROD[x.gtin].descr)||(GRADE[x.gtin]&&GRADE[x.gtin].descr)||'';
@@ -1275,7 +1274,7 @@ function renderPos(){
   const ti=all.reduce((s,x)=>s+x.inv,0), tp=all.reduce((s,x)=>s+x.prot,0), nd=all.filter(x=>x.dif!==0).length;
   $('pos-kpi').innerHTML=`<div class="kpi"><div class="kn c-acc">${fmt(all.length)}</div><div class="kl">Produtos</div></div>
     <div class="kpi"><div class="kn c-grn">${fmt(ti)}</div><div class="kl">Inventariado</div></div>
-    <div class="kpi"><div class="kn c-pur">${PROT_OK?fmt(tp):'—'}</div><div class="kl">Protheus${PROT_TS?' · '+fmtDT(PROT_TS):''}</div></div>
+    <div class="kpi"><div class="kn c-pur">${PROT_OK?fmt(tp):'—'}</div><div class="kl">Protheus (desses itens)${PROT_TS?' · '+fmtDT(PROT_TS):''}</div></div>
     <div class="kpi"><div class="kn ${nd?'c-red':'c-grn'}">${PROT_OK?fmt(nd):'—'}</div><div class="kl">Com divergência</div></div>`;
   posFillDescr(L.slice(0,POS_LIM));
   if(!L.length){ $('pos-list').innerHTML='<div class="empty">Nenhum produto '+(all.length?'neste filtro':'com saldo')+'</div>'; return; }
@@ -1284,7 +1283,7 @@ function renderPos(){
     const dif=PROT_OK?difTag(x.inv,x.prot):'—';
     return `<tr class="pr${op?' open':''}" onclick="posToggle('${esc(x.gtin)}')">
       <td class="c-ean pos-ean">${esc(x.gtin)}</td>
-      <td><span class="pos-ean pos-ean-m">${esc(x.gtin)}</span>${esc(x.descr||'—')}<div class="pos-sub">${x.ends.length?x.ends.length+' endereço(s) '+(op?'▲':'▼'):'sem endereço no estoque'}</div></td>
+      <td><span class="pos-ean pos-ean-m">${esc(x.gtin)}</span>${esc(x.descr||'—')}<div class="pos-sub">${x.ends.length?x.ends.length+' endereço(s) '+(op?'▲':'▼'):'sem saldo nos endereços'}</div></td>
       <td class="n c-grn">${fmt(x.inv)}</td>
       <td class="n">${PROT_OK?fmt(x.prot):'—'}</td>
       <td class="r">${dif}</td></tr>`+
