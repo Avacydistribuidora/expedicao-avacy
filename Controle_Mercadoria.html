@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Controle de Mercadoria | V1.7</title>
+<title>Controle de Mercadoria | V1.8</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--navy:#0d2167;--navy2:#07142a;--brand:#8b1111;--bg:#f2f4f8;--bg2:#fff;--bg3:#f6f8fc;--acc:#2463cc;--grn:#16a34a;--red:#dc2626;--ylw:#ea580c;--pur:#7c3aed;--cyn:#0d9488;--txt:#1a2035;--mut:#6b7a99;--bdr:#dde2ec;--r:10px}
@@ -324,6 +324,19 @@ body:not(.adm) .adm-only{display:none!important}
 .pos-more{text-align:center;padding:10px}
 .pos-ean-m{display:none}
 @media(max-width:600px){.pos-wrap .c-ean{display:none}.pos-ean-m{display:block}.pos-wrap .tbl td,.pos-wrap .tbl th{padding:6px 5px}}
+
+/* V1.8 — kardex / baixa de vendas */
+.kdx-wrap{overflow:auto;max-height:65vh;border:1px solid var(--bdr);border-radius:8px}
+.kdx-wrap .tbl td{vertical-align:middle;white-space:nowrap}
+.kdx-wrap .tbl td.mot{white-space:normal;min-width:200px;font-size:12px}
+.kdx-wrap .tbl td.n{text-align:right;font-weight:700}
+.kdx-wrap tr.ini td{background:var(--bg3);font-style:italic;color:var(--mut)}
+.vb-tab td{white-space:nowrap;vertical-align:middle}
+.vb-tab td.d{white-space:normal;min-width:180px}
+.vb-tab tr.pr{cursor:pointer}
+.vprev-t{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+.vprev-t td,.vprev-t th{padding:3px 5px;border-bottom:1px solid var(--bdr);text-align:left}
+.vprev-t .r{text-align:right}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -361,10 +374,12 @@ body:not(.adm) .adm-only{display:none!important}
       <div class="sbSec">Principal</div>
       <button class="nav-it" id="t-con" onclick="goTab('con')"><i><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></i><span class="lb">Consulta</span></button>
       <button class="nav-it" id="t-mov" onclick="goTab('mov')"><i><svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg></i><span class="lb">Estoque</span></button>
+      <button class="nav-it" id="t-kdx" onclick="goTab('kdx')"><i><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 9h16M9 9v11M13 13h4M13 17h4"/></svg></i><span class="lb">Kardex</span></button>
       <div class="sbSec">Devoluções</div>
       <button class="nav-it" id="t-dev" onclick="goTab('dev')"><i><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg></i><span class="lb">Devoluções</span><span class="pill hide" id="dev-pill">0</span></button>
       <div class="sbSec adm-only">Administração</div>
       <button class="nav-it adm-only" id="t-his" onclick="goTab('his')"><i><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 3"/></svg></i><span class="lb">Histórico</span></button>
+      <button class="nav-it adm-only" id="t-vnd" onclick="goTab('vnd')"><i><svg viewBox="0 0 24 24"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg></i><span class="lb">Baixa de vendas</span></button>
       <button class="nav-it adm-only" id="t-apr" onclick="goTab('apr')"><i><svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></i><span class="lb">Aprovações</span><span class="pill alert hide" id="apr-badge">0</span></button>
     </nav>
     <div class="sbVer">Controle de Mercadoria <span class="app-ver"></span></div>
@@ -387,6 +402,7 @@ body:not(.adm) .adm-only{display:none!important}
         <div class="menu-i" onclick="openImp()">📥 Importar saldo (planilha / inventário)</div>
         <div class="menu-i" onclick="openGrd()">🏷 Importar cadastro de grade (Z01)</div>
         <div class="menu-i" onclick="openPrt()">🏢 Importar saldo Protheus (qry001)</div>
+        <div class="menu-i" onclick="openVnd()">🧾 Baixar vendas (qry001)</div>
         <div class="menu-i" onclick="exportSaldo()">📊 Exportar saldo</div>
         <div class="menu-i" onclick="baixarModelo()">📄 Baixar modelo de planilha</div>
         <div class="menu-i" onclick="exportDevs()">↩ Exportar devoluções</div>
@@ -423,7 +439,6 @@ body:not(.adm) .adm-only{display:none!important}
     </div>
     <div class="card" id="pos-card">
       <div class="ct"><span>📦 Posição de estoque — Inventariado × Protheus</span><button class="btn btn-ghost btn-sm" onclick="posExport()">⬇ XLSX</button></div>
-      <div class="kpi-g" id="pos-kpi" style="margin-bottom:10px"></div>
       <div class="row" style="margin-bottom:8px;flex-wrap:wrap">
         <input id="pos-q" class="inp" style="margin:0;flex:1;min-width:180px" type="text" placeholder="Filtrar por EAN, descrição ou endereço..." oninput="POS_LIM=200;renderPos()" autocomplete="off">
         <select id="pos-ord" class="inp" style="margin:0;width:auto" onchange="renderPos()">
@@ -548,7 +563,7 @@ body:not(.adm) .adm-only{display:none!important}
       <div class="g2">
         <div><label class="flbl">Tipo</label>
           <select id="hs-tipo" class="inp" onchange="loadHist()">
-            <option value="">Todos</option><option>ENTRADA</option><option>SAIDA</option><option>TRANSF</option><option>AJUSTE</option><option>DEV_RETORNO</option><option>IMPORT</option>
+            <option value="">Todos</option><option>ENTRADA</option><option>SAIDA</option><option>TRANSF</option><option>AJUSTE</option><option>DEV_RETORNO</option><option>VENDA</option><option>IMPORT</option>
           </select></div>
         <div><label class="flbl">Período</label>
           <select id="hs-per" class="inp" onchange="loadHist()">
@@ -570,6 +585,38 @@ body:not(.adm) .adm-only{display:none!important}
       </div>
     </div>
     <div id="ap-list" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+
+  <!-- ── KARDEX ── -->
+  <div class="pg hide" id="p-kdx">
+    <div class="card">
+      <div class="ct"><span>📒 Kardex do produto</span><button class="btn btn-ghost btn-sm" onclick="kdxExport()">⬇ XLSX</button></div>
+      <div class="row">
+        <input id="kdx-inp" class="scan-inp" type="text" placeholder="Bipe ou digite o EAN..." autocomplete="off" autocorrect="off" spellcheck="false">
+        <button class="btn-go blue" onclick="kdxBuscar()">🔍</button>
+      </div>
+    </div>
+    <div id="kdx-res"></div>
+  </div>
+
+  <!-- ── BAIXA DE VENDAS (adm) ── -->
+  <div class="pg hide" id="p-vnd">
+    <div class="card">
+      <div class="ct"><span>🧾 Baixa de vendas</span><span class="row" style="gap:6px"><button class="btn btn-acc btn-sm" onclick="openVnd()">⬆ Importar vendas</button><button class="btn btn-ghost btn-sm" onclick="vbExport()">⬇ XLSX</button></span></div>
+      <div class="row" style="margin-bottom:8px;flex-wrap:wrap">
+        <input id="vb-q" class="inp" style="margin:0;flex:1;min-width:180px" type="text" placeholder="Filtrar por NF, cliente, EAN, descrição, endereço..." oninput="renderVb()" autocomplete="off">
+        <select id="vb-per" class="inp" style="margin:0;width:auto" onchange="vbCarregar()">
+          <option value="7">Baixas de 7 dias</option><option value="30" selected>30 dias</option><option value="90">90 dias</option><option value="0">Tudo</option>
+        </select>
+      </div>
+      <div class="chips" id="vb-chips">
+        <button class="chip on" data-f="" onclick="vbFiltro('')">Todas</button>
+        <button class="chip" data-f="BAIXADA" onclick="vbFiltro('BAIXADA')">Baixadas</button>
+        <button class="chip" data-f="PARCIAL" onclick="vbFiltro('PARCIAL')">Parciais</button>
+        <button class="chip" data-f="SEM SALDO" onclick="vbFiltro('SEM SALDO')">Sem saldo</button>
+      </div>
+    </div>
+    <div class="card"><div class="ct"><span>Registros de baixa</span><span id="vb-n" class="c-acc"></span></div><div class="pos-wrap" id="vb-list"></div></div>
   </div>
   </div><!-- /content -->
 </div><!-- /s-main -->
@@ -732,6 +779,22 @@ body:not(.adm) .adm-only{display:none!important}
   </div>
 </div>
 
+<!-- ══════════ OVERLAY: BAIXA DE VENDAS ══════════ -->
+<div class="ovl center hide" id="vnd-ovl" onclick="if(event.target===this)closeVnd()">
+  <div class="sheet" style="max-width:680px">
+    <div class="sh-title"><span>🧾 Baixar vendas do estoque</span><button class="sh-x" onclick="closeVnd()">✕</button></div>
+    <div class="sh-sub">Arquivo qry001 de vendas (.csv/.xlsx) com <b>LOTE</b>, <b>NOTA_FISCAL</b>, <b>SERIE</b>, <b>CLIENTE</b>, <b>DATA_EMISSAO</b> e <b>QUANTIDADE_BAIXADA</b> (pares). Só são baixados os produtos que têm endereço no app; os pares são convertidos em volumes pelo cadastro de grade e consumidos dos endereços em ordem alfabética. Cada NF+produto é baixada uma única vez — pode reimportar arquivos com datas sobrepostas.</div>
+    <label class="imp-file" onclick="document.getElementById('vnd-file').click()">
+      <span style="font-size:22px">📄</span>
+      <span style="flex:1;font-size:13px;color:var(--mut)" id="vnd-fname">Selecionar arquivo (.csv / .xlsx)</span>
+    </label>
+    <input type="file" id="vnd-file" accept=".csv,.txt,.xlsx,.xls" class="hide" onchange="vndLer(this)">
+    <div class="row" style="gap:8px"><label class="flbl" style="margin:0;white-space:nowrap">Baixar só NFs emitidas a partir de</label><input id="vnd-de" class="inp" type="date" style="margin:0;width:auto;padding:7px 10px" onchange="vndReparse()"><span class="sh-sub">(vazio = todas)</span></div>
+    <div class="imp-prev hide" id="vnd-prev"></div>
+    <div class="row"><button class="btn btn-ghost" style="flex:1" onclick="closeVnd()">Fechar</button><button class="btn btn-red" style="flex:2" id="vnd-ok" disabled onclick="vndGravar()">⬇ Baixar do estoque</button></div>
+  </div>
+</div>
+
 <!-- ══════════ OVERLAY: QR ══════════ -->
 <div class="ovl center hide" id="qr-ovl" onclick="if(event.target===this)this.classList.add('hide')">
   <div class="sheet" style="max-width:300px;text-align:center;align-items:center">
@@ -744,14 +807,14 @@ body:not(.adm) .adm-only{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.7';
+const APP_VERSION='V1.8';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
 const DEFAULT_ADMIN={id:'admin',name:'Administrador',user:'admin',pwd:'235241',role:'adm',active:true};
 const TRATATIVAS=['RETORNO ESTOQUE','AVARIA','DESCARTE','DEVOLVER FORNECEDOR','REFATURAR','OUTROS'];
-const TIPO_LBL={ENTRADA:'Entrada',SAIDA:'Saída',TRANSF:'Transferência',AJUSTE:'Ajuste',DEV_RETORNO:'Retorno devolução',IMPORT:'Importação'};
-const TIPO_TAG={ENTRADA:'t-grn',SAIDA:'t-red',TRANSF:'t-cyn',AJUSTE:'t-pur',DEV_RETORNO:'t-acc',IMPORT:'t-mut'};
+const TIPO_LBL={ENTRADA:'Entrada',SAIDA:'Saída',TRANSF:'Transferência',AJUSTE:'Ajuste',DEV_RETORNO:'Retorno devolução',IMPORT:'Importação',VENDA:'Venda'};
+const TIPO_TAG={ENTRADA:'t-grn',SAIDA:'t-red',TRANSF:'t-cyn',AJUSTE:'t-pur',DEV_RETORNO:'t-acc',IMPORT:'t-mut',VENDA:'t-red'};
 
 // ═════════════════════ STATE ═════════════════════
 let CU=null, USERS=[];
@@ -922,14 +985,16 @@ async function loadDevPill(){
 function go(s){ document.querySelectorAll('.scr').forEach(x=>x.classList.remove('on')); $('s-'+s).classList.add('on'); }
 function goTab(t){
   CUR_TAB=t;
-  ['con','mov','dev','his','apr'].forEach(x=>{ $('t-'+x).classList.toggle('on',x===t); $('p-'+x).classList.toggle('hide',x!==t); });
-  $('h-title').textContent={con:'Consulta',mov:'Estoque',dev:'Devoluções',his:'Histórico',apr:'Aprovações'}[t];
+  ['con','mov','kdx','dev','his','apr','vnd'].forEach(x=>{ $('t-'+x).classList.toggle('on',x===t); $('p-'+x).classList.toggle('hide',x!==t); });
+  $('h-title').textContent={con:'Consulta',mov:'Estoque',kdx:'Kardex',dev:'Devoluções',his:'Histórico',apr:'Aprovações',vnd:'Baixa de vendas'}[t];
   toggleSb(false); loadDevPill();
   if(t==='con'){ renderKpis(); focusLater('con-inp'); }
   if(t==='mov'){ renderMov(); loadMyMovs(); renderPos(); }
   if(t==='dev'){ if(DEV_CUR) devAbrir(DEV_CUR.id); else { devVoltarLista(); } }
   if(t==='his') loadHist();
   if(t==='apr') loadApr();
+  if(t==='kdx'){ if($('kdx-inp').value.trim()) kdxBuscar(); else focusLater('kdx-inp'); }
+  if(t==='vnd') vbCarregar();
 }
 async function doSync(btn){
   if(btn.disabled) return;
@@ -941,6 +1006,8 @@ async function doSync(btn){
     if(CUR_TAB==='dev'){ if(DEV_CUR) await devAbrir(DEV_CUR.id); else await devCarregar(); }
     if(CUR_TAB==='his') loadHist();
     if(CUR_TAB==='apr') loadApr();
+    if(CUR_TAB==='kdx'&&$('kdx-inp').value.trim()) await kdxBuscar();
+    if(CUR_TAB==='vnd') await vbCarregar();
     toast('✓ Dados atualizados');
   }catch(e){ toast('Erro ao sincronizar',1); }
   finally{ btn.disabled=false; btn.textContent='↻'; }
@@ -977,7 +1044,7 @@ async function consultar(silent){
     res.innerHTML=`<div class="card">
       <div class="iean">${esc(g)}</div><div style="font-size:16px;font-weight:700;margin:2px 0 4px">${esc(p.descr)}</div>
       <div class="isub">${esc(p.marca||'')}</div>
-      <div class="row" style="margin:10px 0 6px"><span class="tag t-grn">Total: ${fmt(tot)}</span><span class="tag t-ylw">${rows.length} endereço(s)</span>${p.pares?`<span class="tag t-pur">${fmt(p.pares)} pares/cx</span>`:''}</div>
+      <div class="row" style="margin:10px 0 6px"><span class="tag t-grn">Total: ${fmt(tot)}</span><span class="tag t-ylw">${rows.length} endereço(s)</span>${p.pares?`<span class="tag t-pur">${fmt(p.pares)} pares/cx</span>`:''}<button class="btn btn-ghost btn-sm" onclick="kdxAbrir('${esc(g)}')">📒 Kardex</button></div>
       ${PROT_OK?`<div class="prt-box"><div><div class="il">Estoque (endereços)</div><div class="iv">${fmt(tot)}</div></div><div><div class="il">Protheus (vol.)</div><div class="iv">${fmt(protVol(g))}</div></div><div><div class="il">Diferença</div><div class="iv">${difTag(tot,protVol(g))}</div></div></div>`:''}
       ${rows.length?rows.map(r=>`<div class="irow click" onclick="conAbrir('${esc(r.endereco)}')"><span style="font-size:16px">📍</span><div class="ibody"><div style="font-weight:700;color:var(--ylw)">${esc(r.endereco)}</div><div class="isub">Atualizado ${fmtDT(r.atualizado_em)} ${r.atualizado_por?'· '+esc(r.atualizado_por):''}</div></div><div class="iright"><div class="iqty">${fmt(r.qtd)}</div></div></div>`).join('')
       :'<div class="empty">Sem saldo em nenhum endereço</div>'}
@@ -1211,7 +1278,7 @@ function renderMyMovs(L){
         <span class="gl-ch">▼</span>
       </div>
       <div class="gl-b">${ends.map(e=>{const a=e.rota.split(' → ').pop(); const est=saldoAt(g.gtin,a);
-        return `<div class="gl-r"><span>📍</span><b class="c-ylw">${esc(e.rota)}</b><span class="tag ${TIPO_TAG[e.tipo]||'t-mut'}">${TIPO_LBL[e.tipo]||e.tipo} ${e.tipo==='SAIDA'?'-'+fmt(Math.abs(e.qtd)):e.tipo==='AJUSTE'?(e.qtd>0?'+':'')+fmt(e.qtd):'+'+fmt(Math.abs(e.qtd))}</span><span class="gl-est">Estoque: <b class="c-grn">${fmt(est)}</b></span></div>`;}).join('')}</div>
+        return `<div class="gl-r"><span>📍</span><b class="c-ylw">${esc(e.rota)}</b><span class="tag ${TIPO_TAG[e.tipo]||'t-mut'}">${TIPO_LBL[e.tipo]||e.tipo} ${(e.tipo==='SAIDA'||e.tipo==='VENDA')?'-'+fmt(Math.abs(e.qtd)):e.tipo==='AJUSTE'?(e.qtd>0?'+':'')+fmt(e.qtd):'+'+fmt(Math.abs(e.qtd))}</span><span class="gl-est">Estoque: <b class="c-grn">${fmt(est)}</b></span></div>`;}).join('')}</div>
     </div>`;
   }).join('');
 }
@@ -1220,8 +1287,8 @@ function mhToggle(h){ const el=h.parentElement, g=el.dataset.g; el.classList.tog
 function movRow(m){
   const rota=m.tipo==='TRANSF'?`${esc(m.end_origem)} → ${esc(m.end_destino)}`:esc(m.end_origem||m.end_destino||'');
   const q=Number(m.qtd)||0;
-  const txt=m.tipo==='IMPORT'?fmt(q):m.tipo==='SAIDA'?'-'+fmt(q):m.tipo==='AJUSTE'?(q>0?'+':'')+fmt(q):'+'+fmt(q);
-  const neg=m.tipo==='SAIDA'||(m.tipo==='AJUSTE'&&q<0);
+  const txt=m.tipo==='IMPORT'?fmt(q):(m.tipo==='SAIDA'||m.tipo==='VENDA')?'-'+fmt(q):m.tipo==='AJUSTE'?(q>0?'+':'')+fmt(q):'+'+fmt(q);
+  const neg=m.tipo==='SAIDA'||m.tipo==='VENDA'||(m.tipo==='AJUSTE'&&q<0);
   const aj=m.tipo==='AJUSTE'?`<div class="isub">${fmt(m.saldo_ant)} → ${fmt(m.saldo_novo)}</div>`:'';
   return `<div class="irow"><div class="ibody"><div class="row" style="gap:6px"><span class="tag ${TIPO_TAG[m.tipo]||'t-mut'}">${TIPO_LBL[m.tipo]||m.tipo}</span><span style="font-size:13px;font-weight:700;color:var(--ylw)">${rota}</span></div>
     <div class="inm" style="margin-top:2px">${esc(m.descricao||'')}</div><div class="isub">${esc(m.gtin||'')} · ${fmtDT(m.criado_em)}${m.motivo?' · '+esc(m.motivo):''}</div></div>
@@ -1271,11 +1338,6 @@ function renderPos(){
   $('pos-chips').classList.toggle('hide',!PROT_OK);
   $('pos-noprt').classList.toggle('hide',PROT_OK);
   const {all,L}=posLista();
-  const ti=all.reduce((s,x)=>s+x.inv,0), tp=all.reduce((s,x)=>s+x.prot,0), nd=all.filter(x=>x.dif!==0).length;
-  $('pos-kpi').innerHTML=`<div class="kpi"><div class="kn c-acc">${fmt(all.length)}</div><div class="kl">Produtos</div></div>
-    <div class="kpi"><div class="kn c-grn">${fmt(ti)}</div><div class="kl">Inventariado</div></div>
-    <div class="kpi"><div class="kn c-pur">${PROT_OK?fmt(tp):'—'}</div><div class="kl">Protheus (desses itens)${PROT_TS?' · '+fmtDT(PROT_TS):''}</div></div>
-    <div class="kpi"><div class="kn ${nd?'c-red':'c-grn'}">${PROT_OK?fmt(nd):'—'}</div><div class="kl">Com divergência</div></div>`;
   posFillDescr(L.slice(0,POS_LIM));
   if(!L.length){ $('pos-list').innerHTML='<div class="empty">Nenhum produto '+(all.length?'neste filtro':'com saldo')+'</div>'; return; }
   const rows=L.slice(0,POS_LIM).map(x=>{
@@ -1287,7 +1349,7 @@ function renderPos(){
       <td class="n c-grn">${fmt(x.inv)}</td>
       <td class="n">${PROT_OK?fmt(x.prot):'—'}</td>
       <td class="r">${dif}</td></tr>`+
-      (op&&x.ends.length?`<tr class="pd"><td colspan="5"><div class="pos-ends">${x.ends.map(r=>`<span class="pos-end">📍 <b>${esc(r.endereco)}</b> · ${fmt(r.qtd)}</span>`).join('')}</div></td></tr>`:'');
+      (op?`<tr class="pd"><td colspan="5"><div class="pos-ends">${x.ends.map(r=>`<span class="pos-end">📍 <b>${esc(r.endereco)}</b> · ${fmt(r.qtd)}</span>`).join('')}<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();kdxAbrir('${esc(x.gtin)}')">📒 Kardex</button></div></td></tr>`:'');
   }).join('');
   $('pos-list').innerHTML=`<table class="tbl"><thead><tr><th class="c-ean">EAN</th><th>Descrição</th><th class="r">Inventariado</th><th class="r">Protheus</th><th class="r">Dif.</th></tr></thead><tbody>${rows}</tbody></table>`+
     (L.length>POS_LIM?`<div class="pos-more"><button class="btn btn-ghost btn-sm" onclick="POS_LIM+=300;renderPos()">Mostrar mais (${fmt(L.length-POS_LIM)} restantes)</button></div>`:'');
@@ -1299,6 +1361,188 @@ function posExport(){
   const rows=L.map(x=>({EAN:x.gtin,DESCRICAO:x.descr,ENDERECOS:x.ends.map(r=>r.endereco+' ('+r.qtd+')').join(', '),INVENTARIADO:x.inv,PROTHEUS:PROT_OK?x.prot:'',DIFERENCA:PROT_OK?x.dif:''}));
   const ws=XLSX.utils.json_to_sheet(rows), wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Posicao');
   XLSX.writeFile(wb,'Posicao_Estoque_x_Protheus_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+// ═════════════════════ KARDEX ═════════════════════
+let KDX=null;
+function kdxEff(m){ const q=Number(m.qtd)||0; if(m.tipo==='ENTRADA'||m.tipo==='DEV_RETORNO') return q; if(m.tipo==='SAIDA'||m.tipo==='VENDA') return -q; if(m.tipo==='AJUSTE') return q; return 0; }
+function kdxAbrir(g){ $('kdx-inp').value=g; goTab('kdx'); }
+async function kdxBuscar(){
+  const raw=$('kdx-inp').value.trim(); if(!raw) return;
+  if(!isCode(raw)){ beep(false); toast('Informe um EAN válido',1); return; }
+  const g=normG(raw); $('kdx-res').innerHTML='<div class="card"><div class="empty">Carregando...</div></div>';
+  let movs=[];
+  try{ movs=await fetchAll('est_mov','*',q=>q.eq('gtin',g)); }catch(e){ $('kdx-res').innerHTML='<div class="card"><div class="empty c-red">Erro: '+esc(e.message||e)+'</div></div>'; return; }
+  const p=await lookupProd(g);
+  const atual=(BY_GTIN[g]||[]).reduce((s,r)=>s+(Number(r.qtd)||0),0);
+  let cur=atual;
+  for(let i=movs.length-1;i>=0;i--){ movs[i]._saldo=Math.round(cur*10000)/10000; cur-=kdxEff(movs[i]); }
+  const ini=Math.round(cur*10000)/10000;
+  KDX={g,descr:p.descr,movs,ini,atual};
+  const ends=(BY_GTIN[g]||[]).filter(r=>r.qtd>0).sort((a,b)=>a.endereco.localeCompare(b.endereco));
+  const te=movs.reduce((s,m)=>s+Math.max(kdxEff(m),0),0), ts=movs.reduce((s,m)=>s+Math.max(-kdxEff(m),0),0);
+  const rows=movs.map(m=>{
+    const e=kdxEff(m), q=Number(m.qtd)||0;
+    const end=m.tipo==='TRANSF'?`${esc(m.end_origem)} → ${esc(m.end_destino)}`:esc(m.end_origem||m.end_destino||'');
+    return `<tr><td>${fmtDT(m.criado_em)}</td><td><span class="tag ${TIPO_TAG[m.tipo]||'t-mut'}">${TIPO_LBL[m.tipo]||esc(m.tipo)}</span></td>
+      <td class="mot">${esc(m.motivo||'')}${m.ref&&!(m.motivo||'').includes(m.ref)?' <span class="c-mut">· '+esc(m.ref)+'</span>':''}</td>
+      <td class="c-ylw" style="font-weight:700">${end}</td>
+      <td class="n c-grn">${e>0?fmt(e):m.tipo==='TRANSF'?'<span class="c-cyn">⇄ '+fmt(q)+'</span>':''}</td>
+      <td class="n c-red">${e<0?fmt(-e):''}</td>
+      <td class="n">${fmt(m._saldo)}</td><td>${esc(m.operador||'')}</td></tr>`;
+  }).join('');
+  $('kdx-res').innerHTML=`<div class="card">
+      <div class="iean">${esc(g)}</div><div style="font-size:16px;font-weight:700;margin:2px 0 6px">${esc(p.descr)}</div>
+      <div class="row" style="flex-wrap:wrap;gap:6px;margin-bottom:6px"><span class="tag t-grn">Saldo atual: ${fmt(atual)}</span>${PROT_OK?`<span class="tag t-pur">Protheus: ${fmt(protVol(g))}</span> ${difTag(atual,protVol(g))}`:''}<span class="tag t-acc">Entradas: ${fmt(te)}</span><span class="tag t-red">Saídas: ${fmt(ts)}</span>${p.pares?`<span class="tag t-mut">${fmt(p.pares)} pares/vol</span>`:''}</div>
+      <div class="pos-ends">${ends.map(r=>`<span class="pos-end">📍 <b>${esc(r.endereco)}</b> · ${fmt(r.qtd)}</span>`).join('')||'<span class="c-mut" style="font-size:12px">Sem saldo em endereços</span>'}</div>
+    </div>
+    <div class="card"><div class="ct"><span>Movimentações (${fmt(movs.length)})</span><span class="c-mut" style="text-transform:none;letter-spacing:0">em volumes</span></div>
+      <div class="kdx-wrap"><table class="tbl"><thead><tr><th>Data</th><th>Tipo</th><th>Documento / motivo</th><th>Endereço</th><th class="r">Entrada</th><th class="r">Saída</th><th class="r">Saldo</th><th>Operador</th></tr></thead>
+      <tbody><tr class="ini"><td colspan="6">Saldo inicial (importação de saldo / inventário)</td><td class="n">${fmt(ini)}</td><td></td></tr>${rows}</tbody></table></div>
+    </div>`;
+  $('kdx-inp').select();
+}
+function kdxExport(){
+  if(!KDX) return toast('Consulte um produto primeiro',1);
+  const aoa=[['Data','Tipo','Documento / motivo','Ref','Origem','Destino','Entrada','Saída','Saldo','Operador']];
+  aoa.push(['','Saldo inicial','','','','','','',KDX.ini,'']);
+  KDX.movs.forEach(m=>{ const e=kdxEff(m); aoa.push([fmtDT(m.criado_em),TIPO_LBL[m.tipo]||m.tipo,m.motivo||'',m.ref||'',m.end_origem||'',m.end_destino||'',e>0?e:'',e<0?-e:'',m._saldo,m.operador||'']); });
+  xlsxSave([['Kardex',aoa,[17,14,50,16,12,12,9,9,9,18]]],'kardex_'+KDX.g);
+}
+
+// ═════════════════════ BAIXA DE VENDAS ═════════════════════
+let VND=null, VB=[], VB_F=''; const VB_OPEN=new Set();
+function openVnd(){ $('acoes-menu').classList.remove('open'); VND=null; $('vnd-file').value=''; $('vnd-fname').textContent='Selecionar arquivo (.csv / .xlsx)'; $('vnd-prev').classList.add('hide'); $('vnd-ok').disabled=true; VND_SRC=null; $('vnd-ovl').classList.remove('hide'); }
+function closeVnd(){ if(VND&&VND.busy) return; $('vnd-ovl').classList.add('hide'); }
+function vndLer(inp){
+  const f=inp.files[0]; if(!f) return;
+  $('vnd-fname').textContent=f.name; $('vnd-prev').classList.remove('hide'); $('vnd-prev').textContent='Lendo arquivo...'; $('vnd-ok').disabled=true;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      let aoa;
+      if(/\.(csv|txt)$/i.test(f.name)){
+        let txt; try{ txt=new TextDecoder('utf-8',{fatal:true}).decode(e.target.result); }catch(x){ txt=new TextDecoder('windows-1252').decode(e.target.result); }
+        const fl=txt.split(/\r?\n/)[0]||''; const sep=fl.split(';').length>=fl.split(',').length?';':',';
+        aoa=txt.split(/\r?\n/).map(l=>l.split(sep));
+      } else {
+        const wb=XLSX.read(e.target.result,{type:'array'});
+        aoa=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''});
+      }
+      vndParse(aoa,f.name);
+    }catch(x){ $('vnd-prev').innerHTML='<span class="c-red">Erro ao ler: '+esc(x.message)+'</span>'; }
+  };
+  r.readAsArrayBuffer(f);
+}
+function vndTxt(v){ return String(v??'').replace(/[\s ]+/g,' ').trim(); }
+function vndData(v){ v=vndTxt(v).replace(/\D/g,''); return v.length===8?v.slice(0,4)+'-'+v.slice(4,6)+'-'+v.slice(6,8):null; }
+let VND_SRC=null;
+function vndReparse(){ if(VND_SRC) vndParse(VND_SRC.aoa,VND_SRC.fname); }
+async function vndParse(aoa,fname){
+  VND_SRC={aoa,fname}; const corte=$('vnd-de').value||'';
+  let hi=-1,C=null;
+  for(let i=0;i<Math.min(10,aoa.length);i++){
+    const h=(aoa[i]||[]).map(nrm); const fi=re=>h.findIndex(x=>re.test(x));
+    const g=fi(/LOTE|GTIN|EAN/), nf=fi(/NOTA|^NF|DOC/), q=fi(/QUANT|QTD/);
+    if(g<0||nf<0||q<0) continue;
+    hi=i; C={g,nf,q,s:fi(/SERIE/),c:fi(/CLIENTE/),d:fi(/EMISS|DATA/)}; break;
+  }
+  if(hi<0){ $('vnd-prev').innerHTML='<span class="c-red">Cabeçalho não encontrado (LOTE, NOTA_FISCAL, QUANTIDADE_BAIXADA).</span>'; return; }
+  const map={}; let lidas=0, inval=0; const nfs=new Set();
+  aoa.slice(hi+1).forEach(r=>{
+    if(!r||r.every(c=>vndTxt(c)==='')) return; lidas++;
+    const g=normG(vndTxt(r[C.g])); const nf=vndTxt(r[C.nf]).replace(/^0+/,'')||'0'; const se=C.s>=0?vndTxt(r[C.s]):'';
+    const q=parseNum(vndTxt(r[C.q]));
+    if(!/^\d{8,14}$/.test(g)||!(q>0)){ inval++; return; }
+    nfs.add(nf+'/'+se);
+    const k=g+'|'+nf+'|'+se;
+    if(map[k]) map[k].pares+=q; else map[k]={g,nf,serie:se,cli:C.c>=0?vndTxt(r[C.c]):'',emis:C.d>=0?vndData(r[C.d]):null,pares:q};
+  });
+  const all=Object.values(map);
+  const ctl=all.filter(x=>BY_GTIN[x.g]); const fora=all.length-ctl.length;
+  $('vnd-prev').textContent='Verificando cadastro de grade e baixas anteriores...';
+  const gs=[...new Set(ctl.map(x=>x.g))];
+  const falta=gs.filter(g=>!(g in GRADE));
+  try{ for(let i=0;i<falta.length;i+=150){ const ch=falta.slice(i,i+150); const {data}=await getSB().from('est_grade').select('gtin,descricao,pares,fabricante').in('gtin',ch); ch.forEach(g=>{ if(!(g in GRADE)) GRADE[g]=null; }); (data||[]).forEach(d=>GRADE[d.gtin]={descr:d.descricao||'',pares:d.pares,fab:d.fabricante||''}); } }catch(e){}
+  const done=new Set(); let semTabela=false;
+  try{ for(let i=0;i<gs.length;i+=150){ const {data,error}=await getSB().from('est_venda_baixa').select('gtin,nf,serie').in('gtin',gs.slice(i,i+150)); if(error) throw error; (data||[]).forEach(d=>done.add(d.gtin+'|'+d.nf+'|'+d.serie)); } }
+  catch(e){ semTabela=true; }
+  const semGrade=[], dup=[], ok=[]; let antes=0;
+  ctl.forEach(x=>{
+    if(corte&&x.emis&&x.emis<corte){ antes++; return; }
+    if(done.has(x.g+'|'+x.nf+'|'+x.serie)){ dup.push(x); return; }
+    const pg=(GRADE[x.g]&&GRADE[x.g].pares)||(PROT[x.g]&&PROT[x.g].pares)||null;
+    if(!pg){ semGrade.push(x); return; }
+    x.pg=Number(pg); x.vol=Math.round(x.pares/x.pg*10000)/10000;
+    x.descr=(PROD[x.g]&&PROD[x.g].descr)||(GRADE[x.g]&&GRADE[x.g].descr)||'';
+    ok.push(x);
+  });
+  ok.sort((a,b)=>String(a.emis).localeCompare(String(b.emis))||a.nf.localeCompare(b.nf,undefined,{numeric:true}));
+  VND={fname,ok,busy:false};
+  const P={}; ok.forEach(x=>{ const r=P[x.g]=P[x.g]||{g:x.g,d:x.descr,pares:0,vol:0,n:0}; r.pares+=x.pares; r.vol+=x.vol; r.n++; });
+  const pl=Object.values(P).sort((a,b)=>b.vol-a.vol);
+  const r2=v=>Math.round(v*100)/100;
+  const totVol=ok.reduce((s,x)=>s+x.vol,0);
+  const faltaVol=pl.reduce((s,r)=>s+Math.max(r.vol-estTotal(r.g),0),0);
+  $('vnd-prev').innerHTML=(semTabela?'<div class="c-red" style="margin-bottom:6px"><b>⚠ Tabela de baixas não encontrada no Supabase.</b> Rode o script <b>controle_mercadoria_V1.8_baixa_vendas.sql</b> no SQL Editor antes de baixar.</div>':'')+
+   `Linhas lidas: <b>${fmt(lidas)}</b> · NFs: <b>${fmt(nfs.size)}</b>${inval?` · inválidas: <b class="c-red">${fmt(inval)}</b>`:''}<br>
+    Produtos fora do controle (sem endereço no app): <b class="c-mut">${fmt(fora)}</b> linha(s) — ignoradas<br>
+    ${corte?`Emitidas antes de ${vbData(corte)} (não baixadas): <b class="c-mut">${fmt(antes)}</b><br>`:''}Já baixadas antes: <b class="c-mut">${fmt(dup.length)}</b>${semGrade.length?` · Sem cadastro de grade (pares/vol): <b class="c-red">${fmt(semGrade.length)}</b> — <span class="mono">${esc([...new Set(semGrade.map(x=>x.g))].join(', '))}</span>`:''}<br>
+    <b class="c-red">A baixar: ${fmt(ok.length)} linha(s) · ${fmt(r2(totVol))} volume(s)</b>${faltaVol>0?` · <span class="c-ylw">${fmt(r2(faltaVol))} vol. sem saldo no app (fica registrado como falta)</span>`:''}
+    ${pl.length?`<table class="vprev-t"><thead><tr><th>EAN</th><th>Descrição</th><th class="r">NFs</th><th class="r">Pares</th><th class="r">Vol.</th><th class="r">Saldo app</th><th class="r">Após</th></tr></thead><tbody>${pl.map(r=>{const e=estTotal(r.g),a=r2(e-r.vol);return `<tr><td class="mono">${esc(r.g)}</td><td>${esc(cut(r.d,34))}</td><td class="r">${r.n}</td><td class="r">${fmt(r.pares)}</td><td class="r">${fmt(r2(r.vol))}</td><td class="r">${fmt(e)}</td><td class="r ${a<0?'c-red':''}">${a<0?'0 (falta '+fmt(-a)+')':fmt(a)}</td></tr>`;}).join('')}</tbody></table>`:''}`;
+  $('vnd-ok').disabled=!ok.length||semTabela;
+}
+async function vndGravar(){
+  if(!VND||!VND.ok.length||VND.busy) return;
+  if(!confirm(`Baixar ${VND.ok.length} linha(s) de venda do estoque?`)) return;
+  VND.busy=true; const btn=$('vnd-ok'); btn.disabled=true;
+  let n=0, ok=0, par=0, sem=0, dup=0; const erros=[];
+  for(const x of VND.ok){
+    n++; btn.textContent=`Baixando ${n}/${VND.ok.length}...`;
+    const {data,error}=await getSB().rpc('est_baixar_venda',{p_gtin:x.g,p_descricao:x.descr,p_nf:x.nf,p_serie:x.serie,p_cliente:x.cli,p_emissao:x.emis,p_pares:x.pares,p_pares_grade:x.pg,p_vol:x.vol,p_operador:CU.name,p_arquivo:VND.fname});
+    if(error){ erros.push(`NF ${x.nf} · ${x.g}: ${error.message}`); continue; }
+    if(data&&data.duplicada) dup++; else if(data&&data.status==='BAIXADA') ok++; else if(data&&data.status==='PARCIAL') par++; else sem++;
+  }
+  VND.busy=false; btn.textContent='⬇ Baixar do estoque';
+  await loadSaldo();
+  $('vnd-prev').innerHTML=`<b class="c-grn">✓ Concluído.</b> Baixadas: <b>${ok}</b> · Parciais: <b class="c-ylw">${par}</b> · Sem saldo: <b class="c-red">${sem}</b>${dup?` · já existiam: ${dup}`:''}${erros.length?`<br><span class="c-red">${erros.length} erro(s):<br>${erros.slice(0,15).map(esc).join('<br>')}</span>`:''}`;
+  VND.ok=[]; beep(!erros.length); toast('✓ Baixa de vendas concluída');
+  if(CUR_TAB==='vnd') vbCarregar(); if(CUR_TAB==='mov') renderPos(); if(CUR_TAB==='kdx'&&$('kdx-inp').value.trim()) kdxBuscar();
+}
+async function vbCarregar(){
+  const d=+$('vb-per').value;
+  try{
+    VB=await fetchAll('est_venda_baixa','*',q=>{ if(d){ const t=new Date(); t.setDate(t.getDate()-d); q=q.gte('criado_em',t.toISOString()); } return q; });
+    VB.reverse();
+  }catch(e){ VB=[]; $('vb-list').innerHTML='<div class="empty c-red">Tabela de baixas não encontrada — rode o script controle_mercadoria_V1.8_baixa_vendas.sql no Supabase.</div>'; $('vb-n').textContent=''; return; }
+  renderVb();
+}
+function vbFiltro(f){ VB_F=f; document.querySelectorAll('#vb-chips .chip').forEach(c=>c.classList.toggle('on',c.dataset.f===f)); renderVb(); }
+function vbLista(){
+  const q=($('vb-q').value||'').trim().toUpperCase();
+  return VB.filter(v=>(!VB_F||v.status===VB_F)&&(!q||[v.nf,v.serie,v.cliente,v.gtin,v.descricao,v.arquivo,v.operador,JSON.stringify(v.enderecos||[])].some(x=>String(x||'').toUpperCase().includes(q))));
+}
+function vbData(d){ return d?String(d).slice(0,10).split('-').reverse().join('/'):''; }
+function renderVb(){
+  const L=vbLista(); const r2=v=>Math.round(v*100)/100;
+  const tv=L.reduce((s,v)=>s+(Number(v.baixado_vol)||0),0), tf=L.reduce((s,v)=>s+(Number(v.falta_vol)||0),0);
+  $('vb-n').textContent=`${fmt(L.length)} linha(s) · ${fmt(r2(tv))} vol. baixados${tf?' · '+fmt(r2(tf))+' vol. em falta':''}`;
+  if(!L.length){ $('vb-list').innerHTML='<div class="empty">Nenhuma baixa registrada'+(VB.length?' neste filtro':'')+'</div>'; return; }
+  const ST={'BAIXADA':'t-grn','PARCIAL':'t-ylw','SEM SALDO':'t-red'};
+  $('vb-list').innerHTML=`<table class="tbl vb-tab"><thead><tr><th>Baixado em</th><th>NF / Série</th><th>Emissão</th><th>Cliente</th><th>EAN</th><th>Descrição</th><th class="r">Pares</th><th class="r">Vol.</th><th class="r">Baixado</th><th class="r">Falta</th><th>Status</th></tr></thead><tbody>${
+    L.slice(0,600).map(v=>{ const op=VB_OPEN.has(v.id); const ends=v.enderecos||[];
+      return `<tr class="pr" onclick="vbToggle(${v.id})"><td>${fmtDT(v.criado_em)}</td><td><b>${esc(v.nf)}</b>${v.serie?' / '+esc(v.serie):''}</td><td>${vbData(v.emissao)}</td><td>${esc(v.cliente||'')}</td><td class="mono">${esc(v.gtin)}</td><td class="d">${esc(v.descricao||'')}</td><td class="r">${fmt(v.qtd_pares)}</td><td class="r">${fmt(v.qtd_vol)}</td><td class="r c-grn" style="font-weight:700">${fmt(v.baixado_vol)}</td><td class="r ${Number(v.falta_vol)?'c-red':''}">${Number(v.falta_vol)?fmt(v.falta_vol):''}</td><td><span class="tag ${ST[v.status]||'t-mut'}">${esc(v.status)}</span></td></tr>`+
+      (op?`<tr class="pd"><td colspan="11"><div class="pos-ends">${ends.map(e=>`<span class="pos-end">📍 <b>${esc(e.endereco)}</b> · -${fmt(e.qtd)} <span class="c-mut">(${fmt(e.saldo_ant)} → ${fmt(e.saldo_novo)})</span></span>`).join('')||'<span class="c-mut" style="font-size:12px">Nenhum endereço com saldo no momento da baixa</span>'}
+        <span class="c-mut" style="font-size:12px">${v.pares_grade?fmt(v.pares_grade)+' pares/vol · ':''}${esc(v.operador||'')} · ${esc(v.arquivo||'')}</span>
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();kdxAbrir('${esc(v.gtin)}')">📒 Kardex</button></div></td></tr>`:'');
+    }).join('')}</tbody></table>`+(L.length>600?'<div class="empty">Mostrando 600 de '+fmt(L.length)+' — use o XLSX para ver tudo</div>':'');
+}
+function vbToggle(id){ if(VB_OPEN.has(id)) VB_OPEN.delete(id); else VB_OPEN.add(id); renderVb(); }
+function vbExport(){
+  const L=vbLista(); if(!L.length) return toast('Nada para exportar',1);
+  const aoa=[['Baixado em','NF','Série','Emissão','Cliente','EAN','Descrição','Pares vendidos','Pares/vol','Volumes','Baixado','Falta','Status','Endereços baixados','Operador','Arquivo']];
+  L.forEach(v=>aoa.push([fmtDT(v.criado_em),v.nf,v.serie,vbData(v.emissao),v.cliente||'',v.gtin,v.descricao||'',Number(v.qtd_pares)||0,v.pares_grade||'',Number(v.qtd_vol)||0,Number(v.baixado_vol)||0,Number(v.falta_vol)||0,v.status,(v.enderecos||[]).map(e=>e.endereco+' (-'+e.qtd+')').join(', '),v.operador||'',v.arquivo||'']));
+  xlsxSave([['Baixas de venda',aoa,[17,10,6,11,10,16,40,9,8,9,9,8,11,30,16,30]]],'baixas_venda');
 }
 
 // ═════════════════════ OVERLAY NUM ═════════════════════
@@ -1955,6 +2199,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   onEnter('l-pwd',doLogin);
   onEnter('con-inp',()=>consultar(false)); $('con-inp').addEventListener('input',conInput);
   onEnter('mv-addr-inp',mvSetAddr);
+  onEnter('kdx-inp',kdxBuscar);
   onEnter('mv-scan',mvScan);
   onEnter('mv-dest-inp',mvSetDest);
   onEnter('dv-quick',devQuick); $('dv-quick').addEventListener('input',renderDevList);
