@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Controle de Mercadoria | V1.8</title>
+<title>Controle de Mercadoria | V1.9</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--navy:#0d2167;--navy2:#07142a;--brand:#8b1111;--bg:#f2f4f8;--bg2:#fff;--bg3:#f6f8fc;--acc:#2463cc;--grn:#16a34a;--red:#dc2626;--ylw:#ea580c;--pur:#7c3aed;--cyn:#0d9488;--txt:#1a2035;--mut:#6b7a99;--bdr:#dde2ec;--r:10px}
@@ -374,6 +374,7 @@ body:not(.adm) .adm-only{display:none!important}
       <div class="sbSec">Principal</div>
       <button class="nav-it" id="t-con" onclick="goTab('con')"><i><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></i><span class="lb">Consulta</span></button>
       <button class="nav-it" id="t-mov" onclick="goTab('mov')"><i><svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg></i><span class="lb">Estoque</span></button>
+      <button class="nav-it" id="t-end" onclick="goTab('end')"><i><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></i><span class="lb">Endereço</span></button>
       <button class="nav-it" id="t-kdx" onclick="goTab('kdx')"><i><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 9h16M9 9v11M13 13h4M13 17h4"/></svg></i><span class="lb">Kardex</span></button>
       <div class="sbSec">Devoluções</div>
       <button class="nav-it" id="t-dev" onclick="goTab('dev')"><i><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg></i><span class="lb">Devoluções</span><span class="pill hide" id="dev-pill">0</span></button>
@@ -455,7 +456,7 @@ body:not(.adm) .adm-only{display:none!important}
       <div class="pos-wrap" id="pos-list"></div>
     </div>
 
-    <div class="card" id="mv-hist-card">
+    <div class="card hide" id="mv-hist-card">
       <div class="ct"><span>🕓 Meus movimentos de hoje</span><span class="c-mut" style="text-transform:none;letter-spacing:0">agrupado por grade</span></div>
       <div class="kpi-g" id="mv-hist-kpi" style="grid-template-columns:repeat(3,1fr);margin-bottom:10px"></div>
       <div id="mv-hist"><div class="empty">—</div></div>
@@ -585,6 +586,18 @@ body:not(.adm) .adm-only{display:none!important}
       </div>
     </div>
     <div id="ap-list" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+
+  <!-- ── ENDEREÇO ── -->
+  <div class="pg hide" id="p-end">
+    <div class="card">
+      <div class="ct">📍 Consultar endereço</div>
+      <div class="row">
+        <input id="end-inp" class="scan-inp addr" type="text" placeholder="Bipe ou digite o endereço..." autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" oninput="endDigitando()">
+        <button class="btn-go" onclick="endBuscar()">OK ▶</button>
+      </div>
+    </div>
+    <div id="end-res"></div>
   </div>
 
   <!-- ── KARDEX ── -->
@@ -807,7 +820,7 @@ body:not(.adm) .adm-only{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.8';
+const APP_VERSION='V1.9';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -985,11 +998,12 @@ async function loadDevPill(){
 function go(s){ document.querySelectorAll('.scr').forEach(x=>x.classList.remove('on')); $('s-'+s).classList.add('on'); }
 function goTab(t){
   CUR_TAB=t;
-  ['con','mov','kdx','dev','his','apr','vnd'].forEach(x=>{ $('t-'+x).classList.toggle('on',x===t); $('p-'+x).classList.toggle('hide',x!==t); });
-  $('h-title').textContent={con:'Consulta',mov:'Estoque',kdx:'Kardex',dev:'Devoluções',his:'Histórico',apr:'Aprovações',vnd:'Baixa de vendas'}[t];
+  ['con','mov','end','kdx','dev','his','apr','vnd'].forEach(x=>{ $('t-'+x).classList.toggle('on',x===t); $('p-'+x).classList.toggle('hide',x!==t); });
+  $('h-title').textContent={con:'Consulta',mov:'Estoque',end:'Endereço',kdx:'Kardex',dev:'Devoluções',his:'Histórico',apr:'Aprovações',vnd:'Baixa de vendas'}[t];
   toggleSb(false); loadDevPill();
   if(t==='con'){ renderKpis(); focusLater('con-inp'); }
-  if(t==='mov'){ renderMov(); loadMyMovs(); renderPos(); }
+  if(t==='mov'){ renderMov(); renderPos(); }
+  if(t==='end'){ if($('end-inp').value.trim()) endBuscar(true); else { endBuscar(true); focusLater('end-inp'); } }
   if(t==='dev'){ if(DEV_CUR) devAbrir(DEV_CUR.id); else { devVoltarLista(); } }
   if(t==='his') loadHist();
   if(t==='apr') loadApr();
@@ -1002,7 +1016,8 @@ async function doSync(btn){
   try{
     await loadSaldo(); loadPendCount();
     if(CUR_TAB==='con'){ renderKpis(); if($('con-inp').value.trim()) consultar(true); }
-    if(CUR_TAB==='mov'){ renderMov(); loadMyMovs(); renderPos(); }
+    if(CUR_TAB==='mov'){ renderMov(); renderPos(); }
+    if(CUR_TAB==='end') endBuscar(true);
     if(CUR_TAB==='dev'){ if(DEV_CUR) await devAbrir(DEV_CUR.id); else await devCarregar(); }
     if(CUR_TAB==='his') loadHist();
     if(CUR_TAB==='apr') loadApr();
@@ -1361,6 +1376,38 @@ function posExport(){
   const rows=L.map(x=>({EAN:x.gtin,DESCRICAO:x.descr,ENDERECOS:x.ends.map(r=>r.endereco+' ('+r.qtd+')').join(', '),INVENTARIADO:x.inv,PROTHEUS:PROT_OK?x.prot:'',DIFERENCA:PROT_OK?x.dif:''}));
   const ws=XLSX.utils.json_to_sheet(rows), wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Posicao');
   XLSX.writeFile(wb,'Posicao_Estoque_x_Protheus_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+// ═════════════════════ ENDEREÇO ═════════════════════
+let _endTmr=0;
+function endDigitando(){ clearTimeout(_endTmr); _endTmr=setTimeout(()=>endBuscar(true),300); }
+function endLista(){
+  const M={};
+  for(const r of SALDO){ if(r.qtd>0){ const a=M[r.endereco]=M[r.endereco]||{a:r.endereco,n:0,q:0}; a.n++; a.q+=r.qtd; } }
+  return Object.values(M).sort((x,y)=>x.a.localeCompare(y.a));
+}
+function endAbrir(a){ $('end-inp').value=a; endBuscar(); }
+function endBuscar(silent){
+  const A=normAddr($('end-inp').value); const res=$('end-res');
+  if(A&&BY_ADDR[A]){ if(!silent) beep(true); endRender(A); if(!silent) $('end-inp').select(); return; }
+  const L=endLista().filter(x=>!A||x.a.includes(A));
+  if(A&&!silent&&!L.length){ beep(false); }
+  res.innerHTML=`<div class="card"><div class="ct"><span>${A?'Endereços com "'+esc(A)+'"':'Endereços com saldo'}</span><span class="c-acc">${fmt(L.length)}</span></div>
+    ${L.length?`<div class="chips">${L.slice(0,300).map(x=>`<button class="chip" onclick="endAbrir('${esc(x.a)}')">${esc(x.a)} <span style="opacity:.6">· ${x.n} prod · ${fmt(x.q)}</span></button>`).join('')}</div>`:'<div class="empty">Nenhum endereço encontrado</div>'}</div>`;
+}
+function endRender(A){
+  const items=addrItems(A); const tot=items.reduce((s,r)=>s+r.qtd,0);
+  const ult=items.reduce((m,r)=>!m||(r.atualizado_em||'')>(m.atualizado_em||'')?r:m,null);
+  $('end-res').innerHTML=`<div class="addr-banner"><span style="font-size:22px">📍</span><div style="flex:1;min-width:0"><div class="addr-code">${esc(A)}</div><div class="addr-meta">${items.length} produto(s) · ${fmt(tot)} volume(s)${ult&&ult.atualizado_em?' · última mov. '+fmtDT(ult.atualizado_em)+(ult.atualizado_por?' por '+esc(ult.atualizado_por):''):''}</div></div><button class="btn-troca" onclick="$('end-inp').value='';endBuscar(true);focusLater('end-inp')">Limpar</button></div>
+  <div class="card" style="margin-top:10px">
+    <div class="ct"><span>Produtos no endereço</span><span class="c-grn" style="font-weight:800">${fmt(tot)} vol.</span></div>
+    ${items.length?`<div class="pos-wrap"><table class="tbl"><thead><tr><th class="c-ean">EAN</th><th>Descrição</th><th class="r">Qtd (vol.)</th><th class="r">Total no estoque</th><th></th></tr></thead><tbody>${items.map(r=>`<tr><td class="c-ean pos-ean">${esc(r.gtin)}</td><td><span class="pos-ean pos-ean-m">${esc(r.gtin)}</span>${esc(r.descricao||'—')}<div class="pos-sub">${[r.marca?esc(r.marca):'',r.atualizado_em?'atualizado '+fmtDT(r.atualizado_em):''].filter(Boolean).join(' · ')}</div></td><td class="r" style="font-size:16px;font-weight:800;color:var(--grn)">${fmt(r.qtd)}</td><td class="r">${fmt(estTotal(r.gtin))}</td><td class="r"><button class="btn btn-ghost btn-sm" onclick="kdxAbrir('${esc(r.gtin)}')">📒</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Endereço sem saldo</div>'}
+    <div class="row" style="margin-top:10px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="mvAtalho('ENT','${esc(A)}')">📥 Entrada</button>
+      ${items.length?`<button class="btn btn-ghost btn-sm" onclick="mvAtalho('SAI','${esc(A)}')">📤 Saída</button><button class="btn btn-ghost btn-sm" onclick="mvAtalho('TRF','${esc(A)}')">🔄 Transferir</button>`:''}
+      <button class="btn btn-ghost btn-sm" onclick="mvAtalho('ROT','${esc(A)}')">🔢 Rotativa</button>
+    </div>
+  </div>`;
 }
 
 // ═════════════════════ KARDEX ═════════════════════
@@ -2202,6 +2249,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   onEnter('con-inp',()=>consultar(false)); $('con-inp').addEventListener('input',conInput);
   onEnter('mv-addr-inp',mvSetAddr);
   onEnter('kdx-inp',kdxBuscar);
+  onEnter('end-inp',()=>endBuscar());
   onEnter('mv-scan',mvScan);
   onEnter('mv-dest-inp',mvSetDest);
   onEnter('dv-quick',devQuick); $('dv-quick').addEventListener('input',renderDevList);
