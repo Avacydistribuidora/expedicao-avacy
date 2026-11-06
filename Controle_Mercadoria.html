@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Controle de Mercadoria | V1.13</title>
+<title>Controle de Mercadoria | V1.14</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--navy:#0d2167;--navy2:#07142a;--brand:#8b1111;--bg:#f2f4f8;--bg2:#fff;--bg3:#f6f8fc;--acc:#2463cc;--grn:#16a34a;--red:#dc2626;--ylw:#ea580c;--pur:#7c3aed;--cyn:#0d9488;--txt:#1a2035;--mut:#6b7a99;--bdr:#dde2ec;--r:10px}
@@ -326,6 +326,10 @@ body:not(.adm) .adm-only{display:none!important}
 .pos-ean-m{display:none}
 @media(max-width:600px){.pos-wrap .c-ean{display:none}.pos-ean-m{display:block}.pos-wrap .tbl td,.pos-wrap .tbl th{padding:6px 5px}}
 
+/* V1.14 — perfil Devolução: só a aba Devoluções */
+body.devonly .sbNav .nav-it:not(#t-dev),body.devonly .sbNav .sbSec{display:none!important}
+body.devonly #acoes-wrap{display:none!important}
+.sbUser .rb.dv{background:#f97316}
 /* V1.13 — fotos */
 .ft-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
 .ft-grid .empty{grid-column:1/-1}
@@ -894,7 +898,7 @@ body:not(.adm) .adm-only{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.13';
+const APP_VERSION='V1.14';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -1056,11 +1060,12 @@ function enterMain(){
   const adm=isAdm();
   document.body.classList.toggle('adm',adm);
   $('uNome').textContent=CU.name; $('uAv').textContent=CU.name.split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase();
-  $('uRole').textContent=adm?'Admin':'Operador'; $('uRole').className='rb'+(adm?'':' op');
+  const dvo=CU.role==='dev'; document.body.classList.toggle('devonly',dvo);
+  $('uRole').textContent=adm?'Admin':dvo?'Devolução':'Operador'; $('uRole').className='rb'+(adm?'':dvo?' dv':' op');
   $('acoes-wrap').classList.toggle('hide',!adm);
   $('con-kpis').classList.toggle('hide',!adm);
   $('dd-adm').classList.toggle('hide',!adm);
-  go('main'); goTab('con'); loadPendCount();
+  go('main'); goTab(dvo?'dev':'con'); loadPendCount();
 }
 function toggleSb(on){ document.body.classList.toggle('sbOpen',!!on); }
 function colapsaSb(){ document.body.classList.toggle('sbMini'); try{localStorage.setItem('cm_sbMini',document.body.classList.contains('sbMini')?'1':'');}catch(e){} }
@@ -1071,6 +1076,7 @@ async function loadDevPill(){
 }
 function go(s){ document.querySelectorAll('.scr').forEach(x=>x.classList.remove('on')); $('s-'+s).classList.add('on'); }
 function goTab(t){
+  if(document.body.classList.contains('devonly')) t='dev';
   CUR_TAB=t;
   ['con','mov','end','kdx','dev','his','apr','vnd','prt'].forEach(x=>{ $('t-'+x).classList.toggle('on',x===t); $('p-'+x).classList.toggle('hide',x!==t); });
   $('h-title').textContent={con:'Consulta',mov:'Estoque',end:'Endereço',kdx:'Kardex',dev:'Devoluções',his:'Histórico',apr:'Aprovações',vnd:'Baixa de vendas',prt:'Ajuste Protheus'}[t];
