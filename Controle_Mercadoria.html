@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Controle de Mercadoria | V1.15</title>
+<title>Controle de Mercadoria | V1.16</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--navy:#0d2167;--navy2:#07142a;--brand:#8b1111;--bg:#f2f4f8;--bg2:#fff;--bg3:#f6f8fc;--acc:#2463cc;--grn:#16a34a;--red:#dc2626;--ylw:#ea580c;--pur:#7c3aed;--cyn:#0d9488;--txt:#1a2035;--mut:#6b7a99;--bdr:#dde2ec;--r:10px}
@@ -130,6 +130,8 @@ textarea.inp{resize:vertical;min-height:60px}
 .dcard.RECEBIDA{border-left-color:var(--ylw)}
 .dcard.EM{border-left-color:var(--acc)}
 .dcard.AGUARDANDO{border-left-color:var(--pur)}
+.dcard.AGUARDANDO.CIX{border-left-color:#f97316}
+.dcard.RETORNO{border-left-color:var(--red)}
 .dcard.CONCLUIDA{border-left-color:var(--grn)}
 .dcard.CANCELADA{border-left-color:var(--red);opacity:.7}
 .dc-top{display:flex;align-items:center;gap:8px}
@@ -326,6 +328,16 @@ body:not(.adm) .adm-only{display:none!important}
 .pos-ean-m{display:none}
 @media(max-width:600px){.pos-wrap .c-ean{display:none}.pos-ean-m{display:block}.pos-wrap .tbl td,.pos-wrap .tbl th{padding:6px 5px}}
 
+/* V1.16 — fluxo CIX */
+.cix-box{border-radius:10px;padding:10px 12px;margin-bottom:10px;border:1.5px solid var(--bdr);background:var(--bg3)}
+.cix-box.ENVIADO{background:#fff7ed;border-color:#fdba74}
+.cix-box.OK{background:#f0fdf4;border-color:#86efac}
+.cix-box.OBS{background:#fef2f2;border-color:#fca5a5}
+.cix-st{font-size:14px;font-weight:700}
+.cix-steps{display:flex;gap:4px;flex-wrap:wrap;margin:6px 0 8px;font-size:11px;font-weight:700}
+.cix-steps span{padding:3px 8px;border-radius:12px;background:#fff;border:1px solid var(--bdr);color:var(--mut)}
+.cix-steps span.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.cix-steps span.done{background:#dcfce7;border-color:#86efac;color:#166534}
 /* V1.15 — interações */
 .com-list{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto}
 .com{background:var(--bg3);border:1px solid var(--bdr);border-radius:10px;padding:8px 11px}
@@ -517,6 +529,8 @@ body.devonly #acoes-wrap{display:none!important}
         </div>
         <div class="chips" id="dv-chips">
           <button class="chip on" data-f="ABERTAS" onclick="devFiltro('ABERTAS')">Em aberto</button>
+          <button class="chip" data-f="AGUARDANDO CIX" onclick="devFiltro('AGUARDANDO CIX')">Aguard. CIX</button>
+          <button class="chip" data-f="RETORNO CIX" onclick="devFiltro('RETORNO CIX')">Retorno CIX</button>
           <button class="chip" data-f="AGUARDANDO PROTHEUS" onclick="devFiltro('AGUARDANDO PROTHEUS')">Aguard. Protheus</button>
           <button class="chip" data-f="CONCLUIDA" onclick="devFiltro('CONCLUIDA')">Concluídas</button>
           <button class="chip" data-f="CANCELADA" onclick="devFiltro('CANCELADA')">Canceladas</button>
@@ -591,9 +605,10 @@ body.devonly #acoes-wrap{display:none!important}
         </div>
       </div>
       <div class="card" id="dd-com-card">
-        <div class="ct"><span>💬 Interações <span id="dd-com-n" class="c-acc"></span></span></div>
+        <div class="ct"><span>💬 Interações CIX <span id="dd-com-n" class="c-acc"></span></span></div>
+        <div id="dd-cix" class="cix-box"></div>
         <div id="dd-com" class="com-list"><div class="empty">Nenhuma interação</div></div>
-        <textarea id="dd-com-txt" class="inp" style="margin:8px 0 6px;min-height:64px" placeholder="Escreva uma atualização, pergunta ou informação sobre esta devolução..."></textarea>
+        <textarea id="dd-com-txt" class="inp" style="margin:8px 0 6px;min-height:64px" placeholder="Mensagem para o CIX (vai junto ao enviar / responder) ou uma interação livre..."></textarea>
         <div class="row" style="justify-content:flex-end"><span class="sh-sub" style="flex:1">Ctrl+Enter envia</span><button class="btn btn-acc btn-sm" id="dd-com-ok" onclick="comEnviar()">➤ Enviar</button></div>
       </div>
       <div class="card" id="dd-foto-card">
@@ -912,7 +927,7 @@ body.devonly #acoes-wrap{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.15';
+const APP_VERSION='V1.16';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -1079,13 +1094,13 @@ function enterMain(){
   $('acoes-wrap').classList.toggle('hide',!adm);
   $('con-kpis').classList.toggle('hide',!adm);
   $('dd-adm').classList.toggle('hide',!adm);
-  go('main'); goTab(dvo?'dev':'con'); loadPendCount();
+  go('main'); if(dvo) devFiltro('AGUARDANDO CIX'); goTab(dvo?'dev':'con'); loadPendCount();
 }
 function toggleSb(on){ document.body.classList.toggle('sbOpen',!!on); }
 function colapsaSb(){ document.body.classList.toggle('sbMini'); try{localStorage.setItem('cm_sbMini',document.body.classList.contains('sbMini')?'1':'');}catch(e){} }
 try{ if(localStorage.getItem('cm_sbMini')) document.body.classList.add('sbMini'); }catch(e){}
 async function loadDevPill(){
-  try{ const {count}=await getSB().from('dev_devolucoes').select('id',{count:'exact',head:true}).in('status',['RECEBIDA','EM TRATATIVA','AGUARDANDO PROTHEUS']);
+  try{ const {count}=await getSB().from('dev_devolucoes').select('id',{count:'exact',head:true}).in('status',['RECEBIDA','EM TRATATIVA','AGUARDANDO CIX','RETORNO CIX','AGUARDANDO PROTHEUS']);
     const p=$('dev-pill'); p.textContent=count||0; p.classList.toggle('hide',!count); }catch(e){}
 }
 function go(s){ document.querySelectorAll('.scr').forEach(x=>x.classList.remove('on')); $('s-'+s).classList.add('on'); }
@@ -1134,7 +1149,7 @@ async function renderKpis(){
   for(const r of SALDO){ if(r.qtd>0){ addrs.add(r.endereco); skus.add(r.gtin); tot+=r.qtd; } }
   $('k-end').textContent=fmt(addrs.size); $('k-sku').textContent=fmt(skus.size); $('k-qtd').textContent=fmt(tot);
   try{
-    const {count}=await getSB().from('dev_devolucoes').select('id',{count:'exact',head:true}).in('status',['RECEBIDA','EM TRATATIVA','AGUARDANDO PROTHEUS']);
+    const {count}=await getSB().from('dev_devolucoes').select('id',{count:'exact',head:true}).in('status',['RECEBIDA','EM TRATATIVA','AGUARDANDO CIX','RETORNO CIX','AGUARDANDO PROTHEUS']);
     $('k-dev').textContent=fmt(count||0);
   }catch(e){}
 }
@@ -1784,17 +1799,17 @@ function renderVendaItens(){
 let PA=[], PA_OK=false;
 async function prtPill(){
   if(!isAdm()) return;
-  try{ const {count}=await getSB().from('dev_itens').select('id',{count:'exact',head:true}).neq('tratativa','PENDENTE').eq('protheus_ok',false);
+  try{ const {count}=await getSB().from('dev_itens').select('id, dev_devolucoes!inner(cix_status)',{count:'exact',head:true}).neq('tratativa','PENDENTE').eq('protheus_ok',false).eq('dev_devolucoes.cix_status','OK');
     const p=$('prt-pill'); p.textContent=count||0; p.classList.toggle('hide',!count); }catch(e){}
 }
 function prtFiltro(ok){ PA_OK=ok; $('pa-f-P').classList.toggle('on',!ok); $('pa-f-T').classList.toggle('on',ok); prtCarregar(); }
 async function prtCarregar(){
   $('pa-list').innerHTML='<div class="empty">Carregando...</div>';
   try{
-    let q=getSB().from('dev_itens').select('*, dev_devolucoes(id,nf_numero,nf_serie,venda_nf,cliente,status)').neq('tratativa','PENDENTE').eq('protheus_ok',PA_OK);
+    let q=getSB().from('dev_itens').select('*, dev_devolucoes(id,nf_numero,nf_serie,venda_nf,cliente,status,cix_status)').neq('tratativa','PENDENTE').eq('protheus_ok',PA_OK);
     if(PA_OK){ const t=new Date(); t.setDate(t.getDate()-30); q=q.gte('protheus_em',t.toISOString()); }
     const {data,error}=await q.order('tratado_em',{ascending:true}).limit(1000); if(error) throw error;
-    PA=(data||[]).filter(i=>!i.dev_devolucoes||i.dev_devolucoes.status!=='CANCELADA');
+    PA=(data||[]).filter(i=>i.dev_devolucoes&&i.dev_devolucoes.status!=='CANCELADA'&&(PA_OK||i.dev_devolucoes.cix_status==='OK'));
   }catch(e){ PA=[]; $('pa-list').innerHTML='<div class="empty c-red">'+(/protheus_ok/.test(e.message||'')?'Rode o script controle_mercadoria_V1.12_ok_protheus.sql no Supabase.':'Erro: '+esc(e.message||e))+'</div>'; return; }
   renderPrtA(); prtPill();
 }
@@ -1929,6 +1944,58 @@ async function comExcluir(id){
 }
 document.addEventListener('keydown',e=>{ if(e.target&&e.target.id==='dd-com-txt'&&e.key==='Enter'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); comEnviar(); } });
 
+// ═════════════════════ FLUXO CIX: Enviar → Aguardando CIX → OK (ou observação) → Aguard. Protheus → Concluída ═════════════════════
+function renderCix(){
+  const d=DEV_CUR, el=$('dd-cix'); if(!d||!el) return;
+  const cx=d.cix_status||'', canc=d.status==='CANCELADA';
+  const tot=DEV_ITENS.length, pend=DEV_ITENS.filter(i=>i.tratativa==='PENDENTE').length;
+  const dvo=CU&&CU.role==='dev', adm=isAdm();
+  const passos=[['Registro',!!tot],['Tratativa',tot&&!pend],['Enviado CIX',cx==='ENVIADO'||cx==='OK'||cx==='OBS'],['OK CIX',cx==='OK'],['Aguard. Protheus',d.status==='AGUARDANDO PROTHEUS'||d.status==='CONCLUIDA'],['Concluída',d.status==='CONCLUIDA']];
+  const atual=passos.findIndex(x=>!x[1]);
+  let st, bt='';
+  if(cx==='ENVIADO') st=`📨 Enviado ao CIX por <b>${esc(d.cix_enviado_por||'')}</b> em ${fmtDT(d.cix_enviado_em)} — aguardando resposta`;
+  else if(cx==='OK') st=`✓ OK do CIX por <b>${esc(d.cix_resp_por||'')}</b> em ${fmtDT(d.cix_resp_em)}${d.cix_obs?' — '+esc(d.cix_obs):''}`;
+  else if(cx==='OBS') st=`✎ CIX retornou com observação — <b>${esc(d.cix_resp_por||'')}</b> em ${fmtDT(d.cix_resp_em)}<div style="font-weight:600;margin-top:4px">${esc(d.cix_obs||'')}</div>`;
+  else st='Ainda não enviado ao CIX';
+  if(!canc){
+    if((cx===''||cx==='OBS')&&!dvo){
+      const bloq=!tot||pend>0;
+      bt+=`<button class="btn btn-acc btn-sm" ${bloq?'disabled':''} onclick="cixEnviar()">📨 ${cx==='OBS'?'Reenviar':'Enviar'} para CIX</button>`;
+      if(bloq) bt+=`<span class="sh-sub">${!tot?'Bipe os produtos':'Faça a tratativa de todos os itens'} antes de enviar.</span>`;
+    }
+    if(cx==='ENVIADO'&&(dvo||adm)) bt+=`<button class="btn btn-grn btn-sm" onclick="cixResponder(true)">✓ OK CIX</button><button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="cixResponder(false)">✎ Retornar com observação</button>`;
+    if(cx==='ENVIADO'&&adm) bt+=`<button class="btn btn-ghost btn-sm" onclick="cixDesfazer()">↺ Cancelar envio</button>`;
+    if(cx==='OK'&&adm&&!DEV_ITENS.some(i=>i.protheus_ok)) bt+=`<button class="btn btn-ghost btn-sm" onclick="cixDesfazer()">↺ Desfazer OK CIX</button>`;
+  }
+  el.className='cix-box '+cx;
+  el.innerHTML=`<div class="cix-steps">${passos.map((x,i)=>`<span class="${x[1]?'done':i===atual?'on':''}">${i+1}. ${x[0]}</span>`).join('')}</div>
+    <div class="cix-st">${st}</div>${bt?`<div class="row" style="margin-top:8px;flex-wrap:wrap;gap:6px">${bt}</div>`:''}`;
+}
+async function comAdd(texto){ try{ const {data}=await getSB().from('dev_comentarios').insert({dev_id:DEV_CUR.id,texto,autor:CU.name,perfil:CU.role||''}).select().single(); if(data){ COMS.push(data); renderComs(); } }catch(e){} }
+async function cixUpd(upd,msg){
+  const {error}=await getSB().from('dev_devolucoes').update(upd).eq('id',DEV_CUR.id);
+  if(error){ beep(false); toast(/cix_/.test(error.message)?'Rode o script controle_mercadoria_V1.16_fluxo_cix.sql no Supabase':'Erro: '+error.message,1,5000); return false; }
+  if(msg) await comAdd(msg);
+  $('dd-com-txt').value=''; beep(true);
+  await devRefreshHead(); renderDevItens(); loadDevPill(); prtPill(); return true;
+}
+async function cixEnviar(){
+  const pend=DEV_ITENS.filter(i=>i.tratativa==='PENDENTE').length;
+  if(!DEV_ITENS.length||pend){ toast('Trate todos os itens antes de enviar ao CIX',1); return; }
+  const t=$('dd-com-txt').value.trim();
+  if(await cixUpd({cix_status:'ENVIADO',cix_enviado_por:CU.name,cix_enviado_em:new Date().toISOString(),cix_resp_por:null,cix_resp_em:null,cix_obs:null},'📨 Enviado para o CIX'+(t?': '+t:''))) toast('✓ Enviado para o CIX');
+}
+async function cixResponder(ok){
+  const t=$('dd-com-txt').value.trim();
+  if(!ok&&!t){ toast('Escreva a observação no campo de interação',1); $('dd-com-txt').focus(); return; }
+  if(!ok&&!confirm('Retornar para o time com esta observação?')) return;
+  if(await cixUpd({cix_status:ok?'OK':'OBS',cix_resp_por:CU.name,cix_resp_em:new Date().toISOString(),cix_obs:t||null},(ok?'✓ OK do CIX':'✎ CIX retornou com observação')+(t?': '+t:''))) toast(ok?'✓ OK do CIX registrado — segue para ajuste no Protheus':'Observação enviada');
+}
+async function cixDesfazer(){
+  if(!isAdm()||!confirm('Voltar a devolução para antes do envio ao CIX?')) return;
+  await cixUpd({cix_status:null,cix_enviado_por:null,cix_enviado_em:null,cix_resp_por:null,cix_resp_em:null,cix_obs:null},'↺ Envio ao CIX desfeito');
+}
+
 // ═════════════════════ OVERLAY NUM ═════════════════════
 let _numCb=null;
 function openNum(ttl,sub,val,cb){ $('num-ttl').textContent=ttl; $('num-sub').textContent=sub||''; $('num-inp').value=val; _numCb=cb; $('num-ovl').classList.remove('hide'); setTimeout(()=>{$('num-inp').focus();$('num-inp').select();},80); }
@@ -1938,7 +2005,7 @@ function confirmNum(){ const v=parseNum($('num-inp').value); const cb=_numCb; cl
 <script>
 // ═════════════════════ DEVOLUÇÕES ═════════════════════
 let DEVS=[], DEV_F='ABERTAS', DEV_CUR=null, DEV_ITENS=[], DN_MODO='CHAVE', DN_PARSE=null, DEV_EDIT_ID=null;
-const ST_TAG={'AGUARDANDO PROTHEUS':['t-pur','Aguardando Protheus'],'RECEBIDA':['t-ylw','Recebida'],'EM TRATATIVA':['t-acc','Em tratativa'],'CONCLUIDA':['t-grn','Concluída'],'CANCELADA':['t-red','Cancelada']};
+const ST_TAG={'AGUARDANDO CIX':['t-ylw','Aguardando CIX'],'RETORNO CIX':['t-red','Retorno CIX'],'AGUARDANDO PROTHEUS':['t-pur','Aguardando Protheus'],'RECEBIDA':['t-ylw','Recebida'],'EM TRATATIVA':['t-acc','Em tratativa'],'CONCLUIDA':['t-grn','Concluída'],'CANCELADA':['t-red','Cancelada']};
 const UF_COD={11:'RO',12:'AC',13:'AM',14:'RR',15:'PA',16:'AP',17:'TO',21:'MA',22:'PI',23:'CE',24:'RN',25:'PB',26:'PE',27:'AL',28:'SE',29:'BA',31:'MG',32:'ES',33:'RJ',35:'SP',41:'PR',42:'SC',43:'RS',50:'MS',51:'MT',52:'GO',53:'DF'};
 function stTag(s){ const t=ST_TAG[s]||['t-mut',s]; return `<span class="tag ${t[0]}">${t[1]}</span>`; }
 function fmtDoc(c){ c=String(c||''); if(c.length===14) return c.replace(/^(.{2})(.{3})(.{3})(.{4})(.{2})$/,'$1.$2.$3/$4-$5'); if(c.length===11) return c.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/,'$1.$2.$3-$4'); return c; }
@@ -1965,11 +2032,11 @@ function devFiltro(f){ DEV_F=f; document.querySelectorAll('#dv-chips .chip').for
 function renderDevList(){
   const q=$('dv-quick').value.trim().toUpperCase();
   const qk=limpaChave(q);
-  let L=DEVS.filter(d=>DEV_F==='TODAS'?true:DEV_F==='ABERTAS'?(d.status==='RECEBIDA'||d.status==='EM TRATATIVA'||d.status==='AGUARDANDO PROTHEUS'):d.status===DEV_F);
+  let L=DEVS.filter(d=>DEV_F==='TODAS'?true:DEV_F==='ABERTAS'?(d.status==='RECEBIDA'||d.status==='EM TRATATIVA'||d.status==='AGUARDANDO PROTHEUS'||d.status==='AGUARDANDO CIX'||d.status==='RETORNO CIX'):d.status===DEV_F);
   if(q) L=DEVS.filter(d=>[d.nf_numero,d.cliente,d.chave,d.motivo,d.transportadora,d.cnpj_emit,'#'+d.id].some(x=>String(x||'').toUpperCase().includes(q))||(qk.length>=6&&String(d.chave||'').includes(qk)));
   $('dv-list').innerHTML=L.length?L.map(d=>{
     const its=d.dev_itens||[]; const pend=its.filter(i=>i.tratativa==='PENDENTE').reduce((s,i)=>s+Number(i.qtd),0); const tot=its.reduce((s,i)=>s+Number(i.qtd),0); const aprt=its.filter(i=>i.tratativa!=='PENDENTE'&&!i.protheus_ok).length;
-    return `<div class="dcard ${esc((d.status||'').split(' ')[0])}" onclick="devAbrir(${d.id})">
+    return `<div class="dcard ${esc(d.status||'')}" onclick="devAbrir(${d.id})">
       <div class="dc-top"><div class="dc-nf">${d.nf_numero?'NF '+esc(d.nf_numero):'Devolução #'+d.id}${d.nf_serie?' <span class="c-mut" style="font-size:12px;font-weight:400">série '+esc(d.nf_serie)+'</span>':''}</div>${stTag(d.status)}</div>
       <div class="dc-l">${esc(d.cliente||'—')} · ${esc(d.motivo||'sem motivo')}</div>
       <div class="dc-l">📅 ${fmtDT(d.recebido_em)} · ${esc(d.recebido_por||'')} · ${tot?`<b class="${pend?'c-ylw':'c-grn'}">${fmt(pend)} pend.</b> / ${fmt(tot)} un.${aprt?` · <b class="c-pur">${aprt} aguard. Protheus</b>`:''}`:'<span class="c-ylw">sem itens conferidos</span>'}</div>
@@ -2062,6 +2129,7 @@ function renderDevDet(){
     f('🔗 Venda de origem',d.venda_nf?('NF '+esc(String(d.venda_nf).replace(/^0+/,''))+(d.venda_emissao?' · '+esc(d.venda_emissao):'')+(d.venda_vendedor?' · Vend. '+esc(d.venda_vendedor):'')+(d.venda_romaneio?' · Rom. '+esc(d.venda_romaneio):'')):'',true)+f('Chave NF de venda',esc(d.venda_chave),true);
   $('dd-scan-card').classList.toggle('hide',d.status==='CANCELADA');
   $('dd-cancel').textContent=d.status==='CANCELADA'?'↺ Reabrir devolução':'⊘ Cancelar devolução';
+  renderCix();
 }
 function renderDevItens(){
   const canc=DEV_CUR&&DEV_CUR.status==='CANCELADA';
@@ -2076,9 +2144,10 @@ function renderDevItens(){
   $('dd-trat').innerHTML=trat.length?trat.map(i=>`<div class="irow"><div class="ibody"><div class="iean">${esc(i.gtin)}</div><div class="inm">${esc(i.descricao)}</div>
       <div class="isub"><span class="tag ${i.tratativa==='RETORNO ESTOQUE'?'t-grn':i.tratativa==='AVARIA'||i.tratativa==='DESCARTE'?'t-red':'t-pur'}">${esc(i.tratativa)}</span>${i.endereco?' 📍 <b class="c-ylw">'+esc(i.endereco)+'</b>':''}</div>
       <div class="isub">${esc(i.tratado_por||'')} · ${fmtDT(i.tratado_em)}${i.obs?' · '+esc(i.obs):''}</div>
-      <div class="isub">${i.protheus_ok?`<span class="tag t-grn">✓ Protheus OK</span> ${esc(i.protheus_por||'')} · ${fmtDT(i.protheus_em)}`:'<span class="tag t-pur">⏳ Aguardando ajuste no Protheus</span>'}</div></div>
+      <div class="isub">${i.protheus_ok?`<span class="tag t-grn">✓ Protheus OK</span> ${esc(i.protheus_por||'')} · ${fmtDT(i.protheus_em)}`:DEV_CUR.cix_status==='OK'?'<span class="tag t-pur">⏳ Aguardando ajuste no Protheus</span>':'<span class="tag t-ylw">⏳ Aguardando OK do CIX</span>'}</div></div>
       <div class="iright"><div class="iqty">${fmt(i.qtd)}</div></div>
-      ${canc?'':isAdm()?(i.protheus_ok?`<button class="btn btn-ghost btn-sm" onclick="prtOk(${i.id},false)">Desfazer</button>`:`<button class="btn btn-pur btn-sm" onclick="prtOk(${i.id},true)">✓ OK Protheus</button>`):''}</div>`).join(''):'<div class="empty">Nenhum item tratado</div>';
+      ${canc?'':isAdm()&&(i.protheus_ok||DEV_CUR.cix_status==='OK')?(i.protheus_ok?`<button class="btn btn-ghost btn-sm" onclick="prtOk(${i.id},false)">Desfazer</button>`:`<button class="btn btn-pur btn-sm" onclick="prtOk(${i.id},true)">✓ OK Protheus</button>`):''}</div>`).join(''):'<div class="empty">Nenhum item tratado</div>';
+  renderCix();
 }
 async function devRefreshHead(){
   const {data}=await getSB().from('dev_devolucoes').select('*').eq('id',DEV_CUR.id).single();
@@ -2139,7 +2208,8 @@ async function devCancelar(){
     if(!confirm('Reabrir a devolução?')) return;
     const tot=DEV_ITENS.length, pend=DEV_ITENS.filter(i=>i.tratativa==='PENDENTE').length;
     const aprt=DEV_ITENS.filter(i=>i.tratativa!=='PENDENTE'&&!i.protheus_ok).length;
-    novo=(!tot||pend===tot)?'RECEBIDA':pend>0?'EM TRATATIVA':aprt?'AGUARDANDO PROTHEUS':'CONCLUIDA';
+    const cx=d.cix_status;
+    novo=cx==='ENVIADO'?'AGUARDANDO CIX':cx==='OBS'?'RETORNO CIX':(!tot||pend===tot)?(cx==='OK'&&tot?'EM TRATATIVA':'RECEBIDA'):pend>0||cx!=='OK'?'EM TRATATIVA':aprt?'AGUARDANDO PROTHEUS':'CONCLUIDA';
   } else {
     if(DEV_ITENS.some(i=>i.tratativa==='RETORNO ESTOQUE')&&!confirm('Atenção: itens já retornaram ao estoque e NÃO serão estornados automaticamente.\nContinuar?')) return;
     if(!confirm('Cancelar esta devolução?')) return;
