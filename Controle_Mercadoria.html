@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Controle de Mercadoria | V1.14</title>
+<title>Controle de Mercadoria | V1.15</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--navy:#0d2167;--navy2:#07142a;--brand:#8b1111;--bg:#f2f4f8;--bg2:#fff;--bg3:#f6f8fc;--acc:#2463cc;--grn:#16a34a;--red:#dc2626;--ylw:#ea580c;--pur:#7c3aed;--cyn:#0d9488;--txt:#1a2035;--mut:#6b7a99;--bdr:#dde2ec;--r:10px}
@@ -326,6 +326,14 @@ body:not(.adm) .adm-only{display:none!important}
 .pos-ean-m{display:none}
 @media(max-width:600px){.pos-wrap .c-ean{display:none}.pos-ean-m{display:block}.pos-wrap .tbl td,.pos-wrap .tbl th{padding:6px 5px}}
 
+/* V1.15 — interações */
+.com-list{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto}
+.com{background:var(--bg3);border:1px solid var(--bdr);border-radius:10px;padding:8px 11px}
+.com.me{background:#eef2fb;border-color:#c7d2fe}
+.com-h{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--mut);margin-bottom:3px}
+.com-h b{color:var(--navy)}
+.com-t{font-size:14px;white-space:pre-wrap;word-break:break-word}
+.com-x{margin-left:auto;background:none;border:none;color:var(--mut);cursor:pointer;font-size:13px}
 /* V1.14 — perfil Devolução: só a aba Devoluções */
 body.devonly .sbNav .nav-it:not(#t-dev),body.devonly .sbNav .sbSec{display:none!important}
 body.devonly #acoes-wrap{display:none!important}
@@ -581,6 +589,12 @@ body.devonly #acoes-wrap{display:none!important}
           <button class="btn btn-ghost btn-sm" style="color:var(--red);border-color:var(--red)" id="dd-cancel" onclick="devCancelar()">⊘ Cancelar devolução</button>
           <button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="devExcluir()">🗑 Excluir devolução</button>
         </div>
+      </div>
+      <div class="card" id="dd-com-card">
+        <div class="ct"><span>💬 Interações <span id="dd-com-n" class="c-acc"></span></span></div>
+        <div id="dd-com" class="com-list"><div class="empty">Nenhuma interação</div></div>
+        <textarea id="dd-com-txt" class="inp" style="margin:8px 0 6px;min-height:64px" placeholder="Escreva uma atualização, pergunta ou informação sobre esta devolução..."></textarea>
+        <div class="row" style="justify-content:flex-end"><span class="sh-sub" style="flex:1">Ctrl+Enter envia</span><button class="btn btn-acc btn-sm" id="dd-com-ok" onclick="comEnviar()">➤ Enviar</button></div>
       </div>
       <div class="card" id="dd-foto-card">
         <div class="ct"><span>📷 Fotos da ocorrência <span id="dd-foto-n" class="c-acc"></span></span>
@@ -898,7 +912,7 @@ body.devonly #acoes-wrap{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.14';
+const APP_VERSION='V1.15';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -1883,6 +1897,38 @@ async function devExcluir(){
   }catch(e){ beep(false); toast('Erro ao excluir: '+(e.message||e),1,5000); }
 }
 
+// ═════════════════════ INTERAÇÕES DA DEVOLUÇÃO (dev_comentarios) ═════════════════════
+let COMS=[];
+const PERFIL_LBL={adm:'Admin',op:'Operador',dev:'Devolução'};
+async function comCarregar(){
+  if(!DEV_CUR) return; const id=DEV_CUR.id;
+  try{ const {data,error}=await getSB().from('dev_comentarios').select('*').eq('dev_id',id).order('id',{ascending:true}); if(error) throw error; if(!DEV_CUR||DEV_CUR.id!==id) return; COMS=data||[]; renderComs(); }
+  catch(e){ COMS=[]; $('dd-com').innerHTML='<div class="empty c-red">'+(/dev_comentarios/.test(e.message||'')?'Rode o script controle_mercadoria_V1.15_interacoes.sql no Supabase.':'Erro: '+esc(e.message||e))+'</div>'; }
+}
+function renderComs(){
+  $('dd-com-n').textContent=COMS.length?'· '+COMS.length:'';
+  const el=$('dd-com');
+  el.innerHTML=COMS.length?COMS.map(c=>{ const me=CU&&c.autor===CU.name; const pode=isAdm()||me;
+    return `<div class="com${me?' me':''}"><div class="com-h"><b>${esc(c.autor||'')}</b>${c.perfil?`<span class="tag ${c.perfil==='adm'?'t-pur':c.perfil==='dev'?'t-ylw':'t-acc'}">${esc(PERFIL_LBL[c.perfil]||c.perfil)}</span>`:''}<span>${fmtDT(c.criado_em)}</span>${pode?`<button class="com-x" title="Excluir" onclick="comExcluir(${c.id})">✕</button>`:''}</div><div class="com-t">${esc(c.texto)}</div></div>`; }).join('')
+    :'<div class="empty">Nenhuma interação — escreva abaixo</div>';
+  el.scrollTop=el.scrollHeight;
+}
+async function comEnviar(){
+  const t=$('dd-com-txt').value.trim(); if(!t||!DEV_CUR) return;
+  const btn=$('dd-com-ok'); btn.disabled=true;
+  try{
+    const {data,error}=await getSB().from('dev_comentarios').insert({dev_id:DEV_CUR.id,texto:t,autor:CU.name,perfil:CU.role||''}).select().single(); if(error) throw error;
+    COMS.push(data); $('dd-com-txt').value=''; renderComs(); beep(true);
+  }catch(e){ beep(false); toast(/dev_comentarios/.test(e.message||'')?'Rode o script controle_mercadoria_V1.15_interacoes.sql no Supabase':'Erro: '+(e.message||e),1,5000); }
+  finally{ btn.disabled=false; }
+}
+async function comExcluir(id){
+  if(!confirm('Excluir esta interação?')) return;
+  const {error}=await getSB().from('dev_comentarios').delete().eq('id',id); if(error) return toast('Erro: '+error.message,1);
+  COMS=COMS.filter(c=>c.id!==id); renderComs();
+}
+document.addEventListener('keydown',e=>{ if(e.target&&e.target.id==='dd-com-txt'&&e.key==='Enter'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); comEnviar(); } });
+
 // ═════════════════════ OVERLAY NUM ═════════════════════
 let _numCb=null;
 function openNum(ttl,sub,val,cb){ $('num-ttl').textContent=ttl; $('num-sub').textContent=sub||''; $('num-inp').value=val; _numCb=cb; $('num-ovl').classList.remove('hide'); setTimeout(()=>{$('num-inp').focus();$('num-inp').select();},80); }
@@ -2002,7 +2048,7 @@ async function devAbrir(id){
   ]);
   if(e1||e2){ toast('Erro ao abrir devolução',1); return; }
   DEV_CUR=d; DEV_ITENS=its||[]; $('dd-ls').innerHTML=''; $('dd-ls').className='lsbar'; DEV_VITENS=null;
-  devShow('det'); renderDevDet(); renderDevItens(); devVendaItens(); fotoCarregar();
+  devShow('det'); renderDevDet(); renderDevItens(); devVendaItens(); fotoCarregar(); comCarregar();
   if(d.status!=='CANCELADA') focusLater('dd-scan');
 }
 function renderDevDet(){
