@@ -1419,7 +1419,7 @@ async function saveUser(){
     if(u.user==='admin'&&user!=='admin'){toast('Login admin não pode ser alterado',1);return;}
     const upd={name,username:user,role:_curURole,active};
     if(pwd) upd.pwd=pwd;
-    if(sb){const{error}=await sb.from('inv_usuarios').update(upd).eq('id',_editUId);if(error){toast('Erro ao salvar',1);return;}}
+    if(sb){const{error}=await sb.from('inv_usuarios').update(upd).eq('id',_editUId);if(error){console.warn(error);toast('Erro ao salvar: '+(error.message||''),1);return;}}
     u.name=name; u.user=user; u.role=_curURole; u.active=active;
     if(pwd) u.pwd=pwd;
   } else {
@@ -1427,7 +1427,7 @@ async function saveUser(){
     if(!pwd){toast('Informe a senha',1);return;}
     if(sb){
       const{data,error}=await sb.from('inv_usuarios').insert({name,username:user,pwd,role:_curURole,active}).select().single();
-      if(error){toast('Erro ao criar usuário',1);return;}
+      if(error){console.warn(error);toast('Erro ao criar usuário: '+(error.message||''),1);return;}
       USERS.push({id:data.id,name:data.name,user:data.username,pwd:data.pwd,role:data.role,active:data.active});
     } else {
       USERS.push({id:'u'+Date.now(),name,user,pwd,role:_curURole,active});
