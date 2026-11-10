@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Controle de Mercadoria | V1.19</title>
+<title>Controle de Mercadoria | V1.21</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--navy:#0d2167;--navy2:#07142a;--brand:#8b1111;--bg:#f2f4f8;--bg2:#fff;--bg3:#f6f8fc;--acc:#2463cc;--grn:#16a34a;--red:#dc2626;--ylw:#ea580c;--pur:#7c3aed;--cyn:#0d9488;--txt:#1a2035;--mut:#6b7a99;--bdr:#dde2ec;--r:10px}
@@ -341,7 +341,8 @@ body:not(.adm) .adm-only{display:none!important}
 /* V1.17 — cadastro de grade */
 .dcard.CONCLUIDO{border-left-color:var(--grn)}
 .dcard.FINALIZADO{border-left-color:var(--pur)}
-.dcard.AGUARDANDO.ESTOQUE{border-left-color:var(--cyn)}
+.dcard.AGUARDANDO.ENDERECO{border-left-color:var(--cyn)}
+.dcard.AGUARDANDO.SALDO{border-left-color:#f97316}
 .dcard.CANCELADO{border-left-color:var(--red);opacity:.7}
 .cgc{display:flex;gap:10px;align-items:flex-start}
 .cg-th{width:58px;height:58px;border-radius:8px;object-fit:cover;flex-shrink:0;border:1px solid var(--bdr);background:var(--bg3)}
@@ -752,7 +753,8 @@ body.devonly #acoes-wrap{display:none!important}
           <button class="chip" data-f="AGUARDANDO CADASTRO" onclick="cgFiltro('AGUARDANDO CADASTRO')">Aguard. cadastro</button>
           <button class="chip" data-f="EM CADASTRO" onclick="cgFiltro('EM CADASTRO')">Em cadastro</button>
           <button class="chip" data-f="CADASTRO FINALIZADO" onclick="cgFiltro('CADASTRO FINALIZADO')">Aguard. etiqueta</button>
-          <button class="chip" data-f="AGUARDANDO ESTOQUE" onclick="cgFiltro('AGUARDANDO ESTOQUE')">Aguard. estoque</button>
+          <button class="chip" data-f="AGUARDANDO ENDERECO" onclick="cgFiltro('AGUARDANDO ENDERECO')">Aguard. endereço</button>
+          <button class="chip" data-f="AGUARDANDO SALDO" onclick="cgFiltro('AGUARDANDO SALDO')">Aguard. saldo</button>
           <button class="chip" data-f="CONCLUIDO" onclick="cgFiltro('CONCLUIDO')">Concluídos</button>
           <button class="chip" data-f="CANCELADO" onclick="cgFiltro('CANCELADO')">Cancelados</button>
           <button class="chip" data-f="TODOS" onclick="cgFiltro('TODOS')">Todos</button>
@@ -772,7 +774,7 @@ body.devonly #acoes-wrap{display:none!important}
         </div>
         <div id="cg-ean-info"></div>
 
-        <div class="cg-step"><i>2</i>Fotos do produto <small>(obrigatório)</small></div>
+        <div class="cg-step"><i>2</i>Fotos do produto <small>(opcional)</small></div>
         <div class="row" style="margin-bottom:8px"><button class="btn btn-acc btn-sm" style="flex:1" onclick="$('cg-cam').click()">📷 Tirar foto</button><button class="btn btn-ghost btn-sm" style="flex:1" onclick="$('cg-gal').click()">🖼 Anexar da galeria</button></div>
         <input type="file" id="cg-cam" accept="image/*" capture="environment" class="hide" onchange="cgFotoAdd(this)">
         <input type="file" id="cg-gal" accept="image/*" multiple class="hide" onchange="cgFotoAdd(this)">
@@ -830,8 +832,8 @@ body.devonly #acoes-wrap{display:none!important}
         <button class="btn btn-ghost btn-sm adm-only" id="cg-d-volta" style="margin-top:10px" onclick="cgVoltarCadastro()">↩ Voltar para cadastro (corrigir EAN)</button>
       </div>
       <div class="card hide" id="cg-d-est">
-        <div class="ct"><span>📦 Entrada no estoque</span><span class="tag t-ylw">Pendente</span></div>
-        <div class="sh-sub" style="margin-bottom:10px">Bipe o <b>endereço</b> onde o produto foi guardado e informe a quantidade de volumes. O saldo entra no estoque (Consulta / Posição / Kardex) e o cadastro é concluído.</div>
+        <div class="ct"><span>📍 Endereçamento</span><span class="tag t-ylw">Pendente</span></div>
+        <div class="sh-sub" style="margin-bottom:10px">Bipe o <b>endereço</b> onde o produto foi guardado e informe a quantidade de volumes. Depois o responsável inclui o saldo no estoque.</div>
         <label class="flbl">Endereço *</label>
         <div class="row" style="margin-bottom:6px">
           <input id="cg-s-end" class="scan-inp" type="text" placeholder="Bipe o endereço..." autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="characters">
@@ -840,7 +842,15 @@ body.devonly #acoes-wrap{display:none!important}
         <div id="cg-s-info"></div>
         <label class="flbl" style="margin-top:10px">Quantidade (volumes) * <span id="cg-s-par" style="text-transform:none"></span></label>
         <input id="cg-s-qtd" class="inp" type="number" inputmode="numeric" min="1" value="1">
-        <button class="btn btn-grn" id="cg-s-ok" onclick="cgIncluirEstoque()">📦 Incluir no estoque e concluir</button>
+        <button class="btn btn-acc" id="cg-s-endok" onclick="cgEnderecar()">📍 Confirmar endereço</button>
+      </div>
+      <div class="card hide" id="cg-d-sal">
+        <div class="ct"><span>📦 Inclusão de saldo no estoque</span><span class="tag t-ylw">Pendente</span></div>
+        <div class="cg-msg ok" style="margin:0 0 10px;font-size:14px" id="cg-d-sal-info"></div>
+        <div class="sh-sub adm-only" style="margin-bottom:10px">Confira o endereço e a quantidade informados. Ao incluir, o saldo entra no estoque (Consulta / Posição / Kardex) e o cadastro é <b>Concluído</b>.</div>
+        <div class="sh-sub" id="cg-d-sal-op" style="margin-bottom:6px">Aguardando o responsável incluir o saldo no estoque.</div>
+        <button class="btn btn-grn adm-only" id="cg-s-ok" onclick="cgIncluirEstoque()">📦 Incluir saldo e concluir</button>
+        <button class="btn btn-ghost btn-sm" id="cg-d-corr" style="margin-top:10px" onclick="cgCorrigirEnd()">📍 Corrigir endereço / quantidade</button>
       </div>
       <div class="card hide" id="cg-d-adm">
         <div class="ct"><span>🏢 Cadastro no sistema</span></div>
@@ -1086,7 +1096,7 @@ body.devonly #acoes-wrap{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.19';
+const APP_VERSION='V1.21';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -2783,13 +2793,13 @@ async function prtGravar(){
 
 // ═════════════════════ CADASTRO DE GRADE — novos produtos (V1.17) ═════════════════════
 // Tabela cg_cadastros · fotos no bucket dev-fotos, pasta cadastro_grade/
-const CG_BUCKET=FT_BUCKET, CG_SQL='controle_mercadoria_V1.17_cadastro_grade.sql', CG_SQL2='controle_mercadoria_V1.18_etiqueta_grade.sql', CG_SQL3='controle_mercadoria_V1.19_estoque_grade.sql';
-const CG_ABERTOS=['AGUARDANDO CADASTRO','EM CADASTRO','CADASTRO FINALIZADO','AGUARDANDO ESTOQUE'];
-const CG_ST={'AGUARDANDO CADASTRO':['t-ylw','Aguard. cadastro'],'EM CADASTRO':['t-acc','Em cadastro'],'CADASTRO FINALIZADO':['t-pur','Aguard. etiqueta'],'AGUARDANDO ESTOQUE':['t-cyn','Aguard. estoque'],'CONCLUIDO':['t-grn','Concluído'],'CANCELADO':['t-red','Cancelado']};
+const CG_BUCKET=FT_BUCKET, CG_SQL='controle_mercadoria_V1.17_cadastro_grade.sql', CG_SQL2='controle_mercadoria_V1.18_etiqueta_grade.sql', CG_SQL3='controle_mercadoria_V1.19_estoque_grade.sql', CG_SQL4='controle_mercadoria_V1.20_endereco_saldo_grade.sql';
+const CG_ABERTOS=['AGUARDANDO CADASTRO','EM CADASTRO','CADASTRO FINALIZADO','AGUARDANDO ENDERECO','AGUARDANDO SALDO'];
+const CG_ST={'AGUARDANDO CADASTRO':['t-ylw','Aguard. cadastro'],'EM CADASTRO':['t-acc','Em cadastro'],'CADASTRO FINALIZADO':['t-pur','Aguard. etiqueta'],'AGUARDANDO ENDERECO':['t-cyn','Aguard. endereço'],'AGUARDANDO SALDO':['t-ylw','Aguard. saldo'],'CONCLUIDO':['t-grn','Concluído'],'CANCELADO':['t-red','Cancelado']};
 let CGS=[], CG_F='ABERTOS', CG_CUR=null, CG_NEW={fotos:[],comp:[],ean:''}, _cgUp=0, _cgSaving=false;
 function cgTag(s){ const t=CG_ST[s]||['t-mut',s]; return `<span class="tag ${t[0]}">${esc(t[1])}</span>`; }
 function cgSemTabela(e){ return /cg_cadastros|schema cache|does not exist/i.test((e&&e.message)||''); }
-function cgErr(e){ if(/estoque_(end|qtd|em|por)/.test((e&&e.message)||'')) return 'Rode o script '+CG_SQL3+' no Supabase'; if(/finalizado_|etiqueta_/.test((e&&e.message)||'')) return 'Rode o script '+CG_SQL2+' no Supabase'; return cgSemTabela(e)?'Rode o script '+CG_SQL+' no Supabase':((e&&e.message)||String(e)); }
+function cgErr(e){ if(/endereco_(em|por)/.test((e&&e.message)||'')) return 'Rode o script '+CG_SQL4+' no Supabase'; if(/estoque_(end|qtd|em|por)/.test((e&&e.message)||'')) return 'Rode o script '+CG_SQL3+' no Supabase'; if(/finalizado_|etiqueta_/.test((e&&e.message)||'')) return 'Rode o script '+CG_SQL2+' no Supabase'; return cgSemTabela(e)?'Rode o script '+CG_SQL+' no Supabase':((e&&e.message)||String(e)); }
 function cgCompTot(c){ return (c||[]).reduce((s,x)=>s+(Number(x.qtd)||0),0); }
 function cgCompTxt(c){ return (c||[]).map(x=>x.tam+': '+x.qtd).join(' · '); }
 function cgCompSort(c){ c.sort((a,b)=>(parseFloat(a.tam)||0)-(parseFloat(b.tam)||0)||String(a.tam).localeCompare(String(b.tam))); }
@@ -2891,7 +2901,6 @@ async function cgSalvar(){
   if(!rawE) CG_NEW.ean='';
   if($('cg-tam').value.trim()&&$('cg-qtd').value.trim()) cgCompAdd();
   const desc=$('cg-desc').value.trim();
-  if(!CG_NEW.fotos.length){ beep(false); return toast('Anexe ao menos uma foto do produto',1); }
   if(!desc){ beep(false); toast('Informe a descrição / referência',1); return focusLater('cg-desc'); }
   if(!CG_NEW.comp.length){ beep(false); toast('Informe a composição da grade',1); return focusLater('cg-tam'); }
   if(!confirm(`Enviar para cadastro?\n\n${desc}\nGrade: ${cgCompTxt(CG_NEW.comp)}\nTotal: ${cgCompTot(CG_NEW.comp)} pares · ${CG_NEW.fotos.length} foto(s)`)) return;
@@ -2924,9 +2933,9 @@ function renderCgDet(preenche){
   const c=CG_CUR, adm=isAdm(), aberto=cgPodeEditar(c);
   $('cg-d-ttl').textContent='Cadastro de grade #'+c.id;
   $('cg-d-st').innerHTML=cgTag(c.status);
-  const cur={'AGUARDANDO CADASTRO':0,'EM CADASTRO':1,'CADASTRO FINALIZADO':3,'AGUARDANDO ESTOQUE':4,'CONCLUIDO':6}[c.status]??0;
+  const cur={'AGUARDANDO CADASTRO':0,'EM CADASTRO':1,'CADASTRO FINALIZADO':3,'AGUARDANDO ENDERECO':4,'AGUARDANDO SALDO':5,'CONCLUIDO':7}[c.status]??0;
   $('cg-d-flow').innerHTML=c.status==='CANCELADO'?'<span class="on" style="background:var(--red);border-color:var(--red)">Cancelado</span>':
-    ['Solicitado','Em cadastro','Cadastro finalizado','Etiqueta','Estoque','Concluído'].map((l,i)=>`<span class="${i<cur?'done':i===cur?'on':''}">${i+1}. ${l}</span>`).join('');
+    ['Solicitado','Em cadastro','Cadastro finalizado','Etiqueta','Endereço','Saldo','Concluído'].map((l,i)=>`<span class="${i<cur?'done':i===cur?'on':''}">${i+1}. ${l}</span>`).join('');
   const f=(l,v,full)=>v?`<div ${full?'style="grid-column:1/-1"':''}><div class="il">${l}</div><div class="iv">${v}</div></div>`:'';
   $('cg-d-info').innerHTML=f('Descrição / referência',esc(c.descricao),true)+
     f('Descrição final',c.descricao_final&&c.descricao_final!==c.descricao?esc(c.descricao_final):'',true)+
@@ -2939,7 +2948,8 @@ function renderCgDet(preenche){
     f('Em cadastro',c.iniciado_em?fmtDT(c.iniciado_em)+' · '+esc(c.iniciado_por||''):'')+
     f('Cadastro finalizado',c.finalizado_em?fmtDT(c.finalizado_em)+' · '+esc(c.finalizado_por||''):'')+
     f('Etiqueta interna',c.etiqueta_em?fmtDT(c.etiqueta_em)+' · '+esc(c.etiqueta_por||'')+(c.etiqueta_qtd?' · '+fmt(c.etiqueta_qtd)+' un.':''):'')+
-    f('Entrada no estoque',c.estoque_em?'📍 <b>'+esc(c.estoque_end||'')+'</b> · '+fmt(c.estoque_qtd)+' vol. · '+fmtDT(c.estoque_em)+' · '+esc(c.estoque_por||''):'',true)+
+    f('Endereçado',c.estoque_end&&c.endereco_em?'📍 <b>'+esc(c.estoque_end)+'</b> · '+fmt(c.estoque_qtd)+' vol. · '+fmtDT(c.endereco_em)+' · '+esc(c.endereco_por||''):'',true)+
+    f('Saldo incluído no estoque',c.estoque_em?fmtDT(c.estoque_em)+' · '+esc(c.estoque_por||''):'')+
     f('Concluído',c.concluido_em?fmtDT(c.concluido_em)+' · '+esc(c.concluido_por||''):'')+
     f('Cancelado',c.status==='CANCELADO'&&c.cancelado_em?fmtDT(c.cancelado_em)+' · '+esc(c.cancelado_por||'')+(c.motivo_cancel?' — '+esc(c.motivo_cancel):''):'',true)+
     f('Observação',esc(c.obs),true);
@@ -2948,16 +2958,21 @@ function renderCgDet(preenche){
   renderCgDetFotos();
   const emCad=c.status==='AGUARDANDO CADASTRO'||c.status==='EM CADASTRO';
   $('cg-d-adm').classList.toggle('hide',!adm||!emCad);
-  const fin=c.status==='CADASTRO FINALIZADO', est=c.status==='AGUARDANDO ESTOQUE', etqOn=fin||est||(c.status==='CONCLUIDO'&&c.novo_ean);
+  const fin=c.status==='CADASTRO FINALIZADO', est=c.status==='AGUARDANDO ENDERECO', sal=c.status==='AGUARDANDO SALDO', etqOn=fin||est||sal||(c.status==='CONCLUIDO'&&c.novo_ean);
+  $('cg-d-sal').classList.toggle('hide',!sal);
+  if(sal){ const p=c.pares_final||c.total_pares;
+    $('cg-d-sal-info').innerHTML=`📍 <b>${esc(c.estoque_end||'')}</b> · <b>${fmt(c.estoque_qtd)}</b> volume(s)${p?' ('+fmt((Number(c.estoque_qtd)||0)*p)+' pares)':''}<br><span style="font-size:12px">Endereçado por ${esc(c.endereco_por||'—')} em ${fmtDT(c.endereco_em)}</span>`;
+    $('cg-d-sal-op').classList.toggle('hide',adm);
+    $('cg-d-corr').classList.toggle('hide',!(adm||c.endereco_por===CU.name)); }
   $('cg-d-est').classList.toggle('hide',!est);
-  if(est){ if(preenche){ $('cg-s-end').value=''; $('cg-s-qtd').value=1; $('cg-s-info').innerHTML=''; }
+  if(est){ if(preenche){ $('cg-s-end').value=c.estoque_end||''; $('cg-s-qtd').value=c.estoque_qtd||1; $('cg-s-info').innerHTML=''; }
     const p=c.pares_final||c.total_pares; $('cg-s-par').textContent=p?'· 1 vol. = '+fmt(p)+' pares':''; }
   $('cg-d-etq').classList.toggle('hide',!etqOn);
   if(etqOn){
     $('cg-d-etq-st').innerHTML=c.etiqueta_em?'<span class="tag t-grn">✓ Gerada</span>':'<span class="tag t-ylw">Pendente</span>';
     $('cg-d-etq-txt').innerHTML=fin?'Gere e cole a etiqueta interna no produto. Depois informe o <b>endereço</b> para incluir o saldo no estoque.':
-      est?`Etiqueta gerada em ${fmtDT(c.etiqueta_em)} por ${esc(c.etiqueta_por||'')}. Reimprima se precisar.`:'Reimpressão da etiqueta interna.';
-    $('cg-d-volta').classList.toggle('hide',!(fin||est));
+      est||sal?`Etiqueta gerada em ${fmtDT(c.etiqueta_em)} por ${esc(c.etiqueta_por||'')}. Reimprima se precisar.`:'Reimpressão da etiqueta interna.';
+    $('cg-d-volta').classList.toggle('hide',!(fin||est||sal));
     if(preenche) $('cg-e-qtd').value=1;
   }
   if(adm&&emCad){
@@ -2992,7 +3007,7 @@ async function cgDetFotoAdd(inp){
 function cgFotoVer(i){
   const F=CG_CUR.fotos||[], f=F[i]; if(!f) return;
   $('ft-img').src=f.url; $('ft-dl').href=f.url; $('ft-ttl').textContent='Foto '+(i+1)+'/'+F.length+(f.por?' · '+f.por:'')+(f.em?' · '+fmtDT(f.em):'');
-  const pode=cgPodeEditar(CG_CUR)&&(isAdm()||(CU&&f.por===CU.name))&&F.length>1;
+  const pode=cgPodeEditar(CG_CUR)&&(isAdm()||(CU&&f.por===CU.name));
   $('ft-del').classList.toggle('hide',!pode); $('ft-del').onclick=()=>cgFotoExcluir(f.path);
   $('ft-ovl').classList.remove('hide');
 }
@@ -3034,7 +3049,7 @@ async function cgCancelar(){
   if(!cgPodeEditar(c)){
     if(c.status==='CONCLUIDO'&&c.estoque_em) return toast('Saldo já incluído no estoque — ajuste pela aba Estoque',1,4000);
     if(!isAdm()||!confirm('Reabrir esta solicitação?'+(c.status==='CONCLUIDO'&&c.novo_ean?`\n\nO código ${c.novo_ean} continua no cadastro de grade.`:''))) return;
-    return cgUpd({status:c.etiqueta_em&&c.novo_ean?'AGUARDANDO ESTOQUE':c.status==='CONCLUIDO'||c.finalizado_em?'CADASTRO FINALIZADO':c.iniciado_em?'EM CADASTRO':'AGUARDANDO CADASTRO',concluido_em:null,concluido_por:null,cancelado_em:null,cancelado_por:null,motivo_cancel:null},'↺ Solicitação reaberta');
+    return cgUpd({status:c.endereco_em&&c.estoque_end&&!c.estoque_em?'AGUARDANDO SALDO':c.etiqueta_em&&c.novo_ean?'AGUARDANDO ENDERECO':c.status==='CONCLUIDO'||c.finalizado_em?'CADASTRO FINALIZADO':c.iniciado_em?'EM CADASTRO':'AGUARDANDO CADASTRO',concluido_em:null,concluido_por:null,cancelado_em:null,cancelado_por:null,motivo_cancel:null},'↺ Solicitação reaberta');
   }
   const m=prompt('Motivo do cancelamento:'); if(m===null) return;
   return cgUpd({status:'CANCELADO',cancelado_em:new Date().toISOString(),cancelado_por:CU.name,motivo_cancel:m.trim()||null},'Solicitação cancelada');
@@ -3110,7 +3125,7 @@ async function cgEtiqueta(){
       f.contentDocument.open(); f.contentDocument.write(html.replace(/<script>[\s\S]*?<\/script>/,'')); f.contentDocument.close();
       setTimeout(()=>{ f.contentWindow.focus(); f.contentWindow.print(); setTimeout(()=>f.remove(),60000); },400); }
     const pe={etiqueta_em:new Date().toISOString(),etiqueta_por:CU.name,etiqueta_qtd:(Number(c.etiqueta_qtd)||0)+n};
-    const prox=c.status==='CADASTRO FINALIZADO'; if(prox) pe.status='AGUARDANDO ESTOQUE';
+    const prox=c.status==='CADASTRO FINALIZADO'; if(prox) pe.status='AGUARDANDO ENDERECO';
     const ok=await cgUpd(pe,'🏷 Etiqueta gerada ('+n+')'+(prox?' — agora bipe o endereço':''));
     if(ok&&prox){ setTimeout(()=>{ $('cg-d-est').scrollIntoView({behavior:'smooth',block:'start'}); focusLater('cg-s-end'); },300); }
   }catch(e){ if(w) w.close(); beep(false); toast('Erro: '+cgErr(e),1,5000); }
@@ -3125,42 +3140,57 @@ function cgEndInfo(){
     :`<div class="cg-msg warn">📍 <b>${esc(A)}</b> ainda não tem saldo cadastrado — confira o endereço.</div>`;
   beep(addrKnown(A)); focusLater('cg-s-qtd'); setTimeout(()=>{ const e=$('cg-s-qtd'); if(e) e.select(); },150);
 }
-async function cgIncluirEstoque(){
-  const c=CG_CUR; if(!c||c.status!=='AGUARDANDO ESTOQUE'||_cgSaving) return;
-  if(!c.novo_ean) return toast('Cadastro sem novo código de barras',1);
+async function cgEnderecar(){
+  const c=CG_CUR; if(!c||c.status!=='AGUARDANDO ENDERECO'||_cgSaving) return;
   const A=normAddr($('cg-s-end').value);
   if(!A){ beep(false); toast('Bipe o endereço',1); return focusLater('cg-s-end'); }
   const q=parseNum($('cg-s-qtd').value);
   if(!(q>0)){ beep(false); toast('Informe a quantidade de volumes',1); return focusLater('cg-s-qtd'); }
   if(!addrKnown(A)&&!confirm(`Endereço ${A} ainda não tem saldo cadastrado.\nUsar mesmo assim?`)) return;
+  const pares=c.pares_final||c.total_pares||0;
+  if(!confirm(`Confirmar o endereçamento do cadastro #${c.id}?\n\nEndereço ${A} · ${q} volume(s)${pares?' ('+fmt(q*pares)+' pares)':''}\n\nO saldo será incluído no estoque pelo responsável.`)) return;
+  const btn=$('cg-s-endok'); btn.disabled=true; _cgSaving=true;
+  try{ await cgUpd({status:'AGUARDANDO SALDO',estoque_end:A,estoque_qtd:q,endereco_em:new Date().toISOString(),endereco_por:CU.name},`📍 Endereçado em ${A} — aguardando inclusão do saldo`); }
+  finally{ btn.disabled=false; _cgSaving=false; }
+}
+async function cgCorrigirEnd(){
+  const c=CG_CUR; if(!c||c.status!=='AGUARDANDO SALDO') return;
+  if(!isAdm()&&c.endereco_por!==CU.name) return toast('Só quem endereçou ou o admin pode corrigir',1);
+  if(!confirm('Voltar para o endereçamento para corrigir o endereço / quantidade?')) return;
+  if(await cgUpd({status:'AGUARDANDO ENDERECO'},'Informe o endereço novamente')){ $('cg-s-end').value=c.estoque_end||''; $('cg-s-qtd').value=c.estoque_qtd||1; focusLater('cg-s-end'); }
+}
+async function cgIncluirEstoque(){
+  const c=CG_CUR; if(!isAdm()||!c||c.status!=='AGUARDANDO SALDO'||_cgSaving) return;
+  if(!c.novo_ean) return toast('Cadastro sem novo código de barras',1);
+  const A=normAddr(c.estoque_end), q=Number(c.estoque_qtd)||0;
+  if(!A||!(q>0)) return toast('Endereço / quantidade não informados',1);
   const descr=c.descricao_final||c.descricao||'', marca=c.marca||'', pares=c.pares_final||c.total_pares||0;
-  if(!confirm(`Incluir no estoque e concluir o cadastro #${c.id}?\n\n${descr}\nEAN ${c.novo_ean}\nEndereço ${A} · ${q} volume(s)${pares?' ('+fmt(q*pares)+' pares)':''}`)) return;
+  if(!confirm(`Incluir o saldo no estoque e concluir o cadastro #${c.id}?\n\n${descr}\nEAN ${c.novo_ean}\nEndereço ${A} · ${q} volume(s)${pares?' ('+fmt(q*pares)+' pares)':''}\nEndereçado por ${c.endereco_por||'—'}`)) return;
   const btn=$('cg-s-ok'); btn.disabled=true; btn.textContent='Gravando...'; _cgSaving=true;
   try{
-    const {error}=await getSB().rpc('est_movimentar',{p_tipo:'ENTRADA',p_gtin:c.novo_ean,p_descricao:descr,p_marca:marca,p_origem:null,p_destino:A,p_qtd:q,p_motivo:'Cadastro de grade #'+c.id,p_operador:CU.name,p_ref:'CG#'+c.id});
+    const {error}=await getSB().rpc('est_movimentar',{p_tipo:'ENTRADA',p_gtin:c.novo_ean,p_descricao:descr,p_marca:marca,p_origem:null,p_destino:A,p_qtd:q,p_motivo:'Cadastro de grade #'+c.id+(c.endereco_por?' · endereçado por '+c.endereco_por:''),p_operador:CU.name,p_ref:'CG#'+c.id});
     if(error) throw error;
     applyLocal(c.novo_ean,A,q,descr,marca);
     const now=new Date().toISOString();
-    const ok=await cgUpd({status:'CONCLUIDO',estoque_end:A,estoque_qtd:q,estoque_em:now,estoque_por:CU.name,concluido_em:now,concluido_por:CU.name},`✓ ${fmt(q)} vol. incluído(s) em ${A} — cadastro concluído`);
-    if(!ok) alert(`O saldo JÁ FOI incluído em ${A} (${q} vol.), mas o status do cadastro não foi atualizado.\nNão inclua de novo — rode o script ${CG_SQL3} no Supabase e conclua pelo admin.`);
+    const ok=await cgUpd({status:'CONCLUIDO',estoque_em:now,estoque_por:CU.name,concluido_em:now,concluido_por:CU.name},`✓ ${fmt(q)} vol. incluído(s) em ${A} — cadastro concluído`);
+    if(!ok) alert(`O saldo JÁ FOI incluído em ${A} (${q} vol.), mas o status do cadastro não foi atualizado.\nNão inclua de novo — rode o script ${CG_SQL4} no Supabase.`);
     reloadAddr(A).then(()=>{ renderKpis(); renderPos(); });
   }catch(e){ beep(false); toast('Erro ao incluir no estoque: '+cgErr(e),1,6000); }
-  finally{ btn.disabled=false; btn.textContent='📦 Incluir no estoque e concluir'; _cgSaving=false; }
+  finally{ btn.disabled=false; btn.textContent='📦 Incluir saldo e concluir'; _cgSaving=false; }
 }
-
 async function cgVoltarCadastro(){
-  const c=CG_CUR; if(!isAdm()||!c||!['CADASTRO FINALIZADO','AGUARDANDO ESTOQUE'].includes(c.status)) return;
+  const c=CG_CUR; if(!isAdm()||!c||!['CADASTRO FINALIZADO','AGUARDANDO ENDERECO','AGUARDANDO SALDO'].includes(c.status)) return;
   if(!confirm('Voltar este registro para "Em cadastro" para corrigir os dados?'+(c.etiqueta_em?'\n\nA etiqueta já gerada deverá ser refeita.':''))) return;
-  await cgUpd({status:'EM CADASTRO',finalizado_em:null,finalizado_por:null,etiqueta_em:null,etiqueta_por:null,etiqueta_qtd:0},'↩ Voltou para cadastro');
+  await cgUpd({status:'EM CADASTRO',finalizado_em:null,finalizado_por:null,etiqueta_em:null,etiqueta_por:null,etiqueta_qtd:0,estoque_end:null,estoque_qtd:null,endereco_em:null,endereco_por:null},'↩ Voltou para cadastro');
 }
 
 function cgExport(){
   if(!CGS.length) return toast('Nada para exportar',1);
-  const aoa=[['Nº','STATUS','DESCRICAO','DESCRICAO FINAL','MARCA','COR','EAN BIPADO','NOVO EAN','COD PRODUTO','GRADE','TOTAL PARES','PARES FINAL','FOTOS','OBS','SOLICITADO EM','SOLICITADO POR','INICIADO POR','FINALIZADO EM','FINALIZADO POR','ETIQUETA EM','ETIQUETA POR','ETIQUETAS (UN.)','ENDERECO','VOLUMES','ESTOQUE EM','ESTOQUE POR','CONCLUIDO EM','CONCLUIDO POR','MOTIVO CANCEL.']];
-  CGS.forEach(c=>aoa.push([c.id,(CG_ST[c.status]||[0,c.status])[1],c.descricao||'',c.descricao_final||'',c.marca||'',c.cor||'',c.ean_bipado||'',c.novo_ean||'',c.cod_produto||'',cgCompTxt(c.composicao),c.total_pares||0,c.pares_final||'',(c.fotos||[]).map(f=>f.url).join(' '),c.obs||'',fmtDT(c.criado_em),c.criado_por||'',c.iniciado_por||'',fmtDT(c.finalizado_em),c.finalizado_por||'',fmtDT(c.etiqueta_em),c.etiqueta_por||'',c.etiqueta_qtd||'',c.estoque_end||'',c.estoque_qtd||'',fmtDT(c.estoque_em),c.estoque_por||'',fmtDT(c.concluido_em),c.concluido_por||'',c.motivo_cancel||'']));
+  const aoa=[['Nº','STATUS','DESCRICAO','DESCRICAO FINAL','MARCA','COR','EAN BIPADO','NOVO EAN','COD PRODUTO','GRADE','TOTAL PARES','PARES FINAL','FOTOS','OBS','SOLICITADO EM','SOLICITADO POR','INICIADO POR','FINALIZADO EM','FINALIZADO POR','ETIQUETA EM','ETIQUETA POR','ETIQUETAS (UN.)','ENDERECO','VOLUMES','ENDEREÇADO EM','ENDEREÇADO POR','SALDO INCLUIDO EM','SALDO INCLUIDO POR','CONCLUIDO EM','CONCLUIDO POR','MOTIVO CANCEL.']];
+  CGS.forEach(c=>aoa.push([c.id,(CG_ST[c.status]||[0,c.status])[1],c.descricao||'',c.descricao_final||'',c.marca||'',c.cor||'',c.ean_bipado||'',c.novo_ean||'',c.cod_produto||'',cgCompTxt(c.composicao),c.total_pares||0,c.pares_final||'',(c.fotos||[]).map(f=>f.url).join(' '),c.obs||'',fmtDT(c.criado_em),c.criado_por||'',c.iniciado_por||'',fmtDT(c.finalizado_em),c.finalizado_por||'',fmtDT(c.etiqueta_em),c.etiqueta_por||'',c.etiqueta_qtd||'',c.estoque_end||'',c.estoque_qtd||'',fmtDT(c.endereco_em),c.endereco_por||'',fmtDT(c.estoque_em),c.estoque_por||'',fmtDT(c.concluido_em),c.concluido_por||'',c.motivo_cancel||'']));
   const tam=[['Nº','DESCRICAO','NOVO EAN','TAMANHO','PARES']];
   CGS.forEach(c=>(c.composicao||[]).forEach(x=>tam.push([c.id,c.descricao_final||c.descricao||'',c.novo_ean||'',x.tam,x.qtd])));
-  xlsxSave([['Cadastros',aoa,[6,16,40,40,16,12,16,16,14,40,10,10,30,30,17,18,18,17,18,17,18,9,14,9,17,18,17,18,24]],['Grade por tamanho',tam,[6,40,16,10,8]]],'cadastro_grade');
+  xlsxSave([['Cadastros',aoa,[6,16,40,40,16,12,16,16,14,40,10,10,30,30,17,18,18,17,18,17,18,9,14,9,17,18,17,18,17,18,24]],['Grade por tamanho',tam,[6,40,16,10,8]]],'cadastro_grade');
 }
 
 // ═════════════════════ EXPORTAÇÕES ═════════════════════
@@ -3231,7 +3261,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   onEnter('cg-qtd',cgCompAdd);
   onEnter('cg-d-novo',()=>$('cg-d-cod').focus());
   onEnter('cg-s-end',cgEndInfo);
-  onEnter('cg-s-qtd',cgIncluirEstoque);
+  onEnter('cg-s-qtd',cgEnderecar);
   onEnter('tr-qtd',()=>{});
   initApp();
 });
