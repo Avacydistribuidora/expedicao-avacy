@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Controle de Mercadoria | V1.21</title>
+<title>Controle de Mercadoria | V1.22</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--navy:#0d2167;--navy2:#07142a;--brand:#8b1111;--bg:#f2f4f8;--bg2:#fff;--bg3:#f6f8fc;--acc:#2463cc;--grn:#16a34a;--red:#dc2626;--ylw:#ea580c;--pur:#7c3aed;--cyn:#0d9488;--txt:#1a2035;--mut:#6b7a99;--bdr:#dde2ec;--r:10px}
@@ -1096,7 +1096,7 @@ body.devonly #acoes-wrap{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.21';
+const APP_VERSION='V1.22';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -3076,7 +3076,7 @@ function cgLoadJsb(){
 }
 function cgBarSvg(code){
   const mk=(v,f)=>{ const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'); let ok=true;
-    try{ JsBarcode(svg,v,{format:f,width:2,height:52,fontSize:15,margin:0,textMargin:1,displayValue:true,valid:x=>{ok=x;}}); }catch(e){ ok=false; }
+    try{ JsBarcode(svg,v,{format:f,width:2,height:52,margin:0,displayValue:false,valid:x=>{ok=x;}}); }catch(e){ ok=false; }
     return ok?svg.outerHTML:null; };
   let v=String(code||''); if(/^0\d{13}$/.test(v)) v=v.slice(1);
   return (/^\d{13}$/.test(v)&&mk(v,'EAN13'))||(/^\d{8}$/.test(v)&&mk(v,'EAN8'))||mk(String(code),'CODE128')||'';
@@ -3090,7 +3090,7 @@ function cgEtqHtml(c,n){
     <div class="d">${esc(desc)}</div>
     ${sub?`<div class="s">${esc(sub)}</div>`:''}
     <div class="g"><span>${(c.composicao||[]).map(x=>`<i>${esc(x.tam)}<b>${esc(x.qtd)}</b></i>`).join('')}</span><em>${esc(pares)} pares</em></div>
-    <div class="b">${bar}</div>
+    <div class="b">${bar}<div class="n">${esc(ean)}</div></div>
   </div>`;
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Etiqueta ${esc(ean)}</title><style>
     @page{size:100mm 50mm;margin:0}
@@ -3106,8 +3106,9 @@ function cgEtqHtml(c,n){
     .g i{font-style:normal;font-size:10.5pt;border:.3mm solid #000;border-radius:1mm;padding:.3mm 1.5mm}
     .g i b{margin-left:.8mm}
     .g em{font-style:normal;font-weight:800;font-size:12pt;white-space:nowrap}
-    .b{flex:1;display:flex;align-items:flex-end;justify-content:center;min-height:0}
-    .b svg{max-width:100%;height:auto;max-height:16mm}
+    .b{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-height:0}
+    .b svg{max-width:100%;height:auto;max-height:12mm}
+    .n{font-family:Arial,Helvetica,sans-serif;font-size:15pt;font-weight:800;letter-spacing:1.5px;line-height:1.1;margin-top:.6mm}
     @media screen{body{background:#ddd;padding:10px}.lbl{background:#fff;margin:0 auto 10px;box-shadow:0 1px 4px rgba(0,0,0,.3)}.pb{display:block;margin:0 auto 10px;padding:10px 22px;font-size:15px}}
     @media print{.pb{display:none}}
   </style></head><body><button class="pb" onclick="print()">🖨 Imprimir</button>${Array.from({length:n},()=>one).join('')}
