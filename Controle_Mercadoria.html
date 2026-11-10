@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Controle de Mercadoria | V1.16</title>
+<title>Controle de Mercadoria | V1.17</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--navy:#0d2167;--navy2:#07142a;--brand:#8b1111;--bg:#f2f4f8;--bg2:#fff;--bg3:#f6f8fc;--acc:#2463cc;--grn:#16a34a;--red:#dc2626;--ylw:#ea580c;--pur:#7c3aed;--cyn:#0d9488;--txt:#1a2035;--mut:#6b7a99;--bdr:#dde2ec;--r:10px}
@@ -338,6 +338,34 @@ body:not(.adm) .adm-only{display:none!important}
 .cix-steps span{padding:3px 8px;border-radius:12px;background:#fff;border:1px solid var(--bdr);color:var(--mut)}
 .cix-steps span.on{background:var(--navy);border-color:var(--navy);color:#fff}
 .cix-steps span.done{background:#dcfce7;border-color:#86efac;color:#166534}
+/* V1.17 — cadastro de grade */
+.dcard.CONCLUIDO{border-left-color:var(--grn)}
+.dcard.CANCELADO{border-left-color:var(--red);opacity:.7}
+.cgc{display:flex;gap:10px;align-items:flex-start}
+.cg-th{width:58px;height:58px;border-radius:8px;object-fit:cover;flex-shrink:0;border:1px solid var(--bdr);background:var(--bg3)}
+.cg-th.none{display:flex;align-items:center;justify-content:center;font-size:22px;opacity:.5}
+.cg-step{font-size:13px;font-weight:800;color:var(--navy);margin:14px 0 6px;display:flex;align-items:center;gap:8px}
+.cg-step:first-of-type{margin-top:4px}
+.cg-step i{font-style:normal;width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px}
+.cg-step small{font-weight:400;color:var(--mut)}
+.cg-msg{border-radius:8px;padding:7px 10px;font-size:13px;margin-top:6px}
+.cg-msg.ok{background:#f0fdf4;border:1.5px solid #86efac;color:#166534}
+.cg-msg.warn{background:#fff7ed;border:1.5px solid #fdba74;color:#9a3412}
+.cg-msg.err{background:#fef2f2;border:2px solid #f87171;color:#b91c1c;font-weight:700}
+.cg-fx{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;border:none;background:rgba(0,0,0,.6);color:#fff;font-size:12px;cursor:pointer}
+.cg-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:6px}
+.cg-cel{border:1.5px solid var(--bdr);border-radius:8px;text-align:center;padding:5px 3px;background:#fff}
+.cg-cel .cg-t{font-size:11px;color:var(--mut);font-weight:700}
+.cg-cel .cg-q{font-size:20px;font-weight:900;color:var(--navy);line-height:1.15}
+.cg-cel .cg-bt{display:flex;gap:2px;justify-content:center;margin-top:3px}
+.cg-cel .cg-bt button{border:1px solid var(--bdr);background:var(--bg3);border-radius:5px;width:20px;height:20px;font-size:12px;line-height:1;cursor:pointer;color:var(--txt);padding:0}
+.cg-tot{margin-top:8px;font-size:14px;color:var(--navy)}
+.cg-rap{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--mut);margin-top:8px;padding-top:8px;border-top:1px dashed var(--bdr)}
+.cg-rap input{width:64px;margin:0;padding:7px 8px;font-size:14px}
+.cg-flow{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.cg-flow span{font-size:11px;padding:3px 8px;border-radius:12px;border:1px solid var(--bdr);color:var(--mut);background:var(--bg3)}
+.cg-flow span.on{background:var(--navy);border-color:var(--navy);color:#fff;font-weight:700}
+.cg-flow span.done{background:#dcfce7;border-color:#86efac;color:#166534}
 /* V1.15 — interações */
 .com-list{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto}
 .com{background:var(--bg3);border:1px solid var(--bdr);border-radius:10px;padding:8px 11px}
@@ -428,6 +456,7 @@ body.devonly #acoes-wrap{display:none!important}
       <button class="nav-it" id="t-mov" onclick="goTab('mov')"><i><svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg></i><span class="lb">Estoque</span></button>
       <button class="nav-it" id="t-end" onclick="goTab('end')"><i><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></i><span class="lb">Endereço</span></button>
       <button class="nav-it" id="t-kdx" onclick="goTab('kdx')"><i><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 9h16M9 9v11M13 13h4M13 17h4"/></svg></i><span class="lb">Kardex</span></button>
+      <button class="nav-it" id="t-cgr" onclick="goTab('cgr')"><i><svg viewBox="0 0 24 24"><path d="M3 5v14M6 5v14M10 5v14M13 5v14M17 5v14M21 5v14"/></svg></i><span class="lb">Cadastro de Grade</span><span class="pill hide" id="cg-pill">0</span></button>
       <div class="sbSec">Devoluções</div>
       <button class="nav-it" id="t-dev" onclick="goTab('dev')"><i><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg></i><span class="lb">Devoluções</span><span class="pill hide" id="dev-pill">0</span></button>
       <div class="sbSec adm-only">Administração</div>
@@ -709,6 +738,109 @@ body.devonly #acoes-wrap{display:none!important}
     <div id="kdx-res"></div>
   </div>
 
+  <!-- ── CADASTRO DE GRADE (V1.17) ── -->
+  <div class="pg hide" id="p-cgr">
+    <!-- lista -->
+    <div id="cg-list-view" style="display:flex;flex-direction:column;gap:10px">
+      <div class="card">
+        <div class="ct"><span>🏷 Cadastro de Grade</span><span class="row" style="gap:6px"><button class="btn btn-ghost btn-sm adm-only" onclick="cgExport()">⬇ XLSX</button><button class="btn btn-acc btn-sm" onclick="cgNova()">+ Novo</button></span></div>
+        <input id="cg-q" class="inp" style="margin-bottom:10px" type="text" placeholder="Pesquisar EAN, descrição, marca, nº..." oninput="renderCgList()" autocomplete="off" autocorrect="off" spellcheck="false">
+        <div class="chips" id="cg-chips">
+          <button class="chip on" data-f="ABERTOS" onclick="cgFiltro('ABERTOS')">Em aberto</button>
+          <button class="chip" data-f="AGUARDANDO CADASTRO" onclick="cgFiltro('AGUARDANDO CADASTRO')">Aguard. cadastro</button>
+          <button class="chip" data-f="EM CADASTRO" onclick="cgFiltro('EM CADASTRO')">Em cadastro</button>
+          <button class="chip" data-f="CONCLUIDO" onclick="cgFiltro('CONCLUIDO')">Concluídos</button>
+          <button class="chip" data-f="CANCELADO" onclick="cgFiltro('CANCELADO')">Cancelados</button>
+          <button class="chip" data-f="TODOS" onclick="cgFiltro('TODOS')">Todos</button>
+        </div>
+      </div>
+      <div id="cg-list" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+
+    <!-- novo -->
+    <div id="cg-new-view" class="hide" style="display:flex;flex-direction:column;gap:10px">
+      <div class="card">
+        <div class="ct"><span>➕ Novo cadastro de grade</span><button class="btn-troca" onclick="cgVoltar()">◀ Voltar</button></div>
+        <div class="cg-step"><i>1</i>Código de barras <small>(bipe, se o produto tiver)</small></div>
+        <div class="row">
+          <input id="cg-ean" class="scan-inp" type="text" inputmode="numeric" placeholder="Bipe o código de barras..." autocomplete="off" autocorrect="off" spellcheck="false">
+          <button class="btn-go blue" onclick="cgEanBuscar()">🔍</button>
+        </div>
+        <div id="cg-ean-info"></div>
+
+        <div class="cg-step"><i>2</i>Fotos do produto <small>(obrigatório)</small></div>
+        <div class="row" style="margin-bottom:8px"><button class="btn btn-acc btn-sm" style="flex:1" onclick="$('cg-cam').click()">📷 Tirar foto</button><button class="btn btn-ghost btn-sm" style="flex:1" onclick="$('cg-gal').click()">🖼 Anexar da galeria</button></div>
+        <input type="file" id="cg-cam" accept="image/*" capture="environment" class="hide" onchange="cgFotoAdd(this)">
+        <input type="file" id="cg-gal" accept="image/*" multiple class="hide" onchange="cgFotoAdd(this)">
+        <div class="ft-grid" id="cg-fotos-new"></div>
+
+        <div class="cg-step"><i>3</i>Identificação do produto</div>
+        <label class="flbl">Descrição / referência *</label>
+        <input id="cg-desc" class="inp" type="text" placeholder="Ex.: HAVAIANAS SLIM 0001 BRANCO" autocomplete="off">
+        <div class="g2">
+          <div><label class="flbl">Marca / fabricante</label><input id="cg-marca" class="inp" type="text" autocomplete="off"></div>
+          <div><label class="flbl">Cor</label><input id="cg-cor" class="inp" type="text" autocomplete="off"></div>
+        </div>
+
+        <div class="cg-step"><i>4</i>Composição da grade <small>(tamanho × pares)</small></div>
+        <div class="row" style="margin-bottom:8px">
+          <input id="cg-tam" class="inp" style="margin:0;flex:1" type="text" placeholder="Tamanho (ex. 35/36)" autocomplete="off" autocapitalize="characters">
+          <input id="cg-qtd" class="inp" style="margin:0;width:90px" type="number" inputmode="numeric" min="1" placeholder="Pares">
+          <button class="btn-go blue" onclick="cgCompAdd()">+</button>
+        </div>
+        <div id="cg-comp"></div>
+        <div class="cg-rap">Grade rápida: de <input id="cg-de" class="inp" type="number" inputmode="numeric"> até <input id="cg-ate" class="inp" type="number" inputmode="numeric"> com <input id="cg-qq" class="inp" type="number" inputmode="numeric" placeholder="1"> par(es) cada <button class="btn btn-ghost btn-sm" onclick="cgCompGerar()">Gerar</button></div>
+
+        <label class="flbl" style="margin-top:14px">Observação</label>
+        <textarea id="cg-obs" class="inp" placeholder="Informações adicionais para o cadastro..."></textarea>
+        <button class="btn btn-grn" id="cg-ok" onclick="cgSalvar()">✓ Enviar para cadastro</button>
+      </div>
+    </div>
+
+    <!-- detalhe -->
+    <div id="cg-det-view" class="hide" style="display:flex;flex-direction:column;gap:10px">
+      <div class="card">
+        <div class="ct"><span id="cg-d-ttl">Cadastro</span><span class="row" style="gap:6px"><span id="cg-d-st"></span><button class="btn-troca" onclick="cgVoltar()">◀ Voltar</button></span></div>
+        <div class="cg-flow" id="cg-d-flow"></div>
+        <div class="info-g" id="cg-d-info"></div>
+      </div>
+      <div class="card">
+        <div class="ct"><span>📷 Fotos do produto <span id="cg-d-fn" class="c-acc"></span></span>
+          <span class="row" style="gap:6px" id="cg-d-fbtn"><button class="btn btn-acc btn-sm" onclick="$('cg-d-cam').click()">📷 Tirar foto</button><button class="btn btn-ghost btn-sm" onclick="$('cg-d-gal').click()">🖼 Galeria</button></span></div>
+        <input type="file" id="cg-d-cam" accept="image/*" capture="environment" class="hide" onchange="cgDetFotoAdd(this)">
+        <input type="file" id="cg-d-gal" accept="image/*" multiple class="hide" onchange="cgDetFotoAdd(this)">
+        <div class="ft-grid" id="cg-d-fotos"></div>
+      </div>
+      <div class="card">
+        <div class="ct"><span>📐 Composição da grade</span></div>
+        <div id="cg-d-comp"></div>
+      </div>
+      <div class="card hide" id="cg-d-adm">
+        <div class="ct"><span>🏢 Cadastro no sistema</span></div>
+        <div class="sh-sub" style="margin-bottom:10px">Gere o novo código de barras no sistema, informe-o abaixo e finalize. O registro passa a <b>Concluído</b>.</div>
+        <button class="btn btn-acc" id="cg-d-ini" style="margin-bottom:12px" onclick="cgIniciar()">▶ Iniciar cadastro (assumir)</button>
+        <label class="flbl">Novo código de barras (EAN) *</label>
+        <input id="cg-d-novo" class="scan-inp" style="width:100%;margin-bottom:12px" type="text" inputmode="numeric" placeholder="Bipe ou digite o novo EAN..." autocomplete="off" autocorrect="off" spellcheck="false">
+        <div class="g2">
+          <div><label class="flbl">Código do produto</label><input id="cg-d-cod" class="inp" type="text" autocomplete="off"></div>
+          <div><label class="flbl">Pares por caixa</label><input id="cg-d-pares" class="inp" type="number" inputmode="numeric"></div>
+        </div>
+        <label class="flbl">Descrição final</label>
+        <input id="cg-d-descf" class="inp" type="text" autocomplete="off">
+        <label class="flbl">Fabricante</label>
+        <input id="cg-d-fab" class="inp" type="text" autocomplete="off">
+        <label class="radio-row" style="margin-bottom:12px"><input type="checkbox" id="cg-d-grd" checked><span>Incluir o novo código no cadastro de grade do app</span></label>
+        <button class="btn btn-grn" id="cg-d-fin" onclick="cgFinalizar()">✓ Finalizar cadastro</button>
+      </div>
+      <div class="card">
+        <div class="row" style="justify-content:flex-end;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" style="color:var(--red);border-color:var(--red)" id="cg-d-cancel" onclick="cgCancelar()">⊘ Cancelar solicitação</button>
+          <button class="btn btn-sm adm-only" style="background:var(--red);color:#fff" onclick="cgExcluir()">🗑 Excluir</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── BAIXA DE VENDAS (adm) ── -->
   <div class="pg hide" id="p-vnd">
     <div class="card">
@@ -927,7 +1059,7 @@ body.devonly #acoes-wrap{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.16';
+const APP_VERSION='V1.17';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -1107,8 +1239,8 @@ function go(s){ document.querySelectorAll('.scr').forEach(x=>x.classList.remove(
 function goTab(t){
   if(document.body.classList.contains('devonly')) t='dev';
   CUR_TAB=t;
-  ['con','mov','end','kdx','dev','his','apr','vnd','prt'].forEach(x=>{ $('t-'+x).classList.toggle('on',x===t); $('p-'+x).classList.toggle('hide',x!==t); });
-  $('h-title').textContent={con:'Consulta',mov:'Estoque',end:'Endereço',kdx:'Kardex',dev:'Devoluções',his:'Histórico',apr:'Aprovações',vnd:'Baixa de vendas',prt:'Ajuste Protheus'}[t];
+  ['con','mov','end','kdx','cgr','dev','his','apr','vnd','prt'].forEach(x=>{ $('t-'+x).classList.toggle('on',x===t); $('p-'+x).classList.toggle('hide',x!==t); });
+  $('h-title').textContent={con:'Consulta',mov:'Estoque',end:'Endereço',kdx:'Kardex',cgr:'Cadastro de Grade',dev:'Devoluções',his:'Histórico',apr:'Aprovações',vnd:'Baixa de vendas',prt:'Ajuste Protheus'}[t];
   toggleSb(false); loadDevPill(); prtPill();
   if(t==='con'){ renderKpis(); focusLater('con-inp'); }
   if(t==='mov'){ renderMov(); renderPos(); }
@@ -1118,6 +1250,8 @@ function goTab(t){
   if(t==='apr') loadApr();
   if(t==='kdx'){ if($('kdx-inp').value.trim()) kdxBuscar(); else focusLater('kdx-inp'); }
   if(t==='vnd') vbCarregar();
+  if(t==='cgr'){ if(CG_CUR) cgAbrir(CG_CUR.id); else if($('cg-new-view').classList.contains('hide')){ cgView('list'); cgCarregar(); } }
+  if(!document.body.classList.contains('devonly')) cgPill();
   if(t==='prt') prtCarregar();
 }
 async function doSync(btn){
@@ -2620,6 +2754,266 @@ async function prtGravar(){
   finally{ btn.disabled=false; }
 }
 
+// ═════════════════════ CADASTRO DE GRADE — novos produtos (V1.17) ═════════════════════
+// Tabela cg_cadastros · fotos no bucket dev-fotos, pasta cadastro_grade/
+const CG_BUCKET=FT_BUCKET, CG_SQL='controle_mercadoria_V1.17_cadastro_grade.sql';
+const CG_ST={'AGUARDANDO CADASTRO':['t-ylw','Aguard. cadastro'],'EM CADASTRO':['t-acc','Em cadastro'],'CONCLUIDO':['t-grn','Concluído'],'CANCELADO':['t-red','Cancelado']};
+let CGS=[], CG_F='ABERTOS', CG_CUR=null, CG_NEW={fotos:[],comp:[],ean:''}, _cgUp=0, _cgSaving=false;
+function cgTag(s){ const t=CG_ST[s]||['t-mut',s]; return `<span class="tag ${t[0]}">${esc(t[1])}</span>`; }
+function cgSemTabela(e){ return /cg_cadastros|schema cache|does not exist/i.test((e&&e.message)||''); }
+function cgErr(e){ return cgSemTabela(e)?'Rode o script '+CG_SQL+' no Supabase':((e&&e.message)||String(e)); }
+function cgCompTot(c){ return (c||[]).reduce((s,x)=>s+(Number(x.qtd)||0),0); }
+function cgCompTxt(c){ return (c||[]).map(x=>x.tam+': '+x.qtd).join(' · '); }
+function cgCompSort(c){ c.sort((a,b)=>(parseFloat(a.tam)||0)-(parseFloat(b.tam)||0)||String(a.tam).localeCompare(String(b.tam))); }
+function cgView(v){ ['list','new','det'].forEach(x=>$('cg-'+x+'-view').classList.toggle('hide',x!==v)); }
+async function cgPill(){
+  try{ const {count,error}=await getSB().from('cg_cadastros').select('id',{count:'exact',head:true}).in('status',['AGUARDANDO CADASTRO','EM CADASTRO']);
+    if(error) return; const p=$('cg-pill'); p.textContent=count||0; p.classList.toggle('hide',!count); }catch(e){}
+}
+async function cgCarregar(){
+  if(!CGS.length) $('cg-list').innerHTML='<div class="card"><div class="empty">Carregando...</div></div>';
+  try{ const {data,error}=await getSB().from('cg_cadastros').select('*').order('criado_em',{ascending:false}).limit(1000); if(error) throw error; CGS=data||[]; }
+  catch(e){ CGS=[]; $('cg-list').innerHTML='<div class="card"><div class="empty c-red">'+esc(cgErr(e))+'</div></div>'; return; }
+  renderCgList(); cgPill();
+}
+function cgFiltro(f){ CG_F=f; document.querySelectorAll('#cg-chips .chip').forEach(c=>c.classList.toggle('on',c.dataset.f===f)); renderCgList(); }
+function renderCgList(){
+  const q=$('cg-q').value.trim().toUpperCase();
+  let L=CGS.filter(c=>CG_F==='TODOS'||(CG_F==='ABERTOS'?(c.status==='AGUARDANDO CADASTRO'||c.status==='EM CADASTRO'):c.status===CG_F));
+  if(q) L=CGS.filter(c=>[c.descricao,c.descricao_final,c.marca,c.cor,c.ean_bipado,c.novo_ean,c.cod_produto,c.criado_por,'#'+c.id].some(x=>String(x||'').toUpperCase().includes(q)));
+  $('cg-list').innerHTML=L.length?L.map(c=>{ const f=(c.fotos||[])[0];
+    return `<div class="dcard cgc ${esc(c.status||'')}" onclick="cgAbrir(${c.id})">
+      ${f?`<img class="cg-th" src="${esc(f.url)}" loading="lazy" alt="">`:'<div class="cg-th none">📷</div>'}
+      <div style="flex:1;min-width:0">
+        <div class="dc-top"><div class="dc-nf">${esc(cut(c.descricao_final||c.descricao||'Sem descrição',60))}</div>${cgTag(c.status)}</div>
+        <div class="dc-l">#${c.id} · ${esc(c.marca||'—')}${c.cor?' · '+esc(c.cor):''} · <b>${fmt(c.total_pares)} pares</b></div>
+        <div class="dc-l">${esc(cut(cgCompTxt(c.composicao),90))}</div>
+        <div class="dc-l">📅 ${fmtDT(c.criado_em)} · ${esc(c.criado_por||'')}${c.novo_ean?` · <b class="c-grn">EAN ${esc(c.novo_ean)}</b>`:''}</div>
+      </div></div>`; }).join(''):`<div class="card"><div class="empty">Nenhum cadastro ${q?'encontrado':'neste filtro'}</div></div>`;
+}
+function cgVoltar(){
+  if(!$('cg-new-view').classList.contains('hide')&&(CG_NEW.fotos.length||CG_NEW.comp.length||$('cg-desc').value.trim())&&!confirm('Descartar o cadastro em digitação?')) return;
+  cgLimpaNovo(); CG_CUR=null; cgView('list'); cgCarregar();
+}
+
+// ── novo ──
+function cgLimpaNovo(){
+  CG_NEW.fotos.forEach(f=>URL.revokeObjectURL(f.url)); CG_NEW={fotos:[],comp:[],ean:''};
+  ['cg-ean','cg-desc','cg-marca','cg-cor','cg-tam','cg-qtd','cg-obs','cg-de','cg-ate','cg-qq'].forEach(id=>$(id).value='');
+  $('cg-ean-info').innerHTML=''; renderCgNewFotos(); renderCgComp();
+}
+function cgNova(){ cgLimpaNovo(); CG_CUR=null; cgView('new'); focusLater('cg-ean'); }
+async function cgEanBuscar(){
+  const raw=$('cg-ean').value.trim();
+  if(!raw){ CG_NEW.ean=''; $('cg-ean-info').innerHTML=''; return; }
+  if(!isCode(raw)){ beep(false); CG_NEW.ean=''; $('cg-ean-info').innerHTML='<div class="cg-msg err">Código inválido (8 a 14 dígitos)</div>'; $('cg-ean').select(); return; }
+  const g=normG(raw); CG_NEW.ean=g; $('cg-ean').value=g;
+  $('cg-ean-info').innerHTML='<div class="cg-msg ok">Consultando...</div>';
+  const gr=await gradeGet(g), p=await lookupProd(g);
+  const ab=CGS.find(c=>c.ean_bipado===g&&c.status!=='CANCELADO');
+  let h='';
+  if(gr) h=`<div class="cg-msg warn">⚠ Este código já tem grade cadastrada: <b>${esc(gr.descr)}</b>${gr.pares?' · '+fmt(gr.pares)+' pares':''}. Siga apenas se for uma grade nova.</div>`;
+  else if(p.found) h=`<div class="cg-msg ok">Produto: <b>${esc(p.descr)}</b> — sem grade cadastrada</div>`;
+  else h='<div class="cg-msg ok">Código não cadastrado — siga com as fotos e a composição</div>';
+  if(ab) h+=`<div class="cg-msg warn">Já existe a solicitação <b>#${ab.id}</b> (${esc((CG_ST[ab.status]||[0,ab.status])[1])}) para este código.</div>`;
+  $('cg-ean-info').innerHTML=h;
+  if(p.found&&!$('cg-desc').value.trim()) $('cg-desc').value=p.descr;
+  if(p.marca&&!$('cg-marca').value.trim()) $('cg-marca').value=p.marca;
+  beep(!gr&&!ab);
+}
+async function cgFotoAdd(inp){
+  const files=[...inp.files]; inp.value='';
+  for(const f of files){ try{ const b=await fotoReduz(f); CG_NEW.fotos.push({blob:b,url:URL.createObjectURL(b)}); }catch(e){ toast(e.message||String(e),1); } }
+  renderCgNewFotos();
+}
+function renderCgNewFotos(){
+  $('cg-fotos-new').innerHTML=CG_NEW.fotos.length?CG_NEW.fotos.map((f,i)=>`<div class="ft-th"><img src="${f.url}" alt=""><button class="cg-fx" onclick="cgFotoRem(${i})">✕</button></div>`).join(''):'<div class="empty">Nenhuma foto — use 📷 Tirar foto</div>';
+}
+function cgFotoRem(i){ const f=CG_NEW.fotos.splice(i,1)[0]; if(f) URL.revokeObjectURL(f.url); renderCgNewFotos(); }
+function cgCompAdd(){
+  const t=$('cg-tam').value.trim().toUpperCase().replace(/\s+/g,''), q=parseInt($('cg-qtd').value);
+  if(!t){ focusLater('cg-tam'); return; }
+  if(!(q>0)){ toast('Informe a quantidade de pares do tamanho '+t,1); focusLater('cg-qtd'); return; }
+  const ex=CG_NEW.comp.find(x=>x.tam===t); if(ex) ex.qtd=q; else CG_NEW.comp.push({tam:t,qtd:q});
+  cgCompSort(CG_NEW.comp); $('cg-tam').value=''; $('cg-qtd').value=''; renderCgComp(); focusLater('cg-tam');
+}
+function cgCompGerar(){
+  const de=parseInt($('cg-de').value), ate=parseInt($('cg-ate').value), q=parseInt($('cg-qq').value)||1;
+  if(!(de>0&&ate>=de&&ate-de<=40)){ toast('Informe a faixa de tamanhos (de / até)',1); return; }
+  for(let t=de;t<=ate;t++){ const s=String(t), ex=CG_NEW.comp.find(x=>x.tam===s); if(ex) ex.qtd=q; else CG_NEW.comp.push({tam:s,qtd:q}); }
+  cgCompSort(CG_NEW.comp); renderCgComp();
+}
+function cgCompQtd(i,d){ const x=CG_NEW.comp[i]; if(!x) return; x.qtd=Math.max(0,x.qtd+d); if(!x.qtd) CG_NEW.comp.splice(i,1); renderCgComp(); }
+function cgCompDel(i){ CG_NEW.comp.splice(i,1); renderCgComp(); }
+function cgCompTbl(c,edit){
+  if(!c||!c.length) return '<div class="empty">Nenhum tamanho informado</div>';
+  return `<div class="cg-grade">${c.map((x,i)=>`<div class="cg-cel"><div class="cg-t">TAM ${esc(x.tam)}</div><div class="cg-q">${fmt(x.qtd)}</div>${edit?`<div class="cg-bt"><button onclick="cgCompQtd(${i},-1)">−</button><button onclick="cgCompQtd(${i},1)">+</button><button onclick="cgCompDel(${i})">✕</button></div>`:''}</div>`).join('')}</div>
+    <div class="cg-tot">Total: <b>${fmt(cgCompTot(c))}</b> pares · ${c.length} tamanho(s)</div>`;
+}
+function renderCgComp(){ $('cg-comp').innerHTML=cgCompTbl(CG_NEW.comp,true); }
+async function cgUploadFoto(sb,id,blob){
+  const path=`cadastro_grade/cg_${id}/${Date.now()}_${Math.random().toString(36).slice(2,8)}.jpg`;
+  const {error}=await sb.storage.from(CG_BUCKET).upload(path,blob,{contentType:'image/jpeg',upsert:false}); if(error) throw error;
+  return {path,url:sb.storage.from(CG_BUCKET).getPublicUrl(path).data.publicUrl,por:CU.name,em:new Date().toISOString()};
+}
+async function cgSalvar(){
+  if(_cgSaving) return;
+  const rawE=$('cg-ean').value.trim();
+  if(rawE&&!CG_NEW.ean){ if(!isCode(rawE)){ beep(false); return toast('Código de barras inválido',1); } CG_NEW.ean=normG(rawE); }
+  if(!rawE) CG_NEW.ean='';
+  if($('cg-tam').value.trim()&&$('cg-qtd').value.trim()) cgCompAdd();
+  const desc=$('cg-desc').value.trim();
+  if(!CG_NEW.fotos.length){ beep(false); return toast('Anexe ao menos uma foto do produto',1); }
+  if(!desc){ beep(false); toast('Informe a descrição / referência',1); return focusLater('cg-desc'); }
+  if(!CG_NEW.comp.length){ beep(false); toast('Informe a composição da grade',1); return focusLater('cg-tam'); }
+  if(!confirm(`Enviar para cadastro?\n\n${desc}\nGrade: ${cgCompTxt(CG_NEW.comp)}\nTotal: ${cgCompTot(CG_NEW.comp)} pares · ${CG_NEW.fotos.length} foto(s)`)) return;
+  const btn=$('cg-ok'), sb=getSB(); btn.disabled=true; _cgSaving=true; let novo=null; const fotos=[]; let falhas=0;
+  try{
+    btn.textContent='Gravando...';
+    const row={status:'AGUARDANDO CADASTRO',ean_bipado:CG_NEW.ean||null,descricao:desc,marca:$('cg-marca').value.trim()||null,cor:$('cg-cor').value.trim()||null,
+      composicao:CG_NEW.comp,total_pares:cgCompTot(CG_NEW.comp),obs:$('cg-obs').value.trim()||null,criado_por:CU.name,fotos:[]};
+    const {data,error}=await sb.from('cg_cadastros').insert(row).select().single(); if(error) throw error; novo=data;
+    let i=0;
+    for(const f of CG_NEW.fotos){ i++; btn.textContent=`Enviando foto ${i}/${CG_NEW.fotos.length}...`;
+      try{ fotos.push(await cgUploadFoto(sb,novo.id,f.blob)); }catch(e){ falhas++; console.warn(e); } }
+    if(fotos.length){ const {error:e2}=await sb.from('cg_cadastros').update({fotos}).eq('id',novo.id); if(e2) throw e2; }
+    if(falhas){ beep(false); toast(`Cadastro #${novo.id} gravado, mas ${falhas} foto(s) falharam — anexe novamente`,1,6000); }
+    else { beep(true); toast('✓ Cadastro #'+novo.id+' enviado'); }
+    cgLimpaNovo(); await cgCarregar(); cgAbrir(novo.id);
+  }catch(e){ beep(false); toast('Erro: '+cgErr(e),1,6000); if(novo){ cgLimpaNovo(); await cgCarregar(); cgAbrir(novo.id); } }
+  finally{ btn.disabled=false; btn.textContent='✓ Enviar para cadastro'; _cgSaving=false; }
+}
+
+// ── detalhe ──
+async function cgAbrir(id){
+  let c=CGS.find(x=>x.id===id);
+  try{ const {data}=await getSB().from('cg_cadastros').select('*').eq('id',id).single(); if(data){ c=data; const i=CGS.findIndex(x=>x.id===id); if(i>=0) CGS[i]=data; else CGS.unshift(data); } }catch(e){}
+  if(!c) return toast('Registro não encontrado',1);
+  CG_CUR=c; cgView('det'); renderCgDet(true);
+}
+function cgPodeEditar(c){ return c&&c.status!=='CONCLUIDO'&&c.status!=='CANCELADO'; }
+function renderCgDet(preenche){
+  const c=CG_CUR, adm=isAdm(), aberto=cgPodeEditar(c);
+  $('cg-d-ttl').textContent='Cadastro de grade #'+c.id;
+  $('cg-d-st').innerHTML=cgTag(c.status);
+  const ord=['AGUARDANDO CADASTRO','EM CADASTRO','CONCLUIDO'], at=ord.indexOf(c.status);
+  $('cg-d-flow').innerHTML=c.status==='CANCELADO'?'<span class="on" style="background:var(--red);border-color:var(--red)">Cancelado</span>':
+    ['Solicitado','Em cadastro','Concluído'].map((l,i)=>`<span class="${i<at||c.status==='CONCLUIDO'?'done':i===at?'on':''}">${i+1}. ${l}</span>`).join('');
+  const f=(l,v,full)=>v?`<div ${full?'style="grid-column:1/-1"':''}><div class="il">${l}</div><div class="iv">${v}</div></div>`:'';
+  $('cg-d-info').innerHTML=f('Descrição / referência',esc(c.descricao),true)+
+    f('Descrição final',c.descricao_final&&c.descricao_final!==c.descricao?esc(c.descricao_final):'',true)+
+    f('Marca / fabricante',esc(c.marca))+f('Cor',esc(c.cor))+
+    f('Código bipado',c.ean_bipado?'<span class="mono" style="font-size:14px">'+esc(c.ean_bipado)+'</span>':'')+
+    f('Total da grade',fmt(c.total_pares)+' pares')+
+    f('Novo código de barras',c.novo_ean?'<b class="c-grn mono" style="font-size:16px">'+esc(c.novo_ean)+'</b>':'')+
+    f('Código do produto',esc(c.cod_produto))+
+    f('Solicitado',fmtDT(c.criado_em)+' · '+esc(c.criado_por||''))+
+    f('Em cadastro',c.iniciado_em?fmtDT(c.iniciado_em)+' · '+esc(c.iniciado_por||''):'')+
+    f('Concluído',c.concluido_em?fmtDT(c.concluido_em)+' · '+esc(c.concluido_por||''):'')+
+    f('Cancelado',c.status==='CANCELADO'&&c.cancelado_em?fmtDT(c.cancelado_em)+' · '+esc(c.cancelado_por||'')+(c.motivo_cancel?' — '+esc(c.motivo_cancel):''):'',true)+
+    f('Observação',esc(c.obs),true);
+  $('cg-d-comp').innerHTML=cgCompTbl(c.composicao,false);
+  $('cg-d-fbtn').classList.toggle('hide',!aberto);
+  renderCgDetFotos();
+  $('cg-d-adm').classList.toggle('hide',!adm||!aberto);
+  if(adm&&aberto){
+    $('cg-d-ini').classList.toggle('hide',c.status!=='AGUARDANDO CADASTRO');
+    if(preenche){ $('cg-d-novo').value=c.novo_ean||''; $('cg-d-cod').value=c.cod_produto||''; $('cg-d-descf').value=c.descricao_final||c.descricao||''; $('cg-d-pares').value=c.pares_final||c.total_pares||''; $('cg-d-fab').value=c.marca||''; $('cg-d-grd').checked=true; }
+  }
+  const dono=CU&&c.criado_por===CU.name;
+  $('cg-d-cancel').classList.toggle('hide',!(adm||(dono&&c.status==='AGUARDANDO CADASTRO')));
+  $('cg-d-cancel').textContent=aberto?'⊘ Cancelar solicitação':'↺ Reabrir';
+}
+function renderCgDetFotos(){
+  const F=CG_CUR.fotos||[];
+  $('cg-d-fn').textContent=F.length?'· '+F.length:'';
+  $('cg-d-fotos').innerHTML=(F.map((f,i)=>`<div class="ft-th" onclick="cgFotoVer(${i})"><img loading="lazy" src="${esc(f.url)}" alt=""><div class="ft-inf">${esc(f.por||'')}${f.em?' · '+fmtDT(f.em):''}</div></div>`).join('')+
+    Array.from({length:_cgUp},()=>'<div class="ft-th up">Enviando...</div>').join(''))||'<div class="empty">Nenhuma foto</div>';
+}
+async function cgDetFotoAdd(inp){
+  const files=[...inp.files]; inp.value=''; if(!files.length||!CG_CUR) return;
+  const id=CG_CUR.id, sb=getSB(); let ok=0; const err=[];
+  _cgUp=files.length; renderCgDetFotos();
+  for(const f of files){
+    try{ const b=await fotoReduz(f); const ft=await cgUploadFoto(sb,id,b);
+      const {data:cur}=await sb.from('cg_cadastros').select('fotos').eq('id',id).single();
+      const fotos=[...((cur&&cur.fotos)||[]),ft];
+      const {error}=await sb.from('cg_cadastros').update({fotos}).eq('id',id); if(error) throw error;
+      if(CG_CUR&&CG_CUR.id===id) CG_CUR.fotos=fotos; ok++;
+    }catch(e){ err.push(cgErr(e)); }
+    _cgUp--; if(CG_CUR&&CG_CUR.id===id) renderCgDetFotos();
+  }
+  if(err.length){ beep(false); toast('Erro na foto: '+err[0],1,5000); } else { beep(true); toast('✓ '+ok+' foto(s) salva(s)'); }
+}
+function cgFotoVer(i){
+  const F=CG_CUR.fotos||[], f=F[i]; if(!f) return;
+  $('ft-img').src=f.url; $('ft-dl').href=f.url; $('ft-ttl').textContent='Foto '+(i+1)+'/'+F.length+(f.por?' · '+f.por:'')+(f.em?' · '+fmtDT(f.em):'');
+  const pode=cgPodeEditar(CG_CUR)&&(isAdm()||(CU&&f.por===CU.name))&&F.length>1;
+  $('ft-del').classList.toggle('hide',!pode); $('ft-del').onclick=()=>cgFotoExcluir(f.path);
+  $('ft-ovl').classList.remove('hide');
+}
+async function cgFotoExcluir(path){
+  if(!CG_CUR||!confirm('Excluir esta foto?')) return;
+  const sb=getSB(), fotos=(CG_CUR.fotos||[]).filter(x=>x.path!==path);
+  const {error}=await sb.from('cg_cadastros').update({fotos}).eq('id',CG_CUR.id); if(error) return toast('Erro: '+error.message,1);
+  try{ await sb.storage.from(CG_BUCKET).remove([path]); }catch(e){}
+  CG_CUR.fotos=fotos; $('ft-ovl').classList.add('hide'); renderCgDetFotos(); toast('Foto excluída');
+}
+async function cgUpd(patch,msg){
+  const {data,error}=await getSB().from('cg_cadastros').update(patch).eq('id',CG_CUR.id).select().single();
+  if(error){ beep(false); toast('Erro: '+cgErr(error),1,5000); return false; }
+  CG_CUR=data; const i=CGS.findIndex(x=>x.id===data.id); if(i>=0) CGS[i]=data;
+  beep(true); if(msg) toast(msg); renderCgDet(true); cgPill(); return true;
+}
+async function cgIniciar(){ if(isAdm()) await cgUpd({status:'EM CADASTRO',iniciado_em:new Date().toISOString(),iniciado_por:CU.name},'▶ Cadastro iniciado'); focusLater('cg-d-novo'); }
+async function cgFinalizar(){
+  if(!isAdm()||!CG_CUR) return;
+  const raw=$('cg-d-novo').value.trim();
+  if(!isCode(raw)){ beep(false); toast('Informe o novo código de barras (8 a 14 dígitos)',1); return focusLater('cg-d-novo'); }
+  const g=normG(raw), c=CG_CUR, now=new Date().toISOString();
+  const descf=$('cg-d-descf').value.trim()||c.descricao, pares=parseInt($('cg-d-pares').value)||c.total_pares, fab=$('cg-d-fab').value.trim(), cod=$('cg-d-cod').value.trim(), incl=$('cg-d-grd').checked;
+  const dup=CGS.find(x=>x.id!==c.id&&x.novo_ean===g&&x.status==='CONCLUIDO');
+  if(dup&&!confirm(`O código ${g} já foi usado no cadastro #${dup.id}. Continuar mesmo assim?`)) return;
+  if(incl){ delete GRADE[g]; const gr=await gradeGet(g); if(gr&&!confirm(`O código ${g} já existe no cadastro de grade:\n${gr.descr} · ${gr.pares??'—'} pares\n\nSobrescrever com esta grade?`)) return; }
+  if(!confirm(`Finalizar o cadastro #${c.id}?\n\nNovo EAN: ${g}\n${descf}\n${pares} pares`)) return;
+  const btn=$('cg-d-fin'); btn.disabled=true;
+  try{
+    if(incl){ const {error}=await getSB().from('est_grade').upsert({gtin:g,descricao:descf,pares,fabricante:fab,atualizado_em:now},{onConflict:'gtin'}); if(error) throw error; GRADE[g]={descr:descf,pares,fab}; }
+    const patch={status:'CONCLUIDO',novo_ean:g,cod_produto:cod||null,descricao_final:descf,pares_final:pares,concluido_em:now,concluido_por:CU.name};
+    if(!c.iniciado_em){ patch.iniciado_em=now; patch.iniciado_por=CU.name; }
+    await cgUpd(patch,'✓ Cadastro concluído'+(incl?' e incluído na grade':''));
+  }catch(e){ beep(false); toast('Erro: '+cgErr(e),1,5000); }
+  finally{ btn.disabled=false; }
+}
+async function cgCancelar(){
+  const c=CG_CUR; if(!c) return;
+  if(!cgPodeEditar(c)){
+    if(!isAdm()||!confirm('Reabrir esta solicitação?'+(c.status==='CONCLUIDO'&&c.novo_ean?`\n\nO código ${c.novo_ean} continua no cadastro de grade.`:''))) return;
+    return cgUpd({status:c.iniciado_em?'EM CADASTRO':'AGUARDANDO CADASTRO',concluido_em:null,concluido_por:null,cancelado_em:null,cancelado_por:null,motivo_cancel:null},'↺ Solicitação reaberta');
+  }
+  const m=prompt('Motivo do cancelamento:'); if(m===null) return;
+  return cgUpd({status:'CANCELADO',cancelado_em:new Date().toISOString(),cancelado_por:CU.name,motivo_cancel:m.trim()||null},'Solicitação cancelada');
+}
+async function cgExcluir(){
+  if(!isAdm()||!CG_CUR) return; const c=CG_CUR;
+  if(!confirm(`Excluir DEFINITIVAMENTE o cadastro #${c.id} e suas ${(c.fotos||[]).length} foto(s)? Não dá para desfazer.`)) return;
+  const sb=getSB();
+  try{
+    const paths=(c.fotos||[]).map(f=>f.path).filter(Boolean);
+    if(paths.length){ try{ await sb.storage.from(CG_BUCKET).remove(paths); }catch(e){} }
+    const {error}=await sb.from('cg_cadastros').delete().eq('id',c.id); if(error) throw error;
+    CGS=CGS.filter(x=>x.id!==c.id); beep(true); toast('✓ Cadastro excluído'); CG_CUR=null; cgView('list'); cgCarregar();
+  }catch(e){ beep(false); toast('Erro ao excluir: '+cgErr(e),1,5000); }
+}
+function cgExport(){
+  if(!CGS.length) return toast('Nada para exportar',1);
+  const aoa=[['Nº','STATUS','DESCRICAO','DESCRICAO FINAL','MARCA','COR','EAN BIPADO','NOVO EAN','COD PRODUTO','GRADE','TOTAL PARES','PARES FINAL','FOTOS','OBS','SOLICITADO EM','SOLICITADO POR','INICIADO POR','CONCLUIDO EM','CONCLUIDO POR','MOTIVO CANCEL.']];
+  CGS.forEach(c=>aoa.push([c.id,(CG_ST[c.status]||[0,c.status])[1],c.descricao||'',c.descricao_final||'',c.marca||'',c.cor||'',c.ean_bipado||'',c.novo_ean||'',c.cod_produto||'',cgCompTxt(c.composicao),c.total_pares||0,c.pares_final||'',(c.fotos||[]).map(f=>f.url).join(' '),c.obs||'',fmtDT(c.criado_em),c.criado_por||'',c.iniciado_por||'',fmtDT(c.concluido_em),c.concluido_por||'',c.motivo_cancel||'']));
+  const tam=[['Nº','DESCRICAO','NOVO EAN','TAMANHO','PARES']];
+  CGS.forEach(c=>(c.composicao||[]).forEach(x=>tam.push([c.id,c.descricao_final||c.descricao||'',c.novo_ean||'',x.tam,x.qtd])));
+  xlsxSave([['Cadastros',aoa,[6,16,40,40,16,12,16,16,14,40,10,10,30,30,17,18,18,17,18,24]],['Grade por tamanho',tam,[6,40,16,10,8]]],'cadastro_grade');
+}
+
 // ═════════════════════ EXPORTAÇÕES ═════════════════════
 function xlsxSave(sheets,nome){
   if(typeof XLSX==='undefined') return toast('Biblioteca Excel não carregou',1);
@@ -2683,6 +3077,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   onEnter('dn-venda',()=>dnVendaBuscar());
   onEnter('tr-end',trEndInfo); $('tr-end').addEventListener('blur',trEndInfo);
   onEnter('num-inp',confirmNum);
+  onEnter('cg-ean',cgEanBuscar);
+  onEnter('cg-tam',()=>$('cg-qtd').focus());
+  onEnter('cg-qtd',cgCompAdd);
+  onEnter('cg-d-novo',()=>$('cg-d-cod').focus());
   onEnter('tr-qtd',()=>{});
   initApp();
 });
