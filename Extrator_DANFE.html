@@ -390,6 +390,13 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
   border:1px solid var(--borda); border-radius:8px; padding:8px 10px; white-space:pre-wrap; display:none; }
 .doc-sql { font-size:11px; background:#1e1e2e; color:#e0e0e0; padding:10px; border-radius:8px; white-space:pre; overflow:auto; max-height:200px; }
 
+/* ── CLASSIFICAÇÃO PROTHEUS (V3.4) ── */
+.px-ok   { display:inline-block; padding:2px 7px; border-radius:10px; font-size:10.5px; font-weight:700; background:#d4edda; color:#155724; white-space:nowrap; }
+.px-pend { display:inline-block; padding:2px 7px; border-radius:10px; font-size:10.5px; font-weight:700; background:#fff3cd; color:#856404; white-space:nowrap; }
+.px-tot-ok { color:#1e7e34; font-weight:700; }
+.px-tot-pend { color:#b8860b; font-weight:700; }
+.carreta-item .px-flag { margin-left:auto; font-size:11px; }
+
 /* ── MENU MAIS AÇÕES (V3.2) ── */
 .acoes-wrap { position:relative; display:inline-block; }
 .acoes-menu { display:none; position:absolute; left:0; bottom:calc(100% + 6px); min-width:240px; background:white;
@@ -493,6 +500,7 @@ tr.nf-hl td { background:#fff6c7 !important; transition:background .3s; }
       <div style="display:flex;gap:4px">
         <button onclick="abrirAbaCarregar()">+ Nova</button>
         <button onclick="abrirImportador()" title="Importar Planilha Base (.xlsx)" style="background:var(--laranja)">📥</button>
+        <button onclick="abrirModalProtheus()" title="Importar classificação do Protheus (.csv)" style="background:#1e7e34">🧾</button>
       </div>
     </div>
     <div class="tree" id="sidebarTree">
@@ -653,6 +661,32 @@ tr.nf-hl td { background:#fff6c7 !important; transition:background .3s; }
   </div>
 </div>
 
+<!-- MODAL CLASSIFICAÇÃO PROTHEUS (V3.4) -->
+<div class="alt-overlay" id="pxOverlay">
+  <div class="alt-modal" style="width:580px">
+    <div class="alt-modal-header">
+      🧾 Importar classificação do Protheus
+      <button class="close-btn" onclick="fecharModalProtheus()">✕</button>
+    </div>
+    <div class="alt-modal-body">
+      <div id="pxSetup" style="display:none"></div>
+      <div class="doc-drop" id="pxDrop" onclick="document.getElementById('pxInput').click()">
+        <div style="font-size:26px">📂</div>
+        <b>Clique ou arraste o CSV exportado do Protheus</b><br>
+        <span style="font-size:11px;color:#888">Arquivo qry001_*.csv (FILIAL; NOTA_FISCAL; SERIE; … DATA_DIGITACAO; VALOR_BRUTO).
+        Toda NF de carreta que constar no arquivo fica marcada como <b>classificada</b>.</span>
+      </div>
+      <input type="file" id="pxInput" accept=".csv,text/csv,.txt" style="display:none"
+        onchange="importarProtheus(this.files[0]);this.value=''">
+      <div class="alt-modal-info" id="pxInfo"></div>
+      <div class="doc-log" id="pxLog"></div>
+    </div>
+    <div class="alt-modal-footer">
+      <button class="btn btn-ghost" onclick="fecharModalProtheus()">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL EDITAR CABEÇALHO DA CARRETA (V3.3) -->
 <div class="alt-overlay" id="edOverlay">
   <div class="alt-modal ed-modal">
@@ -716,7 +750,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 // ════════════════════════════════════════════════════════════════════════════
 // ── VERSÃO — atualizar a cada deploy no GitHub ─────────────────────────────
 // ════════════════════════════════════════════════════════════════════════════
-const APP_VERSION     = 'V3.3';               // ← atualizar a cada deploy
+const APP_VERSION     = 'V3.4';               // ← atualizar a cada deploy
 const GITHUB_REPO     = 'Avacydistribuidora/expedicao-avacy';
 const GITHUB_FILE     = 'Extrator_DANFE.html';
 
@@ -930,7 +964,7 @@ function renderSidebar() {
         <div class="carretas-list ${mesAberto?'open':''}">`;
       for (const c of items) {
         html += `<div class="carreta-item" data-id="${c.id}" onclick="selecionarCarreta('${c.id}')">
-          <span class="icon">🚛</span> ${c.num}ª Carreta
+          <span class="icon">🚛</span> ${c.num}ª Carreta${pxFlagSidebar(c)}
         </div>`;
       }
       html += `</div></div>`;
@@ -993,7 +1027,7 @@ function renderDetalheCarreta(c) {
 
   let html = `
   <div class="stats-grid">
-    <div class="stat-card"><div class="label">NFs</div><div class="value">${c.nfs.length}</div><div class="sub">notas fiscais</div></div>
+    <div class="stat-card"><div class="label">NFs</div><div class="value">${c.nfs.length}</div><div class="sub">${pxSubCard(c)}</div></div>
     <div class="stat-card laranja"><div class="label">Caixas</div><div class="value">${totCx.toLocaleString('pt-BR')}</div><div class="sub">${totPar.toLocaleString('pt-BR')} pares</div></div>
     <div class="stat-card verde"><div class="label">Valor Total NFs</div><div class="value">R$ ${totVal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
     <div class="stat-card vermelho"><div class="label">Frete</div><div class="value">R$ ${frete.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="sub">${c.transportadora||'—'}</div></div>
@@ -1014,7 +1048,7 @@ function renderDetalheCarreta(c) {
     <table>
       <thead><tr>
         <th>#</th><th>ORIGEM</th><th>FORNECEDOR</th><th>DT FATURAMENTO</th>
-        <th>QTDS CAIXAS</th><th>QTDS PARES</th><th>VALOR NF</th><th>VLM M³</th><th>PESO KG</th><th>NF</th><th>REMESSA</th><th>ARQUIVOS</th>
+        <th>QTDS CAIXAS</th><th>QTDS PARES</th><th>VALOR NF</th><th>VLM M³</th><th>PESO KG</th><th>NF</th><th>REMESSA</th><th>PROTHEUS</th><th>ARQUIVOS</th>
       </tr></thead>
       <tbody>
   `;
@@ -1032,6 +1066,7 @@ function renderDetalheCarreta(c) {
       <td style="font-size:11px">${nf.peso!=null?nf.peso.toLocaleString('pt-BR',{maximumFractionDigits:3}):''}</td>
       <td><b>${nf.nfRaw||nf.nf||''}</b></td>
       <td style="font-size:11px">${nf.remessa||''}</td>
+      <td>${pxBadge(nf.nf)}</td>
       <td style="white-space:nowrap">${docIcons(nf.nf)}</td>
     </tr>`;
   });
@@ -1045,6 +1080,7 @@ function renderDetalheCarreta(c) {
       <td>${c.volM3||''}</td>
       <td>${totPeso>0?totPeso.toLocaleString('pt-BR',{maximumFractionDigits:3}):''}</td>
       <td>${c.nfs.length} NFs</td><td></td>
+      <td style="font-size:11px;white-space:nowrap">${pxResumoHtml(c)}</td>
       <td style="font-size:11px;white-space:nowrap">${docResumo(c)}</td>
     </tr></tfoot>
     </table></div>
@@ -1059,6 +1095,7 @@ function renderDetalheCarreta(c) {
         <button onclick="fecharAcoes();abrirModalEditar('${c.id}')">📝 Editar cabeçalho (frete, datas…)</button>
         <button onclick="fecharAcoes();abrirModalAlterar('${c.id}')">✏️ Alterar Nº da carreta</button>
         <button onclick="fecharAcoes();abrirModalDocs()">📎 Importar XML / DANFE</button>
+        <button onclick="fecharAcoes();abrirModalProtheus()">🧾 Importar classificação Protheus (.csv)</button>
         <button onclick="fecharAcoes();preencherRemessasCarreta()">🔄 Preencher Remessas</button>
         <div class="sep"></div>
         <button class="del" onclick="fecharAcoes();excluirCarreta('${c.id}')">🗑️ Excluir carreta</button>
@@ -1753,7 +1790,7 @@ function renderResumo() {
     <div class="table-wrap"><table>
       <thead><tr>
         <th>#</th><th>DATA PROG.</th><th>TRANSPORTADORA</th><th>NFs</th>
-        <th>CAIXAS</th><th>PARES</th><th>VALOR NFs</th><th>FRETE</th><th>%</th>
+        <th>CAIXAS</th><th>PARES</th><th>VALOR NFs</th><th>FRETE</th><th>%</th><th>PROTHEUS</th>
       </tr></thead><tbody>`;
 
   for (const c of carretas) {
@@ -1768,6 +1805,7 @@ function renderResumo() {
       <td>R$ ${(c.totalValor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
       <td>R$ ${(c.frete||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
       <td>${pct}</td>
+      <td style="font-size:11.5px;white-space:nowrap">${pxResumoHtml(c)}</td>
     </tr>`;
   }
 
@@ -1777,6 +1815,7 @@ function renderResumo() {
     <td>R$ ${totVal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
     <td>R$ ${totFrete.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
     <td><b>${totVal>0?(totFrete/totVal*100).toFixed(3)+'%':'—'}</b></td>
+    <td style="font-size:11.5px;white-space:nowrap">${pxResumoTotal(carretas)}</td>
   </tr></tfoot></table></div>
   </div>`;
 
@@ -2287,8 +2326,213 @@ function abrirResultadoPesquisa(i) {
 }
 document.addEventListener('click', e => { if (!e.target.closest('#gsearch')) document.getElementById('gsRes')?.classList.remove('open'); });
 
-initDB().then(() => { renderSidebar(); showTab('tab-resumo'); renderResumo(); carregarDocs(); });
+initDB().then(() => { renderSidebar(); showTab('tab-resumo'); renderResumo(); carregarDocs(); carregarProtheus(); });
 checkVersion();
+
+
+// ════════════════════════════════════════════════════════════════════════
+// ── CLASSIFICAÇÃO NO PROTHEUS (V3.4) ─────────────────────────────────────
+// Importa o CSV exportado do Protheus (qry001_*.csv — SF1: FILIAL;NOTA_FISCAL;
+// SERIE;COD_FORNECEDOR;LOJA;NOME_FORNECEDOR;DATA_EMISSAO;DATA_DIGITACAO;VALOR_BRUTO)
+// e marca como "classificada" toda NF da carreta que aparecer no arquivo.
+// Índice fica na tabela "nf_protheus" (fallback: localStorage).
+// ════════════════════════════════════════════════════════════════════════
+let pxMap = new Map();   // nf (número) → {serie, filial, loja, dt_emissao, dt_digitacao, valor}
+let pxOk  = null;        // null = não verificado, true = tabela pronta, false = falta criar
+const PX_LS = 'fob_nf_protheus';
+
+const PX_SQL = `-- Rode UMA vez no Supabase → SQL Editor
+create table if not exists nf_protheus (
+  nf bigint primary key, serie text, filial text, loja text,
+  dt_emissao text, dt_digitacao text, valor numeric,
+  atualizado_em timestamptz default now()
+);
+alter table nf_protheus enable row level security;
+create policy "allow_all" on nf_protheus for all using (true) with check (true);`;
+
+function pxSalvarLocal() {
+  try { localStorage.setItem(PX_LS, JSON.stringify([...pxMap.entries()])); } catch {}
+}
+function pxCarregarLocal() {
+  try { pxMap = new Map(JSON.parse(localStorage.getItem(PX_LS) || '[]')); } catch { pxMap = new Map(); }
+}
+
+async function carregarProtheus() {
+  if (!db) { pxOk = false; pxCarregarLocal(); pxRerender(); return; }
+  try {
+    const rows = []; let from = 0;
+    while (true) {
+      const { data, error } = await db.from('nf_protheus').select('*').range(from, from + 999);
+      if (error) throw error;
+      rows.push(...(data || []));
+      if (!data || data.length < 1000) break;
+      from += 1000;
+    }
+    pxMap = new Map(rows.map(r => [Number(r.nf), r]));
+    pxOk = true;
+  } catch (e) {
+    console.warn('nf_protheus indisponível, usando localStorage:', e.message);
+    pxOk = false;
+    pxCarregarLocal();
+  }
+  pxRerender();
+}
+
+function pxRerender() {
+  renderSidebar();
+  if (carretaSelecionadaId) document.querySelector(`.carreta-item[data-id="${carretaSelecionadaId}"]`)?.classList.add('active');
+  if (_carretaAtual && document.getElementById('tab-carreta')?.classList.contains('active')) renderDetalheCarreta(_carretaAtual);
+  if (document.getElementById('tab-resumo')?.classList.contains('active')) renderResumo();
+}
+
+function pxFmtData(d) {
+  const s = String(d || '').replace(/\D/g, '');
+  return s.length === 8 ? `${s.substr(6,2)}/${s.substr(4,2)}/${s.substr(0,4)}` : '';
+}
+function pxContar(c) {
+  const n = c.nfs?.length || 0;
+  const ok = (c.nfs || []).filter(f => pxMap.has(Number(f.nf))).length;
+  return { n, ok };
+}
+function pxBadge(nf) {
+  const r = pxMap.get(Number(nf));
+  if (r) return `<span class="px-ok" title="Classificada no Protheus em ${pxFmtData(r.dt_digitacao)} · Série ${r.serie||'—'} · Filial ${r.filial||'—'}">✅ ${pxFmtData(r.dt_digitacao).slice(0,5)}</span>`;
+  return `<span class="px-pend" title="Ainda não consta no Protheus">⏳ Pendente</span>`;
+}
+function pxResumoHtml(c) {
+  const { n, ok } = pxContar(c);
+  if (!n) return '';
+  if (ok === n) return `<span class="px-tot-ok">✅ ${ok}/${n}</span>`;
+  return `<span class="${ok ? 'px-tot-pend' : ''}">⏳ ${ok}/${n}</span>`;
+}
+function pxResumoTotal(carretas) {
+  let n = 0, ok = 0;
+  carretas.forEach(c => { const r = pxContar(c); n += r.n; ok += r.ok; });
+  return n ? `<b>${ok}/${n}</b>` : '';
+}
+function pxSubCard(c) {
+  const { n, ok } = pxContar(c);
+  if (!n) return 'notas fiscais';
+  return ok === n ? '✅ todas classificadas' : `${ok} classificada(s) · ${n - ok} pendente(s)`;
+}
+function pxFlagSidebar(c) {
+  const { n, ok } = pxContar(c);
+  if (!n) return '';
+  if (ok === n) return ` <span class="px-flag" title="Todas as NFs classificadas no Protheus">✅</span>`;
+  return ` <span class="px-flag" title="${ok}/${n} NFs classificadas no Protheus" style="opacity:.75">${ok}/${n}</span>`;
+}
+
+// ── Modal ───────────────────────────────────────────────────────────────
+function abrirModalProtheus() {
+  const setup = document.getElementById('pxSetup');
+  const log = document.getElementById('pxLog');
+  log.style.display = 'none'; log.textContent = '';
+  if (pxOk === false) {
+    setup.style.display = 'block';
+    setup.innerHTML = `<div class="alt-status err" style="margin-bottom:10px">⚙️ A tabela <b>nf_protheus</b> ainda não existe no Supabase — a marcação ficará salva só neste navegador.
+      Para compartilhar entre todos, rode o comando abaixo no <b>Supabase → SQL Editor</b> e recarregue a página.</div>
+      <div class="doc-sql" id="pxSqlTxt"></div>
+      <button class="btn btn-ghost" style="margin:8px 0 12px" onclick="navigator.clipboard.writeText(PX_SQL).then(()=>this.textContent='✅ Copiado')">📋 Copiar SQL</button>`;
+    document.getElementById('pxSqlTxt').textContent = PX_SQL;
+  } else setup.style.display = 'none';
+  document.getElementById('pxInfo').textContent = pxMap.size
+    ? `Base atual: ${pxMap.size.toLocaleString('pt-BR')} NF(s) do Protheus carregadas.` : 'Nenhuma importação feita ainda.';
+  document.getElementById('pxOverlay').classList.add('open');
+}
+function fecharModalProtheus() { document.getElementById('pxOverlay').classList.remove('open'); }
+
+(function prepararDropProtheus() {
+  const ini = () => {
+    const dz = document.getElementById('pxDrop'); if (!dz) return;
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+    dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); const f = e.dataTransfer.files[0]; if (f) importarProtheus(f); });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ini); else ini();
+})();
+
+// ── Leitura do CSV do Protheus ──────────────────────────────────────────
+async function pxLerArquivo(file) {
+  const buf = await file.arrayBuffer();
+  let txt;
+  try { txt = new TextDecoder('utf-8', { fatal: true }).decode(buf); }
+  catch { txt = new TextDecoder('windows-1252').decode(buf); }   // exportação padrão do Protheus
+  return txt;
+}
+function pxParseCSV(txt) {
+  const limpa = v => String(v ?? '').replace(/[ ﻿]/g, ' ').trim();
+  const linhas = txt.split(/\r?\n/).filter(l => l.trim());
+  if (!linhas.length) throw new Error('Arquivo vazio.');
+  const sep = (linhas[0].split(';').length >= linhas[0].split(',').length) ? ';' : ',';
+  const head = linhas[0].split(sep).map(h => limpa(h).toUpperCase());
+  const idx = (...nomes) => head.findIndex(h => nomes.includes(h));
+  const iNF = idx('NOTA_FISCAL', 'F1_DOC', 'DOC', 'NF', 'NOTA');
+  if (iNF < 0) throw new Error('Coluna NOTA_FISCAL não encontrada no cabeçalho.');
+  const iSer = idx('SERIE', 'F1_SERIE'), iFil = idx('FILIAL', 'F1_FILIAL'), iLoja = idx('LOJA', 'F1_LOJA');
+  const iForn = idx('NOME_FORNECEDOR', 'FORNECEDOR', 'A2_NOME');
+  const iEmi = idx('DATA_EMISSAO', 'F1_EMISSAO'), iDig = idx('DATA_DIGITACAO', 'F1_DTDIGIT');
+  const iVal = idx('VALOR_BRUTO', 'F1_VALBRUT');
+  const out = new Map(); let ignorados = 0;
+  for (let i = 1; i < linhas.length; i++) {
+    const c = linhas[i].split(sep).map(limpa);
+    const nf = parseInt(String(c[iNF] || '').replace(/\D/g, ''), 10);
+    if (!nf) continue;
+    const forn = iForn >= 0 ? c[iForn].toUpperCase() : '';
+    if (forn && !forn.includes('ALPARGATAS')) { ignorados++; continue; }   // só NFs da Alpargatas
+    const valor = iVal >= 0 ? parseFloat(String(c[iVal]).replace(/\./g, '').replace(',', '.')) || null : null;
+    const dig = iDig >= 0 ? c[iDig] : '';
+    const ant = out.get(nf);
+    if (ant && String(ant.dt_digitacao || '') >= dig) continue;   // mantém a digitação mais recente
+    out.set(nf, {
+      nf, serie: iSer >= 0 ? c[iSer] : null, filial: iFil >= 0 ? c[iFil] : null, loja: iLoja >= 0 ? c[iLoja] : null,
+      dt_emissao: iEmi >= 0 ? c[iEmi] : null, dt_digitacao: dig || null, valor,
+    });
+  }
+  return { regs: [...out.values()], ignorados };
+}
+
+async function importarProtheus(file) {
+  if (!file) return;
+  const log = document.getElementById('pxLog');
+  log.style.display = 'block'; log.textContent = '';
+  const add = m => { log.textContent += m + '\n'; log.scrollTop = log.scrollHeight; };
+  try {
+    add(`📄 ${file.name}`);
+    const { regs, ignorados } = pxParseCSV(await pxLerArquivo(file));
+    add(`• ${regs.length.toLocaleString('pt-BR')} NF(s) Alpargatas no arquivo${ignorados ? ` (${ignorados} de outros fornecedores ignoradas)` : ''}`);
+    if (!regs.length) { add('⚠️ Nenhuma NF encontrada.'); return; }
+
+    // Quais NFs das carretas passam a constar como classificadas
+    const nfsCarretas = new Set(); getCarretas().forEach(c => c.nfs.forEach(f => nfsCarretas.add(Number(f.nf))));
+    const novas = regs.filter(r => nfsCarretas.has(r.nf) && !pxMap.has(r.nf)).length;
+
+    regs.forEach(r => pxMap.set(r.nf, r));
+    if (pxOk && db) {
+      add('⏳ Gravando no Supabase…');
+      for (let i = 0; i < regs.length; i += 500) {
+        const lote = regs.slice(i, i + 500).map(r => ({ ...r, atualizado_em: new Date().toISOString() }));
+        const { error } = await db.from('nf_protheus').upsert(lote, { onConflict: 'nf' });
+        if (error) throw error;
+      }
+      add('✅ Gravado no Supabase.');
+    } else {
+      pxSalvarLocal();
+      add('💾 Salvo neste navegador (tabela nf_protheus não configurada).');
+    }
+
+    let tot = 0, ok = 0;
+    getCarretas().forEach(c => { const r = pxContar(c); tot += r.n; ok += r.ok; });
+    add(`\n🧾 ${novas} NF(s) de carretas marcadas como classificadas agora.`);
+    add(`📊 Situação geral: ${ok}/${tot} NFs classificadas · ${tot - ok} pendente(s).`);
+    const pend = getCarretas().filter(c => { const r = pxContar(c); return r.n && r.ok < r.n; })
+      .sort((a, b) => a.num - b.num).map(c => { const r = pxContar(c); return `${c.num}ª (${r.n - r.ok})`; });
+    if (pend.length) add(`⏳ Carretas com pendência: ${pend.slice(0, 40).join(', ')}${pend.length > 40 ? '…' : ''}`);
+    document.getElementById('pxInfo').textContent = `Base atual: ${pxMap.size.toLocaleString('pt-BR')} NF(s) do Protheus carregadas.`;
+    pxRerender();
+  } catch (e) {
+    add('❌ Erro: ' + (e.message || e));
+  }
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  IMPORTADOR DE PLANILHA BASE
