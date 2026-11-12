@@ -328,6 +328,20 @@ body:not(.adm) .adm-only{display:none!important}
 .pos-ean-m{display:none}
 @media(max-width:600px){.pos-wrap .c-ean{display:none}.pos-ean-m{display:block}.pos-wrap .tbl td,.pos-wrap .tbl th{padding:6px 5px}}
 
+/* V1.24 — filtro vendedor */
+.dv-vend{margin-left:auto;width:auto;min-width:190px;max-width:260px;margin-bottom:0;padding:6px 30px 6px 12px;font-size:12px;font-weight:700;border-radius:20px;color:var(--mut);cursor:pointer;
+  background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2364748b'/%3E%3C/svg%3E") no-repeat right 12px center}
+.dv-vend.on{border-color:var(--navy);color:var(--navy);background-color:#eef2ff}
+@media(max-width:640px){.dv-vend{margin-left:0;flex:1 1 100%;max-width:none}}
+/* V1.23 — NCC */
+.ncc-box{margin-top:10px;padding:9px 11px;border-radius:8px;background:#fff;border:1px dashed var(--bdr)}
+.ncc-box.ok{border:1.5px solid #86efac;background:#f0fdf4}
+.ncc-box.nao{border:1.5px solid var(--bdr);background:var(--bg3)}
+.ncc-opt{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:13px;font-weight:600}
+.ncc-opt label{display:flex;align-items:center;gap:5px;cursor:pointer}
+.ncc-opt input[type=radio]{width:17px;height:17px;accent-color:var(--grn)}
+.dc-l.dc-flex{display:flex;align-items:center;gap:8px}
+.dc-l.dc-flex .dc-ncc{margin-left:auto;flex-shrink:0}
 /* V1.16 — fluxo CIX */
 .cix-box{border-radius:10px;padding:10px 12px;margin-bottom:10px;border:1.5px solid var(--bdr);background:var(--bg3)}
 .cix-box.ENVIADO{background:#fff7ed;border-color:#fdba74}
@@ -567,6 +581,7 @@ body.devonly #acoes-wrap{display:none!important}
           <button class="chip" data-f="CONCLUIDA" onclick="devFiltro('CONCLUIDA')">Concluídas</button>
           <button class="chip" data-f="CANCELADA" onclick="devFiltro('CANCELADA')">Canceladas</button>
           <button class="chip" data-f="TODAS" onclick="devFiltro('TODAS')">Todas</button>
+          <select id="dv-vend" class="inp dv-vend" title="Filtrar por vendedor" onchange="devVendFiltro(this.value)"><option value="">👤 Todos os vendedores</option></select>
         </div>
       </div>
       <div id="dv-list" style="display:flex;flex-direction:column;gap:8px"></div>
@@ -1096,7 +1111,7 @@ body.devonly #acoes-wrap{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.22';
+const APP_VERSION='V1.24';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -2140,7 +2155,63 @@ function renderCix(){
   }
   el.className='cix-box '+cx;
   el.innerHTML=`<div class="cix-steps">${passos.map((x,i)=>`<span class="${x[1]?'done':i===atual?'on':''}">${i+1}. ${x[0]}</span>`).join('')}</div>
-    <div class="cix-st">${st}</div>${bt?`<div class="row" style="margin-top:8px;flex-wrap:wrap;gap:6px">${bt}</div>`:''}`;
+    <div class="cix-st">${st}</div>${bt?`<div class="row" style="margin-top:8px;flex-wrap:wrap;gap:6px">${bt}</div>`:''}${nccBox(d,canc,dvo||adm)}`;
+}
+
+// ═════════════════════ V1.23 — NCC (nota de crédito ao cliente) ═════════════════════
+// ncc_ok: null = não informado · true = houve NCC (com número) · false = não houve NCC
+function nccTag(d){
+  if(d.ncc_ok===true) return `<span class="tag t-grn dc-ncc" title="NCC informada por ${esc(d.ncc_por||'')} em ${fmtDT(d.ncc_em)}">✓ NCC OK · ${esc(d.ncc_numero||'')}</span>`;
+  if(d.ncc_ok===false) return `<span class="tag dc-ncc" style="background:var(--bg3);color:var(--mut)">Sem NCC</span>`;
+  return '';
+}
+let _nccEdit=false;
+function nccBox(d,canc,pode){
+  const tem=d.ncc_ok===true||d.ncc_ok===false;
+  const info=tem?`<span class="sh-sub">${esc(d.ncc_por||'')} · ${fmtDT(d.ncc_em)}</span>`:'';
+  if(tem&&!_nccEdit){
+    return `<div class="ncc-box ${d.ncc_ok?'ok':'nao'}"><div class="row" style="flex-wrap:wrap;gap:8px;align-items:center">
+      <b style="font-size:13px">${d.ncc_ok?`🧾 Houve NCC — Nº <span class="c-grn" style="font-size:15px">${esc(d.ncc_numero||'')}</span>`:'🧾 Não houve NCC'}</b>${info}
+      ${pode&&!canc?`<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="_nccEdit=true;renderCix()">✎ Alterar</button>`:''}</div></div>`;
+  }
+  if(canc||!pode) return tem?'':`<div class="ncc-box"><span class="sh-sub">🧾 NCC ainda não informada</span></div>`;
+  const sim=d.ncc_ok===true, nao=d.ncc_ok===false;
+  return `<div class="ncc-box"><div class="ncc-opt"><span>🧾 Houve NCC?</span>
+      <label><input type="radio" name="ncc-flag" value="S" ${sim?'checked':''} onchange="nccToggle()"> Sim</label>
+      <label><input type="radio" name="ncc-flag" value="N" ${nao?'checked':''} onchange="nccToggle()"> Não</label></div>
+    <div class="row" id="ncc-num-row" style="margin-top:8px;gap:6px;flex-wrap:wrap;${sim?'':'display:none'}">
+      <input id="ncc-num" class="inp" style="flex:1;min-width:140px;margin:0" placeholder="Número da NCC" value="${esc(d.ncc_numero||'')}" onkeydown="if(event.key==='Enter')nccSalvar()">
+    </div>
+    <div class="row" style="margin-top:8px;gap:6px;justify-content:flex-end">
+      ${tem?`<button class="btn btn-ghost btn-sm" onclick="_nccEdit=false;renderCix()">Cancelar</button>`:''}
+      ${tem&&isAdm()?`<button class="btn btn-ghost btn-sm" onclick="nccLimpar()">↺ Limpar</button>`:''}
+      <button class="btn btn-grn btn-sm" onclick="nccSalvar()">💾 Salvar NCC</button></div></div>`;
+}
+function nccToggle(){
+  const v=document.querySelector('input[name="ncc-flag"]:checked')?.value;
+  $('ncc-num-row').style.display=v==='S'?'':'none';
+  if(v==='S') setTimeout(()=>$('ncc-num').focus(),50);
+}
+async function nccGravar(upd,msg){
+  const {error}=await getSB().from('dev_devolucoes').update(upd).eq('id',DEV_CUR.id);
+  if(error){ beep(false); toast(/ncc_/.test(error.message)?'Rode o script controle_mercadoria_V1.23_ncc.sql no Supabase':'Erro: '+error.message,1,5000); return false; }
+  Object.assign(DEV_CUR,upd); const ld=DEVS.find(x=>x.id===DEV_CUR.id); if(ld) Object.assign(ld,upd);
+  _nccEdit=false; await comAdd(msg); beep(true); renderCix(); renderDevList(); return true;
+}
+async function nccSalvar(){
+  const v=document.querySelector('input[name="ncc-flag"]:checked')?.value;
+  if(!v){ toast('Marque se houve NCC (Sim ou Não)',1); return; }
+  if(v==='S'){
+    const n=$('ncc-num').value.trim();
+    if(!n){ toast('Informe o número da NCC',1); $('ncc-num').focus(); return; }
+    if(await nccGravar({ncc_ok:true,ncc_numero:n,ncc_por:CU.name,ncc_em:new Date().toISOString()},'🧾 NCC informada: Nº '+n)) toast('✓ NCC '+n+' registrada');
+  } else {
+    if(await nccGravar({ncc_ok:false,ncc_numero:null,ncc_por:CU.name,ncc_em:new Date().toISOString()},'🧾 Informado: não houve NCC')) toast('✓ Registrado: sem NCC');
+  }
+}
+async function nccLimpar(){
+  if(!isAdm()||!confirm('Limpar a informação de NCC desta devolução?')) return;
+  await nccGravar({ncc_ok:null,ncc_numero:null,ncc_por:null,ncc_em:null},'↺ Informação de NCC removida');
 }
 async function comAdd(texto){ try{ const {data}=await getSB().from('dev_comentarios').insert({dev_id:DEV_CUR.id,texto,autor:CU.name,perfil:CU.role||''}).select().single(); if(data){ COMS.push(data); renderComs(); } }catch(e){} }
 async function cixUpd(upd,msg){
@@ -2200,18 +2271,35 @@ async function devCarregar(){
   renderDevList();
 }
 function devFiltro(f){ DEV_F=f; document.querySelectorAll('#dv-chips .chip').forEach(c=>c.classList.toggle('on',c.dataset.f===f)); renderDevList(); }
+// V1.24 — filtro por vendedor (venda_vendedor da venda de origem)
+let DEV_VEND=''; try{ DEV_VEND=localStorage.getItem('cm_dev_vend')||''; }catch(e){}
+const VEND_SEM='__SEM__';
+function vendNome(d){ return String(d.venda_vendedor||'').trim(); }
+function devVendFiltro(v){ DEV_VEND=v; try{ localStorage.setItem('cm_dev_vend',v); }catch(e){} renderDevList(); }
+function devVendOpcoes(){
+  const sel=$('dv-vend'); if(!sel) return;
+  const cont={}; let sem=0;
+  DEVS.forEach(d=>{ const v=vendNome(d); if(v) cont[v]=(cont[v]||0)+1; else sem++; });
+  const nomes=Object.keys(cont).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  if(DEV_VEND&&DEV_VEND!==VEND_SEM&&!cont[DEV_VEND]) cont[DEV_VEND]=0, nomes.push(DEV_VEND);
+  sel.innerHTML='<option value="">👤 Todos os vendedores</option>'+nomes.map(n=>`<option value="${esc(n)}">${esc(n)} (${cont[n]})</option>`).join('')+(sem?`<option value="${VEND_SEM}">(sem vendedor) (${sem})</option>`:'');
+  sel.value=DEV_VEND; if(sel.value!==DEV_VEND){ DEV_VEND=''; sel.value=''; }
+  sel.classList.toggle('on',!!DEV_VEND);
+}
 function renderDevList(){
+  devVendOpcoes();
   const q=$('dv-quick').value.trim().toUpperCase();
   const qk=limpaChave(q);
   let L=DEVS.filter(d=>DEV_F==='TODAS'?true:DEV_F==='ABERTAS'?(d.status==='RECEBIDA'||d.status==='EM TRATATIVA'||d.status==='AGUARDANDO PROTHEUS'||d.status==='AGUARDANDO CIX'||d.status==='RETORNO CIX'):d.status===DEV_F);
-  if(q) L=DEVS.filter(d=>[d.nf_numero,d.cliente,d.chave,d.motivo,d.transportadora,d.cnpj_emit,'#'+d.id].some(x=>String(x||'').toUpperCase().includes(q))||(qk.length>=6&&String(d.chave||'').includes(qk)));
+  if(q) L=DEVS.filter(d=>[d.nf_numero,d.cliente,d.chave,d.motivo,d.transportadora,d.cnpj_emit,d.ncc_numero,d.venda_vendedor,'#'+d.id].some(x=>String(x||'').toUpperCase().includes(q))||(qk.length>=6&&String(d.chave||'').includes(qk)));
+  if(DEV_VEND) L=L.filter(d=>DEV_VEND===VEND_SEM?!vendNome(d):vendNome(d)===DEV_VEND);
   $('dv-list').innerHTML=L.length?L.map(d=>{
     const its=d.dev_itens||[]; const pend=its.filter(i=>i.tratativa==='PENDENTE').reduce((s,i)=>s+Number(i.qtd),0); const tot=its.reduce((s,i)=>s+Number(i.qtd),0); const aprt=its.filter(i=>i.tratativa!=='PENDENTE'&&!i.protheus_ok).length;
     return `<div class="dcard ${esc(d.status||'')}" onclick="devAbrir(${d.id})">
       <div class="dc-top"><div class="dc-nf">${d.nf_numero?'NF '+esc(d.nf_numero):'Devolução #'+d.id}${d.nf_serie?' <span class="c-mut" style="font-size:12px;font-weight:400">série '+esc(d.nf_serie)+'</span>':''}</div>${stTag(d.status)}</div>
-      <div class="dc-l">${esc(d.cliente||'—')} · ${esc(d.motivo||'sem motivo')}</div>
-      <div class="dc-l">📅 ${fmtDT(d.recebido_em)} · ${esc(d.recebido_por||'')} · ${tot?`<b class="${pend?'c-ylw':'c-grn'}">${fmt(pend)} pend.</b> / ${fmt(tot)} un.${aprt?` · <b class="c-pur">${aprt} aguard. Protheus</b>`:''}`:'<span class="c-ylw">sem itens conferidos</span>'}</div>
-    </div>`;}).join(''):'<div class="card"><div class="empty">Nenhuma devolução '+(q?'encontrada':'neste filtro')+'</div></div>';
+      <div class="dc-l">${esc(d.cliente||'—')} · ${esc(d.motivo||'sem motivo')}${vendNome(d)?` · <span title="Vendedor">👤 ${esc(vendNome(d))}</span>`:''}</div>
+      <div class="dc-l dc-flex"><span>📅 ${fmtDT(d.recebido_em)} · ${esc(d.recebido_por||'')} · ${tot?`<b class="${pend?'c-ylw':'c-grn'}">${fmt(pend)} pend.</b> / ${fmt(tot)} un.${aprt?` · <b class="c-pur">${aprt} aguard. Protheus</b>`:''}`:'<span class="c-ylw">sem itens conferidos</span>'}</span>${nccTag(d)}</div>
+    </div>`;}).join(''):'<div class="card"><div class="empty">Nenhuma devolução '+(q?'encontrada':'neste filtro')+(DEV_VEND?' para o vendedor selecionado':'')+'</div></div>';
 }
 async function devQuick(){
   const v=$('dv-quick').value.trim(); const k=limpaChave(v);
@@ -2279,7 +2367,7 @@ async function devSalvarNova(){
   finally{ $('dn-save').disabled=false; }
 }
 async function devAbrir(id){
-  const sb=getSB();
+  _nccEdit=false; const sb=getSB();
   const [{data:d,error:e1},{data:its,error:e2}]=await Promise.all([
     sb.from('dev_devolucoes').select('*').eq('id',id).single(),
     sb.from('dev_itens').select('*').eq('dev_id',id).order('id',{ascending:true})
