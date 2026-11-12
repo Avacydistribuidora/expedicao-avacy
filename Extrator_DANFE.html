@@ -390,6 +390,12 @@ tfoot td { background: var(--azul-escuro); color: white; padding: 9px 10px; text
   border:1px solid var(--borda); border-radius:8px; padding:8px 10px; white-space:pre-wrap; display:none; }
 .doc-sql { font-size:11px; background:#1e1e2e; color:#e0e0e0; padding:10px; border-radius:8px; white-space:pre; overflow:auto; max-height:200px; }
 
+/* ── EDITAR / EXCLUIR NF (V3.6) ── */
+.nf-act { background:none; border:1px solid var(--borda); border-radius:5px; width:24px; height:22px; padding:0; cursor:pointer;
+  font-size:12px; line-height:1; margin-right:3px; opacity:.75; transition:opacity .1s, background .1s; }
+.nf-act:hover { opacity:1; background:var(--azul-hover); }
+.nf-act.del:hover { background:#fdecea; border-color:#e6a5a0; }
+
 /* ── CLASSIFICAÇÃO PROTHEUS (V3.4) ── */
 .px-ok   { display:inline-block; padding:2px 7px; border-radius:10px; font-size:10.5px; font-weight:700; background:#d4edda; color:#155724; white-space:nowrap; }
 .px-pend { display:inline-block; padding:2px 7px; border-radius:10px; font-size:10.5px; font-weight:700; background:#fff3cd; color:#856404; white-space:nowrap; }
@@ -661,6 +667,35 @@ tr.nf-hl td { background:#fff6c7 !important; transition:background .3s; }
   </div>
 </div>
 
+<!-- MODAL EDITAR NF (V3.6) -->
+<div class="alt-overlay" id="nfEdOverlay">
+  <div class="alt-modal ed-modal">
+    <div class="alt-modal-header">
+      ✏️ Editar NF — <span id="nfEdTitulo"></span>
+      <button class="close-btn" onclick="fecharEditarNF()">✕</button>
+    </div>
+    <div class="alt-modal-body">
+      <div class="ed-grid" oninput="if(event.target.tagName==='INPUT')nfEdMarcar(event.target)">
+        <div class="fg"><label>Nº da NF</label><input type="text" id="nfed_nfRaw" placeholder="Ex: 000.263.071"></div>
+        <div class="fg"><label>Origem</label><input type="text" id="nfed_origem"></div>
+        <div class="fg"><label>DT Faturamento</label><input type="text" id="nfed_dtStr" placeholder="dd/mm/aaaa"></div>
+        <div class="fg"><label>Qtd Caixas</label><input type="text" id="nfed_qtdCaixas" inputmode="numeric"></div>
+        <div class="fg"><label>Qtd Pares</label><input type="text" id="nfed_qtdPares" inputmode="numeric"></div>
+        <div class="fg"><label>Valor NF (R$)</label><input type="text" id="nfed_valorNF" placeholder="Ex: 31262,40"></div>
+        <div class="fg"><label>VLM M³</label><input type="text" id="nfed_vlmM3"></div>
+        <div class="fg"><label>Peso KG</label><input type="text" id="nfed_peso" placeholder="Ex: 1250,5"></div>
+        <div class="fg"><label>Remessa</label><input type="text" id="nfed_remessa"></div>
+      </div>
+      <div class="alt-modal-info">ℹ️ Os totais da carreta (caixas, pares e valor) são recalculados ao salvar.</div>
+      <div class="alt-status" id="nfEdStatus"></div>
+    </div>
+    <div class="alt-modal-footer">
+      <button class="btn btn-ghost" onclick="fecharEditarNF()">Cancelar</button>
+      <button class="btn btn-primary" id="btnConfirmarNfEd" onclick="confirmarEditarNF()">💾 Salvar NF</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL CLASSIFICAÇÃO PROTHEUS (V3.4) -->
 <div class="alt-overlay" id="pxOverlay">
   <div class="alt-modal" style="width:580px">
@@ -750,7 +785,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 // ════════════════════════════════════════════════════════════════════════════
 // ── VERSÃO — atualizar a cada deploy no GitHub ─────────────────────────────
 // ════════════════════════════════════════════════════════════════════════════
-const APP_VERSION     = 'V3.5';               // ← atualizar a cada deploy
+const APP_VERSION     = 'V3.6';               // ← atualizar a cada deploy
 const GITHUB_REPO     = 'Avacydistribuidora/expedicao-avacy';
 const GITHUB_FILE     = 'Extrator_DANFE.html';
 
@@ -1048,7 +1083,7 @@ function renderDetalheCarreta(c) {
     <table>
       <thead><tr>
         <th>#</th><th>ORIGEM</th><th>FORNECEDOR</th><th>DT FATURAMENTO</th>
-        <th>QTDS CAIXAS</th><th>QTDS PARES</th><th>VALOR NF</th><th>VLM M³</th><th>PESO KG</th><th>NF</th><th>REMESSA</th><th>PROTHEUS</th><th>ARQUIVOS</th>
+        <th>QTDS CAIXAS</th><th>QTDS PARES</th><th>VALOR NF</th><th>VLM M³</th><th>PESO KG</th><th>NF</th><th>REMESSA</th><th>PROTHEUS</th><th>ARQUIVOS</th><th>AÇÕES</th>
       </tr></thead>
       <tbody>
   `;
@@ -1068,6 +1103,10 @@ function renderDetalheCarreta(c) {
       <td style="font-size:11px">${nf.remessa||''}</td>
       <td>${pxBadge(nf)}</td>
       <td style="white-space:nowrap">${docIcons(nf.nf)}</td>
+      <td style="white-space:nowrap">
+        <button class="nf-act" title="Editar esta NF" onclick="abrirEditarNF(${i})">✏️</button>
+        <button class="nf-act del" title="Excluir esta NF da carreta" onclick="excluirNF(${i})">🗑️</button>
+      </td>
     </tr>`;
   });
 
@@ -1081,7 +1120,7 @@ function renderDetalheCarreta(c) {
       <td>${totPeso>0?totPeso.toLocaleString('pt-BR',{maximumFractionDigits:3}):''}</td>
       <td>${c.nfs.length} NFs</td><td></td>
       <td style="font-size:11px;white-space:nowrap">${pxResumoHtml(c)}</td>
-      <td style="font-size:11px;white-space:nowrap">${docResumo(c)}</td>
+      <td style="font-size:11px;white-space:nowrap">${docResumo(c)}</td><td></td>
     </tr></tfoot>
     </table></div>
   </div>
@@ -2329,6 +2368,117 @@ document.addEventListener('click', e => { if (!e.target.closest('#gsearch')) doc
 initDB().then(() => { renderSidebar(); showTab('tab-resumo'); renderResumo(); carregarDocs(); carregarProtheus(); });
 checkVersion();
 
+
+
+// ════════════════════════════════════════════════════════════════════════
+// ── EDITAR / EXCLUIR NF DA CARRETA (V3.6) ────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════
+const NFED_CAMPOS = ['nfRaw','origem','dtStr','qtdCaixas','qtdPares','valorNF','vlmM3','peso','remessa'];
+let _nfEdIdx = null, _nfEdOrig = {};
+
+function nfFmtNum(v, dec) {
+  if (v === null || v === undefined || v === '') return '';
+  return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: Math.max(dec, 3), useGrouping: false });
+}
+function nfParseNum(s, inteiro) {
+  s = String(s || '').trim(); if (!s) return null;
+  const n = s.includes(',') ? parseBR(s) : (inteiro ? parseInt(s.replace(/\D/g, ''), 10) : parseFloat(s));
+  if (!Number.isFinite(n)) return null;
+  return inteiro ? Math.round(n) : n;
+}
+function nfRecalcTotais(c) {
+  c.totalCaixas = c.nfs.reduce((s, d) => s + (d.qtdCaixas || 0), 0);
+  c.totalPares  = c.nfs.reduce((s, d) => s + (d.qtdPares  || 0), 0);
+  c.totalValor  = c.nfs.reduce((s, d) => s + (d.valorNF   || 0), 0);
+}
+async function nfPersistir(c) {
+  nfRecalcTotais(c);
+  await salvarCarretaNoBanco(c);
+  const atual = getCarretas().find(x => x.id === c.id) || c;
+  renderSidebar();
+  document.querySelector(`.carreta-item[data-id="${c.id}"]`)?.classList.add('active');
+  renderDetalheCarreta(atual);
+}
+
+function abrirEditarNF(i) {
+  const c = _carretaAtual; const nf = c?.nfs?.[i]; if (!nf) return;
+  _nfEdIdx = i; _nfEdOrig = {};
+  const val = {
+    nfRaw: nf.nfRaw || (nf.nf != null ? String(nf.nf) : ''), origem: nf.origem || '', dtStr: nf.dtStr || '',
+    qtdCaixas: nf.qtdCaixas ?? '', qtdPares: nf.qtdPares ?? '', valorNF: nfFmtNum(nf.valorNF, 2),
+    vlmM3: nf.vlmM3 ?? '', peso: nfFmtNum(nf.peso, 0), remessa: nf.remessa || '',
+  };
+  NFED_CAMPOS.forEach(k => {
+    const v = String(val[k] ?? ''); _nfEdOrig[k] = v;
+    const inp = document.getElementById('nfed_' + k); inp.value = v; inp.classList.remove('changed');
+  });
+  document.getElementById('nfEdTitulo').textContent = `NF ${val.nfRaw || '—'} · ${c.num}ª Carreta`;
+  const st = document.getElementById('nfEdStatus'); st.className = 'alt-status'; st.textContent = '';
+  document.getElementById('btnConfirmarNfEd').disabled = false;
+  document.getElementById('nfEdOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('nfed_nfRaw').focus(), 80);
+}
+function fecharEditarNF() { document.getElementById('nfEdOverlay').classList.remove('open'); _nfEdIdx = null; }
+function nfEdMarcar(inp) {
+  const k = inp.id.replace('nfed_', '');
+  inp.classList.toggle('changed', (inp.value || '') !== (_nfEdOrig[k] || ''));
+}
+
+async function confirmarEditarNF() {
+  const st = document.getElementById('nfEdStatus'); st.className = 'alt-status'; st.textContent = '';
+  const c = _carretaAtual; const nf = c?.nfs?.[_nfEdIdx]; if (!nf) { fecharEditarNF(); return; }
+  const g = k => document.getElementById('nfed_' + k).value.trim();
+
+  const nfRaw = g('nfRaw');
+  const nfNum = pxKey(nfRaw);
+  if (!nfNum) { st.className = 'alt-status err'; st.textContent = '⚠️ Informe um número de NF válido.'; return; }
+  const dup = c.nfs.findIndex((x, j) => j !== _nfEdIdx && pxKey(x) === nfNum);
+  if (dup !== -1) { st.className = 'alt-status err'; st.textContent = `⚠️ A NF ${nfRaw} já está nesta carreta (linha ${dup + 1}).`; return; }
+  const dt = g('dtStr');
+  if (dt && !/^\d{2}\/\d{2}\/\d{4}$/.test(dt)) { st.className = 'alt-status err'; st.textContent = '⚠️ Data de faturamento deve estar no formato dd/mm/aaaa.'; return; }
+
+  const novo = {
+    ...nf,
+    nf: nfNum, nfRaw,
+    origem: g('origem') || null, dtStr: dt || null,
+    qtdCaixas: nfParseNum(g('qtdCaixas'), true), qtdPares: nfParseNum(g('qtdPares'), true),
+    valorNF: nfParseNum(g('valorNF'), false) || 0,
+    vlmM3: g('vlmM3') || null, peso: nfParseNum(g('peso'), false),
+    remessa: g('remessa') || null,
+  };
+  const antes = c.nfs[_nfEdIdx];
+  document.getElementById('btnConfirmarNfEd').disabled = true;
+  st.className = 'alt-status info'; st.textContent = '⏳ Salvando…';
+  try {
+    c.nfs[_nfEdIdx] = novo;
+    await nfPersistir(c);
+    st.className = 'alt-status ok'; st.textContent = '✅ NF atualizada!';
+    setTimeout(fecharEditarNF, 800);
+  } catch (e) {
+    c.nfs[_nfEdIdx] = antes; nfRecalcTotais(c);
+    document.getElementById('btnConfirmarNfEd').disabled = false;
+    st.className = 'alt-status err'; st.textContent = '❌ Erro ao salvar: ' + (e.message || e);
+  }
+}
+
+async function excluirNF(i) {
+  const c = _carretaAtual; const nf = c?.nfs?.[i]; if (!nf) return;
+  const rot = nf.nfRaw || nf.nf || '(sem número)';
+  if (!confirm(`Excluir a NF ${rot} da ${c.num}ª Carreta?\n\nValor: R$ ${(nf.valorNF || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\nOs totais da carreta serão recalculados.`)) return;
+  const backup = c.nfs.slice();
+  try {
+    c.nfs.splice(i, 1);
+    await nfPersistir(c);
+  } catch (e) {
+    c.nfs = backup; nfRecalcTotais(c); renderDetalheCarreta(c);
+    alert('❌ Erro ao excluir: ' + (e.message || e));
+  }
+}
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('nfEdOverlay')?.classList.contains('open')) return;
+  if (e.key === 'Escape') fecharEditarNF();
+  if (e.key === 'Enter' && e.target.tagName === 'INPUT') confirmarEditarNF();
+});
 
 // ════════════════════════════════════════════════════════════════════════
 // ── CLASSIFICAÇÃO NO PROTHEUS (V3.4) ─────────────────────────────────────
