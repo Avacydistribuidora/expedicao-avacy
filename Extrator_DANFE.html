@@ -750,7 +750,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 // ════════════════════════════════════════════════════════════════════════════
 // ── VERSÃO — atualizar a cada deploy no GitHub ─────────────────────────────
 // ════════════════════════════════════════════════════════════════════════════
-const APP_VERSION     = 'V3.4';               // ← atualizar a cada deploy
+const APP_VERSION     = 'V3.5';               // ← atualizar a cada deploy
 const GITHUB_REPO     = 'Avacydistribuidora/expedicao-avacy';
 const GITHUB_FILE     = 'Extrator_DANFE.html';
 
@@ -1066,7 +1066,7 @@ function renderDetalheCarreta(c) {
       <td style="font-size:11px">${nf.peso!=null?nf.peso.toLocaleString('pt-BR',{maximumFractionDigits:3}):''}</td>
       <td><b>${nf.nfRaw||nf.nf||''}</b></td>
       <td style="font-size:11px">${nf.remessa||''}</td>
-      <td>${pxBadge(nf.nf)}</td>
+      <td>${pxBadge(nf)}</td>
       <td style="white-space:nowrap">${docIcons(nf.nf)}</td>
     </tr>`;
   });
@@ -2385,17 +2385,27 @@ function pxRerender() {
   if (document.getElementById('tab-resumo')?.classList.contains('active')) renderResumo();
 }
 
+// Normaliza o nº da NF para comparar com o Protheus (que vem sem ponto e com zeros à esquerda):
+// "000.263.071", "263.071", 263071, "000263071" → 263071
+function pxKey(v) {
+  if (v == null || v === '') return null;
+  if (typeof v === 'object') return pxKey(v.nfRaw) ?? pxKey(v.nf);
+  if (typeof v === 'number' && !Number.isInteger(v)) v = Math.round(v * 1000);   // 263.071 lido como decimal
+  const d = String(v).replace(/\D/g, '');
+  const n = d ? parseInt(d, 10) : NaN;
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
 function pxFmtData(d) {
   const s = String(d || '').replace(/\D/g, '');
   return s.length === 8 ? `${s.substr(6,2)}/${s.substr(4,2)}/${s.substr(0,4)}` : '';
 }
 function pxContar(c) {
   const n = c.nfs?.length || 0;
-  const ok = (c.nfs || []).filter(f => pxMap.has(Number(f.nf))).length;
+  const ok = (c.nfs || []).filter(f => pxMap.has(pxKey(f))).length;
   return { n, ok };
 }
 function pxBadge(nf) {
-  const r = pxMap.get(Number(nf));
+  const r = pxMap.get(pxKey(nf));
   if (r) return `<span class="px-ok" title="Classificada no Protheus em ${pxFmtData(r.dt_digitacao)} · Série ${r.serie||'—'} · Filial ${r.filial||'—'}">✅ ${pxFmtData(r.dt_digitacao).slice(0,5)}</span>`;
   return `<span class="px-pend" title="Ainda não consta no Protheus">⏳ Pendente</span>`;
 }
@@ -2475,7 +2485,7 @@ function pxParseCSV(txt) {
   const out = new Map(); let ignorados = 0;
   for (let i = 1; i < linhas.length; i++) {
     const c = linhas[i].split(sep).map(limpa);
-    const nf = parseInt(String(c[iNF] || '').replace(/\D/g, ''), 10);
+    const nf = pxKey(c[iNF]);
     if (!nf) continue;
     const forn = iForn >= 0 ? c[iForn].toUpperCase() : '';
     if (forn && !forn.includes('ALPARGATAS')) { ignorados++; continue; }   // só NFs da Alpargatas
@@ -2503,7 +2513,7 @@ async function importarProtheus(file) {
     if (!regs.length) { add('⚠️ Nenhuma NF encontrada.'); return; }
 
     // Quais NFs das carretas passam a constar como classificadas
-    const nfsCarretas = new Set(); getCarretas().forEach(c => c.nfs.forEach(f => nfsCarretas.add(Number(f.nf))));
+    const nfsCarretas = new Set(); getCarretas().forEach(c => c.nfs.forEach(f => nfsCarretas.add(pxKey(f))));
     const novas = regs.filter(r => nfsCarretas.has(r.nf) && !pxMap.has(r.nf)).length;
 
     regs.forEach(r => pxMap.set(r.nf, r));
