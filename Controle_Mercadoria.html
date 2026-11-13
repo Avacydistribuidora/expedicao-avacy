@@ -1250,7 +1250,7 @@ body.restrito #acoes-wrap{display:none!important}
 <!-- ══════════ OVERLAY: VENDA DO LOTE (V1.28) ══════════ -->
 <div class="ovl center hide" id="pe-vd-ovl" onclick="if(event.target===this)peVendaFechar()">
   <div class="sheet" style="max-width:460px">
-    <div class="sh-title"><span>💰 Informar venda do lote</span><button class="sh-x" onclick="peVendaFechar()">✕</button></div>
+    <div class="sh-title"><span>💰 Vendido — dados da venda</span><button class="sh-x" onclick="peVendaFechar()">✕</button></div>
     <div class="sh-sub" id="pe-vd-sub"></div>
     <label class="flbl">Cliente</label>
     <input id="pe-vd-cli" class="inp" type="text" placeholder="Opcional" autocomplete="off">
@@ -1290,7 +1290,7 @@ body.restrito #acoes-wrap{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.36';
+const APP_VERSION='V1.37';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -3676,7 +3676,7 @@ function renderPeList(){
   if(q) L=PE_LOTES.filter(l=>[l.lote,l.obs,l.criado_por,'#'+l.id].some(x=>String(x||'').toUpperCase().includes(q)));
   $('pe-list').innerHTML=L.length?L.map(l=>{ const t=peTot(l.pe_itens||[]);
     return `<div class="dcard ${esc(l.status)}" onclick="peAbrir(${l.id})">
-      <div class="dc-top"><div class="dc-nf">📦 Lote ${esc(l.lote)}</div>${l.status==='DISPONIVEL'&&t.skus?`<button class="btn btn-grn btn-sm" style="padding:4px 10px;font-size:12px" onclick="event.stopPropagation();peVendaAbrir(${l.id})">💰 Informar venda</button>`:''}${peTag(l.status)}</div>
+      <div class="dc-top"><div class="dc-nf">📦 Lote ${esc(l.lote)}</div>${peTag(l.status)}</div>
       <div class="dc-l"><b>${fmt(l.caixas)}</b> caixa(s) · <b>${fmt(t.skus)}</b> produto(s) · <b class="c-acc">${fmt(t.pares)} pares</b>${l.obs?' · '+esc(cut(l.obs,40)):''}</div>
       <div class="dc-l">📅 ${fmtDT(l.criado_em)} · ${esc(l.criado_por||'')}${l.status==='VENDIDO'?` · 💰 vendido por ${esc(l.fechado_por||'')} em ${fmtDT(l.fechado_em)}${l.venda_cliente||l.venda_nf?' · '+esc([l.venda_cliente,l.venda_nf?'NF '+l.venda_nf:''].filter(Boolean).join(' · ')):''}`:''}</div>
     </div>`; }).join(''):(q?'':'<div class="card"><div class="empty">Nenhum lote neste filtro</div></div>');
@@ -3753,7 +3753,7 @@ function renderPeDet(){
   const nc=PE_ITENS.filter(i=>i.cadastrado===false).length;
   $('pe-kp').innerHTML=`<div><b>${fmt(l.caixas)}</b><span>Caixas</span></div><div><b>${fmt(t.skus)}</b><span>Produtos</span></div><div><b>${fmt(t.pares)}</b><span>Pares</span></div><div><b class="${nc?'c-red':''}">${fmt(nc)}</b><span>Fora do SB1</span></div>`;
   let a=`<button class="btn btn-ghost btn-sm" onclick="peExportLote()">⬇ XLSX</button>${PE_LAST?`<button class="btn btn-ghost btn-sm" onclick="peFotoTirar(${PE_LAST},false)">📷 Foto do último bipado</button>`:''}`;
-  if(aberto) a+=`<button class="btn btn-ghost btn-sm" onclick="peEditar()">✎ Editar lote</button><button class="btn btn-grn btn-sm" onclick="peVendaAbrir(PE_CUR.id)">💰 Informar venda do lote</button>`;
+  if(aberto) a+=`<button class="btn btn-ghost btn-sm" onclick="peEditar()">✎ Editar lote</button><button class="btn btn-grn btn-sm" onclick="peVendaAbrir(PE_CUR.id)">💰 Vendido</button>`;
   else if(adm) a+=`<button class="btn btn-ghost btn-sm" onclick="peFechar(false)">↺ Voltar para disponível</button>`;
   if(adm) a+=`<button class="btn btn-sm" style="background:var(--red);color:#fff;margin-left:auto" onclick="peExcluirLote()">🗑 Excluir lote</button>`;
   $('pe-acts').innerHTML=a;
