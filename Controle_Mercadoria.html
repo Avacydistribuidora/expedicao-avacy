@@ -1261,7 +1261,7 @@ body.restrito #acoes-wrap{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.30';
+const APP_VERSION='V1.31';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -3694,7 +3694,149 @@ async function peExcluirLote(){
 }
 
 // Exportação
-function peExportLote(){
+// ── V1.31 — Exportação formatada (ExcelJS: cabeçalho, cores, filtros, totais, links) ──
+const PE_XL={navy:'FF0D2167',azul:'FF2B3F95',verm:'FFE10A17',cinza:'FFF3F5FA',borda:'FFD5DBE8',verde:'FF15803D',verdeBg:'FFE8F7EE',azulBg:'FFE6EEFB',vermBg:'FFFDECEC',txt:'FF1F2937',mut:'FF64748B'};
+let _peXlLoad=null;
+function peExcelJS(){
+  if(window.ExcelJS) return Promise.resolve(window.ExcelJS);
+  if(_peXlLoad) return _peXlLoad;
+  _peXlLoad=new Promise((ok,ko)=>{ const sc=document.createElement('script'); sc.src='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+    sc.onload=()=>window.ExcelJS?ok(window.ExcelJS):ko(new Error('ExcelJS não carregou')); sc.onerror=()=>{ _peXlLoad=null; ko(new Error('Sem acesso à biblioteca de Excel')); }; document.head.appendChild(sc); });
+  return _peXlLoad;
+}
+const peStLbl=st=>(PE_ST[st]||[0,st||''])[1];
+function peDt(ts){ if(!ts) return null; const d=new Date(ts); return isNaN(d)?null:new Date(d.getTime()-d.getTimezoneOffset()*60000); } // Excel grava sem fuso
+// Monta uma aba: faixa de título, linha de informações/KPIs, tabela com cabeçalho, zebra, total, filtro e congelamento
+function peXlAba(wb,nome,o){
+  const ws=wb.addWorksheet(nome.replace(/[\\\/\?\*\[\]:]/g,' ').slice(0,31),{properties:{tabColor:{argb:o.tab||PE_XL.navy}},
+    pageSetup:{orientation:'landscape',paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.3,right:.3,top:.4,bottom:.5,header:.2,footer:.2}},
+    headerFooter:{oddFooter:'&L&8Avacy · Controle de Mercadoria — Ponta de Estoque&R&8Página &P de &N'}});
+  const C=o.cols, n=C.length; ws.columns=C.map(c=>({width:c.w||12}));
+  const fill=a=>({type:'pattern',pattern:'solid',fgColor:{argb:a}});
+  const bord={top:{style:'thin',color:{argb:PE_XL.borda}},left:{style:'thin',color:{argb:PE_XL.borda}},bottom:{style:'thin',color:{argb:PE_XL.borda}},right:{style:'thin',color:{argb:PE_XL.borda}}};
+  // título
+  ws.mergeCells(1,1,1,n); const t=ws.getCell(1,1); t.value=o.titulo; t.font={name:'Calibri',size:16,bold:true,color:{argb:'FFFFFFFF'}}; t.fill=fill(PE_XL.navy); t.alignment={vertical:'middle',indent:1}; ws.getRow(1).height=30;
+  for(let c=1;c<=n;c++) ws.getCell(2,c).fill=fill(PE_XL.verm); ws.getRow(2).height=4;
+  ws.mergeCells(3,1,3,n); const st=ws.getCell(3,1); st.value=o.sub||''; st.font={size:10,italic:true,color:{argb:PE_XL.mut}}; st.alignment={indent:1};
+  let r=4;
+  // KPIs (rótulo em cima, valor embaixo)
+  if(o.kpis&&o.kpis.length){
+    r++; const span=Math.max(1,Math.floor(n/o.kpis.length));
+    o.kpis.forEach((k,ix)=>{ const c1=1+ix*span, c2=ix===o.kpis.length-1?n:c1+span-1;
+      ws.mergeCells(r,c1,r,c2); ws.mergeCells(r+1,c1,r+1,c2);
+      const a=ws.getCell(r,c1), b=ws.getCell(r+1,c1);
+      a.value=k[0].toUpperCase(); a.font={size:8,bold:true,color:{argb:PE_XL.mut}}; a.alignment={horizontal:'center'};
+      b.value=k[1]; b.font={size:15,bold:true,color:{argb:k[2]||PE_XL.navy}}; b.alignment={horizontal:'center'}; if(typeof k[1]==='number') b.numFmt='#,##0';
+      for(let c=c1;c<=c2;c++){ ws.getCell(r,c).fill=fill(PE_XL.cinza); ws.getCell(r+1,c).fill=fill(PE_XL.cinza); } });
+    ws.getRow(r+1).height=22; r+=2;
+  }
+  if(o.info&&o.info.length){ r++; o.info.forEach(([l,v])=>{ ws.getCell(r,1).value=l; ws.getCell(r,1).font={bold:true,size:10,color:{argb:PE_XL.mut}};
+    ws.mergeCells(r,2,r,Math.min(n,6)); ws.getCell(r,2).value=v||'—'; ws.getCell(r,2).font={size:10,color:{argb:PE_XL.txt}}; r++; }); }
+  r++;
+  // cabeçalho
+  const hr=r; const h=ws.getRow(hr);
+  C.forEach((c,ix)=>{ const cell=h.getCell(ix+1); cell.value=c.h; cell.font={bold:true,size:10,color:{argb:'FFFFFFFF'}}; cell.fill=fill(PE_XL.azul);
+    cell.alignment={vertical:'middle',horizontal:c.al||'left',wrapText:true}; cell.border=bord; });
+  h.height=28;
+  // linhas
+  o.rows.forEach((row,ri)=>{ const R=ws.getRow(hr+1+ri); const zebra=ri%2?PE_XL.cinza:'FFFFFFFF'; const dest=o.rowFill?o.rowFill(row):null;
+    C.forEach((c,ix)=>{ let v=row[ix]; const cell=R.getCell(ix+1);
+      if(c.t==='link'){ if(v){ cell.value={text:c.txt||'🔗 Abrir foto',hyperlink:v,tooltip:v}; cell.font={color:{argb:'FF1D4ED8'},underline:true,size:10}; } }
+      else if(c.t==='dt'){ const d=peDt(v); cell.value=d; if(d) cell.numFmt='dd/mm/yyyy hh:mm'; cell.font={size:10}; }
+      else if(c.t==='int'){ cell.value=v===''||v==null?null:Number(v); cell.numFmt='#,##0'; cell.font={size:10,bold:!!c.bold,color:{argb:c.bold?PE_XL.navy:PE_XL.txt}}; }
+      else if(c.t==='txtnum'){ cell.value=v==null?'':String(v); cell.numFmt='@'; cell.font={size:10,name:'Consolas'}; }
+      else { cell.value=v==null?'':v; cell.font={size:10,bold:!!c.bold,color:{argb:c.bold?PE_XL.navy:PE_XL.txt}}; }
+      cell.alignment={vertical:'middle',horizontal:c.al||(c.t==='int'?'center':'left'),wrapText:!!c.wrap};
+      cell.fill=fill(dest||zebra); cell.border=bord;
+      if(c.badge){ const b=c.badge(v,row); if(b){ cell.font={size:10,bold:true,color:{argb:b[0]}}; cell.fill=fill(b[1]); cell.alignment={vertical:'middle',horizontal:'center'}; } }
+    });
+    R.height=18; });
+  const last=hr+o.rows.length;
+  // total
+  if(o.total&&o.rows.length){ const T=ws.getRow(last+1);
+    C.forEach((c,ix)=>{ const cell=T.getCell(ix+1); cell.fill=fill(PE_XL.navy); cell.font={bold:true,size:11,color:{argb:'FFFFFFFF'}}; cell.border=bord; cell.alignment={vertical:'middle',horizontal:c.t==='int'?'center':'left'};
+      const tv=o.total[ix]; if(tv==='SUM'){ const col=ws.getColumn(ix+1).letter; cell.value={formula:`SUBTOTAL(9,${col}${hr+1}:${col}${last})`}; cell.numFmt='#,##0'; } else if(tv!=null) cell.value=tv; });
+    T.height=22; }
+  if(o.rows.length) ws.autoFilter={from:{row:hr,column:1},to:{row:last,column:n}};
+  ws.views=[{state:'frozen',ySplit:hr,xSplit:o.freezeCol||0,showGridLines:false}];
+  ws.pageSetup.printTitlesRow=`${hr}:${hr}`;
+  if(!o.rows.length){ ws.mergeCells(hr+1,1,hr+1,n); const e=ws.getCell(hr+1,1); e.value='Nenhum registro'; e.font={italic:true,color:{argb:PE_XL.mut}}; e.alignment={horizontal:'center'}; }
+  return ws;
+}
+async function peXlBaixar(wb,nome){
+  const buf=await wb.xlsx.writeBuffer();
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+  a.download=nome+'_'+new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')+'.xlsx'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1500);
+}
+const PE_BADGE_ST=v=>v==='Vendido'?[PE_XL.verde,PE_XL.verdeBg]:v==='Disponível'?['FF1D4ED8',PE_XL.azulBg]:null;
+const PE_BADGE_SB1=v=>v==='NÃO'?['FFB91C1C',PE_XL.vermBg]:v==='SIM'?[PE_XL.verde,PE_XL.verdeBg]:null;
+function peColsProd(nF,comLote){
+  return [...(comLote?[{h:'LOTE',w:14,bold:true},{h:'STATUS',w:12,badge:PE_BADGE_ST}]:[]),
+    {h:'EAN13',w:16,t:'txtnum'},{h:'CÓDIGO',w:17,t:'txtnum'},{h:'DESCRIÇÃO',w:52},{h:'PARES',w:9,t:'int',bold:true},
+    {h:'NO SB1',w:8,al:'center',badge:PE_BADGE_SB1},{h:'FAMÍLIA Z01',w:16,t:'txtnum'},{h:'COR',w:7,t:'txtnum',al:'center'},
+    {h:'FOTO CADASTRO',w:15,t:'link'},{h:'FOTOS MODELO',w:9,t:'int'},
+    ...Array.from({length:nF},(_,k)=>({h:'FOTO LOTE '+(k+1),w:14,t:'link'})),
+    {h:'ÚLTIMA BIPAGEM',w:17,t:'dt'},{h:'POR',w:18}];
+}
+function peLinhaProd(i,fs,lote){
+  const cf=peCfFotos(i);
+  return [...(lote?[lote.lote,peStLbl(lote.status)]:[]),i.ean13||i.ean_key,i.codigo||'',i.descricao||'',Number(i.qtd)||0,i.cadastrado===false?'NÃO':'SIM',
+    PE_CF_COD[i.codigo]||'',peCor(i)||'',cf[0]||'',cf.length||null,...fs,i.atualizado_em,i.atualizado_por||''];
+}
+async function peExportLote(){
+  const l=PE_CUR; if(!l) return;
+  let EX; try{ EX=await peExcelJS(); }catch(e){ toast(e.message+' — gerando planilha simples',1,4000); return peExportLoteSimples(); }
+  await peCfCarregar(PE_ITENS);
+  const t=peTot(PE_ITENS), nF=Math.max(1,...PE_ITENS.map(i=>(PE_FOTOS[i.id]||[]).length)), nc=PE_ITENS.filter(i=>i.cadastrado===false).length;
+  const cols=peColsProd(nF,false);
+  const rows=PE_ITENS.slice().sort((a,b)=>(a.descricao||'').localeCompare(b.descricao||'')).map(i=>{ const fs=PE_FOTOS[i.id]||[]; return peLinhaProd(i,Array.from({length:nF},(_,k)=>fs[k]?fs[k].url:''),null); });
+  const wb=new EX.Workbook(); wb.creator='Avacy · Controle de Mercadoria'; wb.created=new Date();
+  const total=cols.map((c,ix)=>ix===0?'TOTAL':c.h==='PARES'?'SUM':c.h==='DESCRIÇÃO'?`${fmt(t.skus)} produto(s)`:null);
+  peXlAba(wb,'Lote '+l.lote,{titulo:`📦 PONTA DE ESTOQUE — LOTE ${l.lote}`,sub:`Gerado em ${fmtDT(new Date().toISOString())} por ${CU?CU.name:''}`,tab:l.status==='VENDIDO'?PE_XL.verde:PE_XL.azul,
+    kpis:[['Status',peStLbl(l.status),l.status==='VENDIDO'?PE_XL.verde:'FF1D4ED8'],['Caixas',Number(l.caixas)||0],['Produtos',t.skus],['Pares',t.pares],['Fora do SB1',nc,nc?'FFB91C1C':PE_XL.navy]],
+    info:[['Criado por',`${l.criado_por||''} em ${fmtDT(l.criado_em)}`],...(l.status==='VENDIDO'?[['Vendido por',`${l.fechado_por||''} em ${fmtDT(l.fechado_em)}`],['Cliente',l.venda_cliente||''],['NF da venda',l.venda_nf||''],['Obs. da venda',l.venda_obs||'']]:[]),...(l.obs?[['Observação',l.obs]]:[])],
+    cols,rows,total,rowFill:r=>r[4]==='NÃO'?'FFFFF7ED':null,freezeCol:3});
+  await peXlBaixar(wb,'ponta_estoque_lote_'+String(l.lote).replace(/[^\w-]/g,'_'));
+  toast('✓ Relatório do lote gerado');
+}
+async function peExportTodos(){
+  let EX; try{ EX=await peExcelJS(); }catch(e){ toast(e.message+' — gerando planilha simples',1,4000); return peExportTodosSimples(); }
+  try{
+    toast('Gerando relatório…');
+    const its=await fetchAll('pe_itens','id,lote_id,ean13,ean_key,codigo,descricao,qtd,cadastrado,atualizado_em,atualizado_por');
+    if(!PE_LOTES.length) await peCarregar();
+    const LM={}; PE_LOTES.forEach(l=>LM[l.id]=l);
+    await peCfCarregar(its);
+    let FT={}; try{ (await fetchAll('pe_fotos','id,item_id,url')).forEach(f=>(FT[f.item_id]=FT[f.item_id]||[]).push(f.url)); }catch(e){}
+    const nF=Math.max(1,...Object.values(FT).map(v=>v.length));
+    const disp=PE_LOTES.filter(l=>l.status==='DISPONIVEL'), vend=PE_LOTES.filter(l=>l.status==='VENDIDO');
+    const parDe=ls=>its.filter(i=>ls.some(l=>l.id===i.lote_id)).reduce((s,i)=>s+(Number(i.qtd)||0),0);
+    const wb=new EX.Workbook(); wb.creator='Avacy · Controle de Mercadoria'; wb.created=new Date();
+    const sub=`Gerado em ${fmtDT(new Date().toISOString())} por ${CU?CU.name:''}`;
+    const kpis=[['Lotes disponíveis',disp.length,'FF1D4ED8'],['Pares disponíveis',parDe(disp),'FF1D4ED8'],['Lotes vendidos',vend.length,PE_XL.verde],['Pares vendidos',parDe(vend),PE_XL.verde]];
+    // 1) Lotes
+    const lc=[{h:'LOTE',w:14,bold:true},{h:'STATUS',w:12,badge:PE_BADGE_ST},{h:'CAIXAS',w:8,t:'int'},{h:'PRODUTOS',w:10,t:'int'},{h:'PARES',w:9,t:'int',bold:true},
+      {h:'OBSERVAÇÃO',w:30,wrap:true},{h:'CRIADO EM',w:17,t:'dt'},{h:'CRIADO POR',w:18},{h:'VENDIDO EM',w:17,t:'dt'},{h:'VENDIDO POR',w:18},{h:'CLIENTE',w:30},{h:'NF VENDA',w:12,t:'txtnum'},{h:'OBS. VENDA',w:30,wrap:true}];
+    const lr=PE_LOTES.slice().sort((a,b)=>(a.status===b.status?0:a.status==='DISPONIVEL'?-1:1)||String(a.lote).localeCompare(String(b.lote),'pt-BR',{numeric:true})).map(l=>{ const tt=peTot(its.filter(i=>i.lote_id===l.id));
+      return [l.lote,peStLbl(l.status),Number(l.caixas)||0,tt.skus,tt.pares,l.obs||'',l.criado_em,l.criado_por||'',l.status==='VENDIDO'?l.fechado_em:null,l.status==='VENDIDO'?l.fechado_por||'':'',l.venda_cliente||'',l.venda_nf||'',l.venda_obs||'']; });
+    peXlAba(wb,'Lotes',{titulo:'📦 PONTA DE ESTOQUE — RESUMO DOS LOTES',sub,kpis,cols:lc,rows:lr,total:lc.map((c,ix)=>ix===0?'TOTAL':['CAIXAS','PRODUTOS','PARES'].includes(c.h)?'SUM':null),freezeCol:1});
+    // 2) Disponível por produto (soma dos lotes disponíveis)
+    const ag=new Map(); its.filter(i=>LM[i.lote_id]&&LM[i.lote_id].status==='DISPONIVEL').forEach(i=>{ const k=i.ean_key; const a=ag.get(k)||{i,pares:0,lotes:new Set()}; a.pares+=Number(i.qtd)||0; a.lotes.add(LM[i.lote_id].lote); ag.set(k,a); });
+    const pc=[{h:'EAN13',w:16,t:'txtnum'},{h:'CÓDIGO',w:17,t:'txtnum'},{h:'DESCRIÇÃO',w:52},{h:'PARES DISPONÍVEIS',w:12,t:'int',bold:true},{h:'Nº LOTES',w:9,t:'int'},{h:'LOTES',w:30,wrap:true},{h:'COR',w:7,t:'txtnum',al:'center'},{h:'FOTO CADASTRO',w:15,t:'link'}];
+    const pr=[...ag.values()].sort((a,b)=>(a.i.descricao||'').localeCompare(b.i.descricao||'')).map(a=>[a.i.ean13||a.i.ean_key,a.i.codigo||'',a.i.descricao||'',a.pares,a.lotes.size,[...a.lotes].sort().join(', '),peCor(a.i)||'',peCfFotos(a.i)[0]||'']);
+    peXlAba(wb,'Disponível por produto',{titulo:'👟 PONTA DE ESTOQUE — PARES DISPONÍVEIS POR PRODUTO',sub:sub+' · soma dos lotes com status Disponível',tab:'FF1D4ED8',cols:pc,rows:pr,total:pc.map((c,ix)=>ix===0?'TOTAL':c.h==='PARES DISPONÍVEIS'?'SUM':c.h==='DESCRIÇÃO'?`${fmt(pr.length)} produto(s)`:null),freezeCol:3});
+    // 3) Produtos por lote (detalhado)
+    const dc=peColsProd(nF,true);
+    const dr=its.slice().sort((a,b)=>String(LM[a.lote_id]?.lote||'').localeCompare(String(LM[b.lote_id]?.lote||''),'pt-BR',{numeric:true})||(a.descricao||'').localeCompare(b.descricao||''))
+      .map(i=>{ const fs=FT[i.id]||[]; return peLinhaProd(i,Array.from({length:nF},(_,k)=>fs[k]||''),LM[i.lote_id]||{lote:i.lote_id,status:''}); });
+    peXlAba(wb,'Produtos por lote',{titulo:'📋 PONTA DE ESTOQUE — PRODUTOS POR LOTE',sub,cols:dc,rows:dr,total:dc.map((c,ix)=>ix===0?'TOTAL':c.h==='PARES'?'SUM':null),rowFill:r=>r[6]==='NÃO'?'FFFFF7ED':null,freezeCol:5});
+    await peXlBaixar(wb,'ponta_estoque');
+    toast('✓ Relatório da Ponta de Estoque gerado');
+  }catch(e){ toast(peErrMsg(e),1,5000); }
+}
+
+// Fallback sem formatação (se a biblioteca ExcelJS não carregar)
+function peExportLoteSimples(){
   const l=PE_CUR; if(!l) return;
   const nF=Math.max(1,...PE_ITENS.map(i=>(PE_FOTOS[i.id]||[]).length));
   const aoa=[['LOTE','CAIXAS','EAN13','CODIGO','DESCRICAO','PARES','NO SB1','ULTIMA BIPAGEM','POR','FAMILIA Z01','FOTO CADASTRO','FOTOS DO MODELO',...Array.from({length:nF},(_,k)=>'FOTO LOTE '+(k+1))]];
@@ -3702,7 +3844,7 @@ function peExportLote(){
     aoa.push([l.lote,l.caixas,i.ean13||i.ean_key,i.codigo||'',i.descricao||'',Number(i.qtd)||0,i.cadastrado===false?'NÃO':'SIM',fmtDT(i.atualizado_em),i.atualizado_por||'',PE_CF_COD[i.codigo]||'',cf[0]||'',cf.length||'',...Array.from({length:nF},(_,k)=>fs[k]?fs[k].url:'')]); });
   peXlsxSave([['Lote '+String(l.lote).slice(0,24),aoa,[14,8,16,16,50,8,8,17,18,16,14,10,...Array(nF).fill(13)]]],'ponta_estoque_lote_'+String(l.lote).replace(/[^\w-]/g,'_'));
 }
-async function peExportTodos(){
+async function peExportTodosSimples(){
   try{
     const its=await fetchAll('pe_itens','id,lote_id,ean13,ean_key,codigo,descricao,qtd,cadastrado,atualizado_em,atualizado_por');
     if(!PE_LOTES.length) await peCarregar();
