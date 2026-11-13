@@ -429,10 +429,13 @@ body:not(.adm) .adm-only{display:none!important}
 .com-h b{color:var(--navy)}
 .com-t{font-size:14px;white-space:pre-wrap;word-break:break-word}
 .com-x{margin-left:auto;background:none;border:none;color:var(--mut);cursor:pointer;font-size:13px}
-/* V1.14 — perfil Devolução: só a aba Devoluções */
-body.devonly .sbNav .nav-it:not(#t-dev),body.devonly .sbNav .sbSec{display:none!important}
-body.devonly #acoes-wrap{display:none!important}
+/* V1.14/V1.30 — acesso restrito por usuário (Devoluções / Ponta de Estoque) */
+body.restrito .sbNav .nav-it:not(.perm),body.restrito .sbNav .sbSec{display:none!important}
+body.restrito #acoes-wrap{display:none!important}
 .sbUser .rb.dv{background:#f97316}
+.sbUser .rb.pt{background:#0d9488}
+.acs-sel{margin:0;padding:7px 10px;font-size:13px;min-width:210px}
+.acs-row td{vertical-align:middle!important}
 /* V1.13 — fotos */
 .ft-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
 .ft-grid .empty{grid-column:1/-1}
@@ -520,6 +523,7 @@ body.devonly #acoes-wrap{display:none!important}
       <button class="nav-it adm-only" id="t-vnd" onclick="goTab('vnd')"><i><svg viewBox="0 0 24 24"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg></i><span class="lb">Baixa de vendas</span></button>
       <button class="nav-it adm-only" id="t-prt" onclick="goTab('prt')"><i><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/><path d="M14 16l2 2 4-4"/></svg></i><span class="lb">Ajuste Protheus</span><span class="pill alert hide" id="prt-pill">0</span></button>
       <button class="nav-it adm-only" id="t-apr" onclick="goTab('apr')"><i><svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></i><span class="lb">Aprovações</span><span class="pill alert hide" id="apr-badge">0</span></button>
+      <button class="nav-it adm-only" id="t-acs" onclick="goTab('acs')"><i><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M17 11l2 2 3.5-3.5"/></svg></i><span class="lb">Acessos</span></button>
     </nav>
     <div class="sbVer">Controle de Mercadoria <span class="app-ver"></span></div>
     <div class="sbUser">
@@ -821,6 +825,17 @@ body.devonly #acoes-wrap{display:none!important}
       </div>
     </div>
     <div id="ap-list" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+
+  <!-- ── ACESSOS POR USUÁRIO (V1.30) ── -->
+  <div class="pg hide" id="p-acs">
+    <div class="card">
+      <div class="ct"><span>🔐 Acesso por usuário — Controle de Mercadoria</span><button class="btn btn-ghost btn-sm" onclick="acsCarregar()">↻ Atualizar</button></div>
+      <div class="sh-sub" style="margin-bottom:10px">Os usuários e senhas são os do app Inventário. Aqui você define <b>o que cada um vê neste app</b>.
+        <b>Padrão do perfil</b>: Admin e Operador veem tudo · perfil Devolução vê só Devoluções.</div>
+      <input id="acs-q" class="inp" style="margin-bottom:8px" placeholder="Pesquisar nome ou usuário..." oninput="acsRender()" autocomplete="off">
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Usuário</th><th>Perfil (Inventário)</th><th>Acesso neste app</th><th></th></tr></thead><tbody id="acs-list"></tbody></table></div>
+    </div>
   </div>
 
   <!-- ── ENDEREÇO ── -->
@@ -1246,7 +1261,7 @@ body.devonly #acoes-wrap{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.28';
+const APP_VERSION='V1.30';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -1400,7 +1415,7 @@ async function doLogin(){
   $('l-err').classList.remove('show'); $('l-user').classList.remove('err'); $('l-pwd').classList.remove('err');
   CU=user;
   go('loading'); document.querySelector('#s-loading .ld-txt').textContent='Carregando saldo...';
-  await loadSaldo();
+  await Promise.all([loadSaldo(),loadAcesso()]);
   enterMain();
 }
 function doLogout(){ CU=null; $('l-pwd').value=''; go('login'); focusLater('l-user'); }
@@ -1408,12 +1423,14 @@ function enterMain(){
   const adm=isAdm();
   document.body.classList.toggle('adm',adm);
   $('uNome').textContent=CU.name; $('uAv').textContent=CU.name.split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase();
-  const dvo=CU.role==='dev'; document.body.classList.toggle('devonly',dvo);
-  $('uRole').textContent=adm?'Admin':dvo?'Devolução':'Operador'; $('uRole').className='rb'+(adm?'':dvo?' dv':' op');
+  const dvo=CU.role==='dev';
+  aplicarPermissoes();
+  const pm=CU_PERM; const soPte=pm&&pm.length===1&&pm[0]==='pte', soDev=pm&&pm.length===1&&pm[0]==='dev';
+  $('uRole').textContent=adm?'Admin':pm?(pm.length>1?'Devol. + Ponta':soPte?'Ponta de Estoque':'Devolução'):'Operador'; $('uRole').className='rb'+(adm?'':soPte?' pt':pm?' dv':' op');
   $('acoes-wrap').classList.toggle('hide',!adm);
   $('con-kpis').classList.toggle('hide',!adm);
   $('dd-adm').classList.toggle('hide',!adm);
-  go('main'); if(dvo) devFiltro('AGUARDANDO CIX'); goTab(dvo?'dev':'con'); loadPendCount();
+  go('main'); if(dvo&&pm&&pm.includes('dev')) devFiltro('AGUARDANDO CIX'); goTab(pm?pm[0]:'con'); loadPendCount();
 }
 function toggleSb(on){ document.body.classList.toggle('sbOpen',!!on); }
 function colapsaSb(){ document.body.classList.toggle('sbMini'); try{localStorage.setItem('cm_sbMini',document.body.classList.contains('sbMini')?'1':'');}catch(e){} }
@@ -1424,10 +1441,10 @@ async function loadDevPill(){
 }
 function go(s){ document.querySelectorAll('.scr').forEach(x=>x.classList.remove('on')); $('s-'+s).classList.add('on'); }
 function goTab(t){
-  if(document.body.classList.contains('devonly')) t='dev';
+  if(CU_PERM&&!CU_PERM.includes(t)) t=CU_PERM[0];
   CUR_TAB=t;
-  ['con','mov','end','kdx','cgr','dev','pte','his','apr','vnd','prt'].forEach(x=>{ $('t-'+x).classList.toggle('on',x===t); $('p-'+x).classList.toggle('hide',x!==t); });
-  $('h-title').textContent={con:'Consulta',mov:'Estoque',end:'Endereço',kdx:'Kardex',cgr:'Cadastro de Grade',dev:'Devoluções',pte:'Ponta de Estoque',his:'Histórico',apr:'Aprovações',vnd:'Baixa de vendas',prt:'Ajuste Protheus'}[t];
+  ['con','mov','end','kdx','cgr','dev','pte','his','apr','acs','vnd','prt'].forEach(x=>{ $('t-'+x).classList.toggle('on',x===t); $('p-'+x).classList.toggle('hide',x!==t); });
+  $('h-title').textContent={con:'Consulta',mov:'Estoque',end:'Endereço',kdx:'Kardex',cgr:'Cadastro de Grade',dev:'Devoluções',pte:'Ponta de Estoque',his:'Histórico',apr:'Aprovações',acs:'Acessos',vnd:'Baixa de vendas',prt:'Ajuste Protheus'}[t];
   toggleSb(false); loadDevPill(); prtPill();
   if(t==='con'){ renderKpis(); focusLater('con-inp'); }
   if(t==='mov'){ renderMov(); renderPos(); }
@@ -1438,7 +1455,8 @@ function goTab(t){
   if(t==='kdx'){ if($('kdx-inp').value.trim()) kdxBuscar(); else focusLater('kdx-inp'); }
   if(t==='vnd') vbCarregar();
   if(t==='cgr'){ if(CG_CUR) cgAbrir(CG_CUR.id); else if($('cg-new-view').classList.contains('hide')){ cgView('list'); cgCarregar(); } }
-  if(!document.body.classList.contains('devonly')) cgPill();
+  if(!CU_PERM) cgPill();
+  if(t==='acs') acsCarregar();
   if(t==='prt') prtCarregar();
   if(t==='pte'){ if(PE_CUR) peAbrir(PE_CUR.id); else { peView('list'); peCarregar(); } }
 }
@@ -3419,6 +3437,61 @@ function cgExport(){
 }
 
 
+
+// ═════════════════════ ACESSO POR USUÁRIO (V1.30) ═════════════════════
+// Tabela cm_acessos (username → modulos). Sem registro = padrão do perfil do Inventário.
+//   modulos: ['*'] completo · ['dev'] só Devoluções · ['pte'] só Ponta de Estoque · ['dev','pte'] os dois
+const ACS_OPC=[['','Padrão do perfil'],['*','Completo (todas as telas)'],['dev','Só Devoluções'],['pte','Só Ponta de Estoque'],['dev,pte','Devoluções + Ponta de Estoque']];
+let CU_PERM=null, CU_ACS=null, ACS=[];
+async function loadAcesso(){
+  CU_ACS=null; if(!CU||CU.role==='adm') return;
+  try{ const {data,error}=await getSB().from('cm_acessos').select('modulos').eq('username',String(CU.user).toLowerCase()).limit(1);
+    if(!error&&data&&data[0]&&Array.isArray(data[0].modulos)&&data[0].modulos.length) CU_ACS=data[0].modulos; }catch(e){}
+}
+function permissoesDe(role,mods){
+  if(role==='adm') return null;                               // admin: tudo
+  if(mods&&mods.length){ if(mods.includes('*')) return null; const v=mods.filter(m=>m==='dev'||m==='pte'); if(v.length) return v; }
+  return role==='dev'?['dev']:null;                           // padrão do perfil
+}
+function aplicarPermissoes(){
+  CU_PERM=permissoesDe(CU&&CU.role,CU_ACS);
+  document.body.classList.toggle('restrito',!!CU_PERM);
+  document.body.classList.toggle('devonly',!!(CU_PERM&&CU_PERM.length===1&&CU_PERM[0]==='dev'));
+  document.querySelectorAll('.sbNav .nav-it').forEach(b=>b.classList.toggle('perm',!!CU_PERM&&CU_PERM.includes(b.id.replace(/^t-/,''))));
+}
+async function acsCarregar(){
+  if(!isAdm()) return;
+  $('acs-list').innerHTML='<tr><td colspan="4" class="empty">Carregando...</td></tr>';
+  await loadUsers();
+  try{ const {data,error}=await getSB().from('cm_acessos').select('*'); if(error) throw error; ACS=data||[]; }
+  catch(e){ ACS=[]; $('acs-list').innerHTML='<tr><td colspan="4" class="empty c-red">'+(/cm_acessos/.test(e.message||'')?'Rode o script controle_mercadoria_V1.30_acessos.sql no Supabase.':'Erro: '+esc(e.message||e))+'</td></tr>'; return; }
+  acsRender();
+}
+function acsValor(u){ const r=ACS.find(a=>a.username===String(u.user).toLowerCase()); return r&&r.modulos&&r.modulos.length?r.modulos.join(','):''; }
+function acsEfetivo(u){ const v=acsValor(u); const pm=permissoesDe(u.role,v?v.split(','):null); return !pm?'Todas as telas':pm.map(m=>m==='dev'?'Devoluções':'Ponta de Estoque').join(' + '); }
+function acsRender(){
+  const q=($('acs-q').value||'').trim().toUpperCase();
+  const L=USERS.filter(u=>u.user!=='admin'&&(!q||[u.name,u.user].some(x=>String(x||'').toUpperCase().includes(q))))
+    .sort((a,b)=>(b.active?1:0)-(a.active?1:0)||String(a.name||'').localeCompare(String(b.name||'')));
+  const PER={adm:['t-pur','Admin'],op:['t-acc','Operador'],dev:['t-ylw','Devolução']};
+  $('acs-list').innerHTML=L.length?L.map(u=>{ const pr=PER[u.role]||['t-mut',u.role||'—'], v=acsValor(u), adm=u.role==='adm';
+    return `<tr class="acs-row"><td><b>${esc(u.name||'')}</b><div class="pos-sub">${esc(u.user)}${u.active?'':' · <span class="c-red">inativo</span>'}</div></td>
+      <td><span class="tag ${pr[0]}">${pr[1]}</span></td>
+      <td>${adm?'<span class="sh-sub">Admin vê tudo</span>':`<select class="inp acs-sel" onchange="acsSalvar(${esc(JSON.stringify(String(u.user)))},this.value,this)">${ACS_OPC.map(o=>`<option value="${o[0]}" ${o[0]===v?'selected':''}>${o[1]}</option>`).join('')}</select>`}</td>
+      <td class="sh-sub" style="white-space:nowrap">→ ${esc(acsEfetivo(u))}</td></tr>`; }).join(''):'<tr><td colspan="4" class="empty">Nenhum usuário</td></tr>';
+}
+async function acsSalvar(user,val,sel){
+  const un=String(user).toLowerCase(); sel.disabled=true;
+  try{
+    if(!val){ const {error}=await getSB().from('cm_acessos').delete().eq('username',un); if(error) throw error; ACS=ACS.filter(a=>a.username!==un); }
+    else { const rec={username:un,modulos:val.split(','),atualizado_por:CU.name,atualizado_em:new Date().toISOString()};
+      const {error}=await getSB().from('cm_acessos').upsert(rec,{onConflict:'username'}); if(error) throw error;
+      ACS=ACS.filter(a=>a.username!==un).concat([rec]); }
+    beep(true); toast('✓ Acesso de '+user+' atualizado — vale no próximo login');
+  }catch(e){ beep(false); toast(/cm_acessos/.test(e.message||'')?'Rode o script controle_mercadoria_V1.30_acessos.sql no Supabase':'Erro: '+(e.message||e),1,5000); }
+  sel.disabled=false; acsRender();
+}
+
 // ═════════════════════ PONTA DE ESTOQUE (V1.25) — lotes de pares avulsos ═════════════════════
 let PE_LOTES=[], PE_F='DISPONIVEL', PE_CUR=null, PE_ITENS=[], PE_Q=Promise.resolve(), PE_LAST=null, PE_EDIT=null, PE_HL=null;
 const PE_PROD={};               // ean_key → {codigo, descricao, ean13} | null
@@ -3575,9 +3648,8 @@ async function peAddItem(raw,mult,loteId){
   if(!PE_CUR||PE_CUR.id!==loteId||PE_CUR.status!=='DISPONIVEL') return;
   const key=eanKey(raw); const p=await peProduto(key);
   const ean=p&&p.ean13?p.ean13:(raw.length===14&&raw[0]==='0'?raw.slice(1):raw);
-  const {data,error}=await getSB().rpc('pe_bipar',{p_lote:loteId,p_ean:ean,p_key:key,p_codigo:p?p.codigo:null,p_desc:p?p.descricao:'NÃO CADASTRADO NO SB1',p_cad:!!p,p_qtd:mult,p_user:CU.name});
-  if(error) throw error;
-  const it=data; if(!PE_CUR||PE_CUR.id!==loteId) return;
+  const it=await peBiparDB({p_lote:loteId,p_ean:ean,p_key:key,p_codigo:p?p.codigo:null,p_desc:p?p.descricao:'NÃO CADASTRADO NO SB1',p_cad:!!p,p_qtd:mult,p_user:CU.name});
+  if(!PE_CUR||PE_CUR.id!==loteId) return;
   PE_ITENS=PE_ITENS.filter(x=>x.id!==it.id); PE_ITENS.unshift(it); PE_LAST=it.id;
   if(p){ beep(true); peMsg('ok',`✓ +${mult} · <b>${esc(cut(p.descricao,60))}</b> — total no lote: <b>${fmt(it.qtd)}</b>${p.outros?` <span class="c-mut">(EAN com ${p.outros+1} códigos no SB1, usado ${esc(p.codigo)})</span>`:''}`); }
   else { beep(false); peMsg('warn',`⚠ EAN <b>${esc(ean)}</b> não encontrado no cadastro SB1 — registrado assim mesmo (total ${fmt(it.qtd)}). Confira o produto.`); }
@@ -3731,21 +3803,28 @@ async function peFotoExcluir(itemId,id){
 // As fotos vêm por família Z01 (todas as cores/tamanhos do modelo). Mostra primeiro as da cor do produto.
 const PE_CF_COD={};   // codigo → familia ('' = sem família)
 const PE_CF_FAM={};   // familia → [urls]
+const PE_CF_P={};     // codigo → {cor, foto}  (V1.29: foto exata do produto e cor Z01)
 function peCfUrl(u){ return String(u||'').trim().replace(/%7Bw%7Dx%7Bh%7D|\{w\}x\{h\}/i,'800x800'); }
-function peCor(i){ const m=String(i.descricao||'').match(/\b(\d{4})\b/); if(m) return m[1]; const c=String(i.codigo||''); return c.length===14?c.slice(7,11):''; }
+function peCor(i){ const pc=PE_CF_P[i.codigo]; if(pc&&pc.cor) return pc.cor; const m=String(i.descricao||'').match(/\b(\d{4})\b/); if(m) return m[1]; const c=String(i.codigo||''); return c.length===14?c.slice(7,11):''; }
 function peCfFotos(i){
-  const f=PE_CF_COD[i.codigo]; const all=f?(PE_CF_FAM[f]||[]):[]; if(!all.length) return [];
+  const f=PE_CF_COD[i.codigo]; let all=f?(PE_CF_FAM[f]||[]):[];
+  const own=PE_CF_P[i.codigo]&&PE_CF_P[i.codigo].foto?peCfUrl(PE_CF_P[i.codigo].foto):'';
+  if(own) all=[own].concat(all.filter(u=>u!==own));
+  if(!all.length) return [];
   const cor=peCor(i); if(!cor) return all;
+  if(own){ const re=new RegExp('(^|\\D)'+cor+'(\\D|$)'); const nome=u=>decodeURIComponent(u.split('?')[0].split('/').pop()||''); const m=all.slice(1).filter(u=>re.test(nome(u))); return [own,...m,...all.slice(1).filter(u=>!m.includes(u))]; }
   const re=new RegExp('(^|\\D)'+cor+'(\\D|$)'); const nome=u=>decodeURIComponent(u.split('?')[0].split('/').pop()||'');
   const m=all.filter(u=>re.test(nome(u))); return m.length?m.concat(all.filter(u=>!m.includes(u))):all;
 }
-function peCfCorOk(i){ const f=peCfFotos(i), cor=peCor(i); return !!(f.length&&cor&&new RegExp('(^|\\D)'+cor+'(\\D|$)').test(decodeURIComponent(f[0].split('/').pop()||''))); }
+function peCfCorOk(i){ if(PE_CF_P[i.codigo]&&PE_CF_P[i.codigo].foto) return true; const f=peCfFotos(i), cor=peCor(i); return !!(f.length&&cor&&new RegExp('(^|\\D)'+cor+'(\\D|$)').test(decodeURIComponent(f[0].split('/').pop()||''))); }
 async function peCfCarregar(itens){
   const cods=[...new Set((itens||[]).map(i=>i.codigo).filter(c=>c&&!(c in PE_CF_COD)))];
   try{
     for(let k=0;k<cods.length;k+=150){ const lote=cods.slice(k,k+150);
-      const {data,error}=await getSB().from('pe_produtos').select('codigo,familia').in('codigo',lote); if(error) throw error;
-      lote.forEach(c=>PE_CF_COD[c]=''); (data||[]).forEach(r=>PE_CF_COD[r.codigo]=r.familia||''); }
+      let {data,error}=await getSB().from('pe_produtos').select('codigo,familia,cor,foto').in('codigo',lote);
+      if(error&&/cor|foto/.test(error.message||'')) ({data,error}=await getSB().from('pe_produtos').select('codigo,familia').in('codigo',lote));
+      if(error) throw error;
+      lote.forEach(c=>PE_CF_COD[c]=''); (data||[]).forEach(r=>{ PE_CF_COD[r.codigo]=r.familia||''; PE_CF_P[r.codigo]={cor:r.cor||'',foto:r.foto||''}; }); }
     const fams=[...new Set(cods.map(c=>PE_CF_COD[c]).filter(f=>f&&!(f in PE_CF_FAM)))];
     for(let k=0;k<fams.length;k+=100){ const lote=fams.slice(k,k+100);
       const {data,error}=await getSB().from('pe_familia_fotos').select('familia,fotos').in('familia',lote); if(error) throw error;
@@ -3762,7 +3841,7 @@ function peCfVer(codigo,descricao){
   const i={codigo,descricao}; const f=peCfFotos(i); if(!f.length) return;
   _peCf={fotos:f,k:0,i};
   $('pe-cf-ttl').textContent=cut(descricao,48);
-  $('pe-cf-sub').innerHTML=`Cód. ${esc(codigo)} · Família Z01 ${esc(PE_CF_COD[codigo]||'')}${peCfCorOk(i)?` · <b class="c-grn">fotos da cor ${esc(peCor(i))} primeiro</b>`:' · fotos do modelo (todas as cores)'}`;
+  $('pe-cf-sub').innerHTML=`Cód. ${esc(codigo)} · Família Z01 ${esc(PE_CF_COD[codigo]||'')}${PE_CF_P[codigo]&&PE_CF_P[codigo].foto?` · <b class="c-grn">1ª foto = foto do produto (cor ${esc(peCor(i))})</b>`:peCfCorOk(i)?` · <b class="c-grn">fotos da cor ${esc(peCor(i))} primeiro</b>`:' · fotos do modelo (todas as cores)'}`;
   $('pe-cf-strip').innerHTML=f.map((u,k)=>`<img loading="lazy" src="${esc(u)}" data-k="${k}" onclick="peCfIr(${k})" onerror="this.style.opacity=.2" alt="">`).join('');
   peCfIr(0); $('pe-cf-ovl').classList.remove('hide');
 }
@@ -3784,24 +3863,57 @@ function peXlsxSave(sheets,nome){
 }
 
 async function peImportFotos(linhas,head,limpa,iC,iD,iE,iF,iL){
-  const el=$('pe-sb1-info');
+  const el=$('pe-sb1-info'); const iCor=head.findIndex(h=>['COR_Z01','COR','Z01_COR'].includes(h));
   const P=new Map(), F=new Map();
   for(let k=1;k<linhas.length;k++){ const c=linhas[k].split(';').map(limpa); const cod=c[iC]; if(!cod) continue;
-    const fam=c[iF]||'', ean=(iE>=0?c[iE]:'').replace(/\D/g,''), url=c[iL]||'';
-    if(!P.has(cod)) P.set(cod,{codigo:cod,descricao:iD>=0?c[iD]:'',ean13:ean||null,ean_key:eanKey(ean)||null,familia:fam||null,atualizado_em:new Date().toISOString()});
+    const fam=c[iF]||'', ean=(iE>=0?c[iE]:'').replace(/\D/g,''), url=c[iL]||'', okUrl=/^https?:\/\//i.test(url);
+    if(!P.has(cod)) P.set(cod,{codigo:cod,descricao:iD>=0?c[iD]:'',ean13:ean||null,ean_key:eanKey(ean)||null,familia:fam||null,atualizado_em:new Date().toISOString(),...(iCor>=0?{cor:c[iCor]||null,foto:okUrl?url:null}:{})});
+    else if(iCor>=0&&okUrl&&!P.get(cod).foto) P.get(cod).foto=url;
     if(fam){ if(!F.has(fam)) F.set(fam,new Set()); if(/^https?:\/\//i.test(url)) F.get(fam).add(url); }
   }
-  const prods=[...P.values()], fams=[...F.entries()].map(([familia,set])=>({familia,fotos:[...set],atualizado_em:new Date().toISOString()}));
+  // V1.29: soma as fotos às que já existem na família (não perde as do relatório anterior)
+  if(iCor>=0&&F.size){ try{ const ks=[...F.keys()]; for(let k=0;k<ks.length;k+=100){ const {data}=await getSB().from('pe_familia_fotos').select('familia,fotos').in('familia',ks.slice(k,k+100)); (data||[]).forEach(r=>(r.fotos||[]).forEach(u=>F.get(r.familia)&&F.get(r.familia).add(u))); } }catch(e){} }
+  let prods=[...P.values()]; const fams=[...F.entries()].map(([familia,set])=>({familia,fotos:[...set],atualizado_em:new Date().toISOString()}));
   const comFoto=fams.filter(f=>f.fotos.length).length, nFotos=fams.reduce((s,f)=>s+f.fotos.length,0);
-  if(!confirm(`Importar relatório de fotos do cadastro?\n\n${fmt(prods.length)} produtos · ${fmt(fams.length)} famílias Z01\n${fmt(comFoto)} famílias com foto · ${fmt(nFotos)} links de foto\n\nAs fotos de cada família são substituídas pelas deste arquivo.`)) return;
+  const nProdFoto=prods.filter(x=>x.foto).length;
+  if(!confirm(`Importar cadastro com fotos?\n\n${fmt(prods.length)} produtos · ${fmt(fams.length)} famílias Z01${iCor>=0?`\n${fmt(nProdFoto)} produtos com foto própria (cor Z01)`:''}\n${fmt(comFoto)} famílias com foto · ${fmt(nFotos)} links de foto`)) return;
   const sb=getSB();
   for(let k=0;k<prods.length;k+=1000){ el.innerHTML=`⏳ Atualizando produtos… <b>${fmt(Math.min(k+1000,prods.length))}</b> / ${fmt(prods.length)}`;
-    const {error}=await sb.from('pe_produtos').upsert(prods.slice(k,k+1000),{onConflict:'codigo'}); if(error) throw error; }
+    let {error}=await sb.from('pe_produtos').upsert(prods.slice(k,k+1000),{onConflict:'codigo'});
+    if(error&&/'?(cor|foto)'?/.test(error.message||'')&&iCor>=0){ prods=prods.map(({cor,foto,...r})=>r); toast('Rode o script controle_mercadoria_V1.29_bipagem_fotos.sql para gravar a foto e a cor de cada produto',1,6000); ({error}=await sb.from('pe_produtos').upsert(prods.slice(k,k+1000),{onConflict:'codigo'})); }
+    if(error) throw error; }
   for(let k=0;k<fams.length;k+=200){ el.innerHTML=`⏳ Gravando fotos das famílias… <b>${fmt(Math.min(k+200,fams.length))}</b> / ${fmt(fams.length)}`;
     const {error}=await sb.from('pe_familia_fotos').upsert(fams.slice(k,k+200),{onConflict:'familia'}); if(error) throw error; }
-  Object.keys(PE_CF_COD).forEach(k=>delete PE_CF_COD[k]); Object.keys(PE_CF_FAM).forEach(k=>delete PE_CF_FAM[k]); Object.keys(PE_PROD).forEach(k=>delete PE_PROD[k]);
+  Object.keys(PE_CF_COD).forEach(k=>delete PE_CF_COD[k]); Object.keys(PE_CF_FAM).forEach(k=>delete PE_CF_FAM[k]); Object.keys(PE_CF_P).forEach(k=>delete PE_CF_P[k]); Object.keys(PE_PROD).forEach(k=>delete PE_PROD[k]);
   beep(true); toast(`✓ Fotos importadas: ${fmt(comFoto)} famílias · ${fmt(nFotos)} links`,0,4500); peSb1Info();
   if(PE_CUR) peAbrir(PE_CUR.id);
+}
+
+
+// ── V1.29 — bipagem resiliente ──
+// A função pe_bipar da V1.25 só aceitava status 'ABERTO'; os lotes novos são 'DISPONIVEL' → "Lote fechado ou inexistente".
+// Se o banco ainda estiver com a função antiga (ou sem ela), grava direto na tabela pe_itens (mesmo agrupamento por EAN).
+let PE_RPC_OK=true;
+async function peBiparDB(a){
+  if(PE_RPC_OK){
+    const {data,error}=await getSB().rpc('pe_bipar',a);
+    if(!error) return data;
+    const m=error.message||'';
+    if(!/Lote fechado ou inexistente|pe_bipar|function|schema cache/i.test(m)) throw error;
+    console.warn('pe_bipar indisponível/antiga — usando gravação direta:',m);
+    PE_RPC_OK=false;
+  }
+  const sb=getSB(), agora=new Date().toISOString();
+  const {data:ex,error:e1}=await sb.from('pe_itens').select('*').eq('lote_id',a.p_lote).eq('ean_key',a.p_key).limit(1); if(e1) throw e1;
+  if(ex&&ex[0]){
+    const qtd=(Number(ex[0].qtd)||0)+a.p_qtd;
+    const {data,error}=await sb.from('pe_itens').update({qtd,atualizado_por:a.p_user,atualizado_em:agora}).eq('id',ex[0].id).select().single(); if(error) throw error;
+    return data||{...ex[0],qtd,atualizado_por:a.p_user,atualizado_em:agora};
+  }
+  const rec={lote_id:a.p_lote,ean13:a.p_ean,ean_key:a.p_key,codigo:a.p_codigo,descricao:a.p_desc,cadastrado:a.p_cad,qtd:a.p_qtd,criado_por:a.p_user,atualizado_por:a.p_user,atualizado_em:agora};
+  const {data,error}=await sb.from('pe_itens').insert(rec).select().single();
+  if(error&&/duplicate|unique/i.test(error.message||'')) return peBiparDB(a);   // bipagem simultânea do mesmo EAN
+  if(error) throw error; return data;
 }
 
 // ── V1.28 — informar venda do lote ──
