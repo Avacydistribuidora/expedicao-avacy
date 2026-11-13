@@ -554,6 +554,7 @@ body.restrito #acoes-wrap{display:none!important}
       <div class="menu" id="acoes-menu">
         <div class="menu-i" onclick="openImp()">📥 Importar saldo (planilha / inventário)</div>
         <div class="menu-i" onclick="openGrd()">🏷 Importar cadastro de grade (Z01)</div>
+        <div class="menu-i" onclick="$('qm-foto-file').click()">🖼 Importar fotos dos produtos (LINK_FOTO)</div>
         <div class="menu-i" onclick="openPrt()">🏢 Importar saldo Protheus (qry001)</div>
         <div class="menu-i" onclick="openVnd()">🧾 Baixar vendas (qry001)</div>
         <div class="menu-i" onclick="exportSaldo()">📊 Exportar saldo</div>
@@ -840,8 +841,7 @@ body.restrito #acoes-wrap{display:none!important}
   <!-- ── QUEIMA DE ESTOQUE (V1.32) ── -->
   <div class="pg hide" id="p-qme">
     <div class="card">
-      <div class="ct"><span>🔥 Queima de estoque</span><span class="row" style="gap:6px"><button class="btn btn-acc btn-sm adm-only" onclick="$('qm-foto-file').click()" title="Planilha com LINK_FOTO: cadastro SB1 (CODIGO_PRODUTO;DESCRICAO_PRODUTO;EAN13;…;LINK_FOTO) ou cadastro de grade (LOTE;DESCRICAO;…;LINK_FOTO)">🖼 Importar fotos</button><button class="btn btn-ghost btn-sm" onclick="qmExport()">⬇ XLSX</button></span></div>
-      <input type="file" id="qm-foto-file" accept=".csv,.txt,.xlsx,.xls" class="hide" onchange="qmImportFotos(this.files[0]);this.value=''">
+      <div class="ct"><span>🔥 Queima de estoque</span><button class="btn btn-ghost btn-sm" onclick="qmExport()">⬇ XLSX</button></div>
       <div class="sh-sub" id="qm-foto-info" style="margin:-2px 0 8px"></div>
       <div class="sh-sub" style="margin-bottom:10px">Produtos com saldo no estoque <b>abaixo de <span id="qm-lim-t">5</span> unidades</b> (volumes) e <b>sem divergência com o Protheus</b> (saldo do app = saldo Protheus).</div>
       <div class="qm-top" style="margin-bottom:8px">
@@ -1188,6 +1188,7 @@ body.restrito #acoes-wrap{display:none!important}
   </div>
 </div>
 
+<input type="file" id="qm-foto-file" accept=".csv,.txt,.xlsx,.xls" class="hide" onchange="qmImportFotos(this.files[0]);this.value=''">
 <!-- ══════════ OVERLAY: CADASTRO DE GRADE ══════════ -->
 <div class="ovl center hide" id="grd-ovl" onclick="if(event.target===this)closeGrd()">
   <div class="sheet" style="max-width:480px">
@@ -1289,7 +1290,7 @@ body.restrito #acoes-wrap{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.34';
+const APP_VERSION='V1.35';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -3510,7 +3511,7 @@ async function qmCadastro(L){
 // V1.34 — importar planilha de fotos direto da Queima (identifica o formato pelo cabeçalho)
 async function qmImportFotos(file){
   if(!file||!isAdm()) return;
-  const info=$('qm-foto-info'); info.innerHTML='⏳ Lendo planilha…';
+  const info=$('qm-foto-info'); info.innerHTML='⏳ Lendo planilha…'; toast('⏳ Lendo planilha de fotos…',0,2500);
   try{
     let head='';
     if(/\.(csv|txt)$/i.test(file.name)){ const b=await file.slice(0,4096).arrayBuffer(); let t; try{ t=new TextDecoder('utf-8',{fatal:true}).decode(b); }catch{ t=new TextDecoder('windows-1252').decode(b); } head=(t.split(/\r?\n/)[0]||'').toUpperCase(); }
@@ -3520,13 +3521,14 @@ async function qmImportFotos(file){
       const obs=new MutationObserver(()=>{ info.innerHTML=el.innerHTML; }); if(el) obs.observe(el,{childList:true,subtree:true,characterData:true});
       await peImportSB1(file); obs.disconnect();
       info.innerHTML=el&&el.innerHTML!==orig?el.innerHTML:'';
+      if(el&&/c-red/.test(el.innerHTML)) toast(el.textContent,1,6000);
     } else {
       // cadastro de grade (LOTE = código da caixa) com LINK_FOTO
       await openGrd(); const dt=new DataTransfer(); dt.items.add(file); $('grd-file').files=dt.files; grdLer($('grd-file'));
       info.innerHTML='Confira a prévia na janela de Cadastro de grade e clique em gravar.';
       return;
     }
-  }catch(e){ info.innerHTML='<span class="c-red">'+esc(e.message||e)+'</span>'; return; }
+  }catch(e){ info.innerHTML='<span class="c-red">'+esc(e.message||e)+'</span>'; toast('Erro: '+(e.message||e),1,5000); return; }
   Object.keys(QM_CAD).forEach(k=>delete QM_CAD[k]); Object.keys(QM_FOTO).forEach(k=>delete QM_FOTO[k]); qmRender();
 }
 function qmFotos(x){ const it=qmItem(x), g=QM_FOTO[x.gtin]?peCfUrl(QM_FOTO[x.gtin]):''; const cad=peCfFotos(it); return g?[g,...cad.filter(u=>u!==g)]:cad; }
