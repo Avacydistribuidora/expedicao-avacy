@@ -1290,7 +1290,7 @@ body.restrito #acoes-wrap{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.37';
+const APP_VERSION='V1.38';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -3650,6 +3650,13 @@ const PE_PROD={};               // ean_key → {codigo, descricao, ean13} | null
 const PE_SQL_MSG='Rode os scripts controle_mercadoria_V1.25, V1.26 e V1.27 (ponta de estoque) no Supabase';
 function peErrMsg(e){ const m=(e&&e.message)||String(e); return /pe_(lotes|itens|produtos|bipar|familia_fotos|fotos)|familia/.test(m)?PE_SQL_MSG:'Erro: '+m; }
 function eanKey(v){ const d=String(v??'').replace(/\D/g,'').replace(/^0+/,''); return d; }
+// V1.38 — corrige EAN do SB1 com 14 dígitos: EAN13 com um dígito a mais no fim (ex. 79099898091740 → 7909989809174)
+// ou código de caixa (DUN-14) → EAN13 do par.
+function ean13Ok(e){ if(!/^\d{13}$/.test(e)) return false; let s=0; for(let i=0;i<12;i++) s+=(+e[i])*(i%2?3:1); return (10-s%10)%10===+e[12]; }
+function eanNorm(v){ const d=String(v??'').replace(/\D/g,''); if(d.length!==14) return d;
+  if(d[0]==='0') return d.slice(1);
+  if(ean13Ok(d.slice(0,13))&&/^7[89]/.test(d)) return d.slice(0,13);
+  const c=d.slice(1,13); let s=0; for(let i=0;i<12;i++) s+=(+c[i])*(i%2?3:1); return c+String((10-s%10)%10); }
 function peView(v){ ['list','new','det'].forEach(x=>$('pe-'+x+'-view').classList.toggle('hide',x!==v)); }
 function peTot(its){ return { skus:its.length, pares:its.reduce((s,i)=>s+(Number(i.qtd)||0),0) }; }
 const PE_ST={DISPONIVEL:['t-acc','Disponível'],VENDIDO:['t-grn','Vendido']};
@@ -3793,6 +3800,7 @@ async function peProduto(key){
   if(key in PE_PROD) return PE_PROD[key];
   let {data,error}=await getSB().from('pe_produtos').select('codigo,descricao,ean13').eq('ean_key',key).order('codigo').limit(5);
   if(error) throw error;
+  if(!(data&&data.length)&&key.length>=12){ ({data,error}=await getSB().from('pe_produtos').select('codigo,descricao,ean13').like('ean_key',key+'_').order('codigo').limit(5)); if(error) throw error; }
   if(!(data&&data.length)&&key.length>=13){ const alt=dunParaEan(key.padStart(14,'0')); if(alt&&alt!==key){ ({data,error}=await getSB().from('pe_produtos').select('codigo,descricao,ean13').eq('ean_key',alt).order('codigo').limit(5)); if(error) throw error; } }
   const r=data&&data.length?{...data[0],outros:data.length-1}:null;
   PE_PROD[key]=r; return r;
@@ -4031,7 +4039,7 @@ async function peImportSB1(file){
     if(iC<0||iD<0||iE<0) throw new Error('Cabeçalho esperado: CODIGO_PRODUTO;DESCRICAO;EAN13');
     const M=new Map();
     for(let k=1;k<linhas.length;k++){ const c=linhas[k].split(';').map(limpa); const cod=c[iC]; if(!cod) continue;
-      const ean=(c[iE]||'').replace(/\D/g,''); M.set(cod,{codigo:cod,descricao:c[iD]||'',ean13:ean||null,ean_key:eanKey(ean)||null,atualizado_em:new Date().toISOString()}); }
+      const ean=eanNorm(c[iE]); M.set(cod,{codigo:cod,descricao:c[iD]||'',ean13:ean||null,ean_key:eanKey(ean)||null,atualizado_em:new Date().toISOString()}); }
     const regs=[...M.values()];
     if(!confirm(`Importar ${fmt(regs.length)} produtos do cadastro SB1?\n(${fmt(regs.filter(r=>r.ean_key).length)} com EAN). Produtos existentes são atualizados.`)) return;
     const P=1000;
@@ -4161,7 +4169,7 @@ async function peImportFotos(linhas,head,limpa,iC,iD,iE,iF,iL){
   const el=$('pe-sb1-info'); const iCor=head.findIndex(h=>['COR_Z01','COR','Z01_COR'].includes(h));
   const P=new Map(), F=new Map();
   for(let k=1;k<linhas.length;k++){ const c=linhas[k].split(';').map(limpa); const cod=c[iC]; if(!cod) continue;
-    const fam=c[iF]||'', ean=(iE>=0?c[iE]:'').replace(/\D/g,''), url=c[iL]||'', okUrl=/^https?:\/\//i.test(url);
+    const fam=c[iF]||'', ean=eanNorm(iE>=0?c[iE]:''), url=c[iL]||'', okUrl=/^https?:\/\//i.test(url);
     if(!P.has(cod)) P.set(cod,{codigo:cod,descricao:iD>=0?c[iD]:'',ean13:ean||null,ean_key:eanKey(ean)||null,familia:fam||null,atualizado_em:new Date().toISOString(),...(iCor>=0?{cor:c[iCor]||null,foto:okUrl?url:null}:{})});
     else if(iCor>=0&&okUrl&&!P.get(cod).foto) P.get(cod).foto=url;
     if(fam){ if(!F.has(fam)) F.set(fam,new Set()); if(/^https?:\/\//i.test(url)) F.get(fam).add(url); }
