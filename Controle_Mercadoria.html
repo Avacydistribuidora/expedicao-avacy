@@ -329,8 +329,8 @@ body:not(.adm) .adm-only{display:none!important}
 @media(max-width:600px){.pos-wrap .c-ean{display:none}.pos-ean-m{display:block}.pos-wrap .tbl td,.pos-wrap .tbl th{padding:6px 5px}}
 
 /* V1.25 — Ponta de Estoque */
-.dcard.ABERTO{border-left-color:var(--acc)}
-.dcard.FECHADO{border-left-color:var(--grn)}
+.dcard.DISPONIVEL{border-left-color:var(--acc)}
+.dcard.VENDIDO{border-left-color:var(--grn)}
 .pe-msg{margin-top:8px;min-height:24px;font-size:14px;color:var(--mut)}
 .pe-msg.ok{color:var(--grn);font-weight:700}
 .pe-msg.warn{color:#c2410c;font-weight:700}
@@ -349,6 +349,12 @@ body:not(.adm) .adm-only{display:none!important}
 .pe-res{border:1px solid var(--bdr);border-radius:10px;padding:4px 10px;margin-top:10px;background:#fff;max-height:340px;overflow:auto}
 .pe-res-h{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;padding:6px 0 2px;font-weight:700}
 @media(max-width:640px){.pe-kp{grid-template-columns:repeat(2,1fr)}}
+/* V1.26 — fotos do produto (ponta de estoque) */
+.pe-fts{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.pe-ft{width:46px;height:46px;border-radius:7px;overflow:hidden;border:1px solid var(--bdr);cursor:pointer;background:var(--bg3);flex-shrink:0}
+.pe-ft img{width:100%;height:100%;object-fit:cover;display:block}
+.pe-ft.up{display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--mut);text-align:center}
+.pe-bt.cam{font-size:14px}
 /* V1.24 — filtro vendedor */
 .dv-vend{margin-left:auto;width:auto;min-width:190px;max-width:260px;margin-bottom:0;padding:6px 30px 6px 12px;font-size:12px;font-weight:700;border-radius:20px;color:var(--mut);cursor:pointer;
   background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2364748b'/%3E%3C/svg%3E") no-repeat right 12px center}
@@ -724,8 +730,8 @@ body.devonly #acoes-wrap{display:none!important}
         <div id="pe-sb1-info" class="sh-sub" style="margin:-2px 0 8px"></div>
         <input id="pe-q" class="inp" style="margin-bottom:10px" type="text" placeholder="Pesquisar lote, descrição ou EAN13..." oninput="pePesquisar()" autocomplete="off" autocorrect="off" spellcheck="false">
         <div class="chips" id="pe-chips">
-          <button class="chip on" data-f="ABERTO" onclick="peFiltro('ABERTO')">Em aberto</button>
-          <button class="chip" data-f="FECHADO" onclick="peFiltro('FECHADO')">Fechados</button>
+          <button class="chip on" data-f="DISPONIVEL" onclick="peFiltro('DISPONIVEL')">Disponíveis</button>
+          <button class="chip" data-f="VENDIDO" onclick="peFiltro('VENDIDO')">Vendidos</button>
           <button class="chip" data-f="TODOS" onclick="peFiltro('TODOS')">Todos</button>
         </div>
         <div id="pe-res"></div>
@@ -757,6 +763,8 @@ body.devonly #acoes-wrap{display:none!important}
         <div class="pe-kp" id="pe-kp"></div>
         <div class="row" style="margin-top:12px;flex-wrap:wrap;gap:6px" id="pe-acts"></div>
       </div>
+      <input type="file" id="pe-ft-cam" accept="image/*" capture="environment" class="hide" onchange="peFotoUpload(this)">
+      <input type="file" id="pe-ft-gal" accept="image/*" multiple class="hide" onchange="peFotoUpload(this)">
       <div class="card" id="pe-scan-card">
         <div class="ct">📷 Bipar produtos do lote</div>
         <div class="row">
@@ -1196,7 +1204,7 @@ body.devonly #acoes-wrap{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.25';
+const APP_VERSION='V1.26';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -3370,14 +3378,14 @@ function cgExport(){
 
 
 // ═════════════════════ PONTA DE ESTOQUE (V1.25) — lotes de pares avulsos ═════════════════════
-let PE_LOTES=[], PE_F='ABERTO', PE_CUR=null, PE_ITENS=[], PE_Q=Promise.resolve(), PE_LAST=null, PE_EDIT=null, PE_HL=null;
+let PE_LOTES=[], PE_F='DISPONIVEL', PE_CUR=null, PE_ITENS=[], PE_Q=Promise.resolve(), PE_LAST=null, PE_EDIT=null, PE_HL=null;
 const PE_PROD={};               // ean_key → {codigo, descricao, ean13} | null
-const PE_SQL_MSG='Rode o script controle_mercadoria_V1.25_ponta_estoque.sql no Supabase';
+const PE_SQL_MSG='Rode os scripts controle_mercadoria_V1.25 e V1.26 (ponta de estoque) no Supabase';
 function peErrMsg(e){ const m=(e&&e.message)||String(e); return /pe_(lotes|itens|produtos|bipar)/.test(m)?PE_SQL_MSG:'Erro: '+m; }
 function eanKey(v){ const d=String(v??'').replace(/\D/g,'').replace(/^0+/,''); return d; }
 function peView(v){ ['list','new','det'].forEach(x=>$('pe-'+x+'-view').classList.toggle('hide',x!==v)); }
 function peTot(its){ return { skus:its.length, pares:its.reduce((s,i)=>s+(Number(i.qtd)||0),0) }; }
-const PE_ST={ABERTO:['t-acc','Em aberto'],FECHADO:['t-grn','Fechado']};
+const PE_ST={DISPONIVEL:['t-acc','Disponível'],VENDIDO:['t-grn','Vendido']};
 function peTag(st){ const t=PE_ST[st]||['t-mut',st]; return `<span class="tag ${t[0]}">${t[1]}</span>`; }
 
 async function peCarregar(){
@@ -3393,7 +3401,7 @@ async function peSb1Info(){
     el.innerHTML=count?`Cadastro SB1: <b>${fmt(count)}</b> produtos`:'<span class="c-red">Cadastro SB1 vazio — '+(isAdm()?'clique em ⬆ Cadastro SB1 e importe o qry001.csv':'peça ao administrador para importar')+'</span>';
   }catch(e){ el.innerHTML=''; }
 }
-function pePill(){ const n=PE_LOTES.filter(l=>l.status==='ABERTO').length; const b=$('pe-pill'); if(b){ b.textContent=n; b.classList.toggle('hide',!n); } }
+function pePill(){ const n=PE_LOTES.filter(l=>l.status==='DISPONIVEL').length; const b=$('pe-pill'); if(b){ b.textContent=n; b.classList.toggle('hide',!n); } }
 function peFiltro(f){ PE_F=f; document.querySelectorAll('#pe-chips .chip').forEach(c=>c.classList.toggle('on',c.dataset.f===f)); renderPeList(); }
 function renderPeList(){
   const q=$('pe-q').value.trim().toUpperCase();
@@ -3403,7 +3411,7 @@ function renderPeList(){
     return `<div class="dcard ${esc(l.status)}" onclick="peAbrir(${l.id})">
       <div class="dc-top"><div class="dc-nf">📦 Lote ${esc(l.lote)}</div>${peTag(l.status)}</div>
       <div class="dc-l"><b>${fmt(l.caixas)}</b> caixa(s) · <b>${fmt(t.skus)}</b> produto(s) · <b class="c-acc">${fmt(t.pares)} pares</b>${l.obs?' · '+esc(cut(l.obs,40)):''}</div>
-      <div class="dc-l">📅 ${fmtDT(l.criado_em)} · ${esc(l.criado_por||'')}${l.status==='FECHADO'?` · fechado por ${esc(l.fechado_por||'')} em ${fmtDT(l.fechado_em)}`:''}</div>
+      <div class="dc-l">📅 ${fmtDT(l.criado_em)} · ${esc(l.criado_por||'')}${l.status==='VENDIDO'?` · vendido por ${esc(l.fechado_por||'')} em ${fmtDT(l.fechado_em)}`:''}</div>
     </div>`; }).join(''):(q?'':'<div class="card"><div class="empty">Nenhum lote neste filtro</div></div>');
 }
 
@@ -3445,7 +3453,7 @@ async function peSalvarLote(){
     if(ex&&ex[0]&&ex[0].id!==PE_EDIT){ beep(false); msg.className='pe-msg err'; msg.innerHTML=`Lote <b>${esc(lote)}</b> já existe. <a href="#" onclick="peAbrir(${ex[0].id});return false">Abrir lote</a>`; return; }
     let id=PE_EDIT;
     if(PE_EDIT){ const {error}=await getSB().from('pe_lotes').update({lote,caixas:cx,obs:obs||null}).eq('id',PE_EDIT); if(error) throw error; }
-    else { const {data,error}=await getSB().from('pe_lotes').insert({lote,caixas:cx,obs:obs||null,status:'ABERTO',criado_por:CU.name}).select().single(); if(error) throw error; id=data.id; }
+    else { const {data,error}=await getSB().from('pe_lotes').insert({lote,caixas:cx,obs:obs||null,status:'DISPONIVEL',criado_por:CU.name}).select().single(); if(error) throw error; id=data.id; }
     beep(true); toast(PE_EDIT?'✓ Lote atualizado':'✓ Lote '+lote+' criado'); PE_EDIT=null;
     peCarregar(); peAbrir(id);
   }catch(e){ beep(false); msg.className='pe-msg err'; msg.textContent=peErrMsg(e); }
@@ -3461,30 +3469,31 @@ async function peAbrir(id,hl){
       sb.from('pe_lotes').select('*').eq('id',id).single(),
       sb.from('pe_itens').select('*').eq('lote_id',id).order('atualizado_em',{ascending:false})]);
     if(e1) throw e1; if(e2) throw e2;
-    if(!PE_CUR||PE_CUR.id!==id){ PE_LAST=null; $('pe-msg').className='pe-msg'; $('pe-msg').textContent=''; $('pe-fq').value=''; $('pe-mult').value='1'; }
+    if(!PE_CUR||PE_CUR.id!==id){ PE_LAST=null; PE_FOTOS={}; $('pe-msg').className='pe-msg'; $('pe-msg').textContent=''; $('pe-fq').value=''; $('pe-mult').value='1'; }
     PE_CUR=l; PE_ITENS=its||[]; PE_HL=hl||null;
   }catch(e){ toast(peErrMsg(e),1,5000); return; }
+  peFotosCarregar(id);
   peView('det'); renderPeDet();
   if(PE_HL) setTimeout(()=>{ document.querySelector('#pe-itens .pe-hl')?.scrollIntoView({behavior:'smooth',block:'center'}); setTimeout(()=>{ PE_HL=null; peRenderItens(); },5000); },150);
-  else if(PE_CUR.status==='ABERTO') focusLater('pe-scan');
+  else if(PE_CUR.status==='DISPONIVEL') focusLater('pe-scan');
 }
 function renderPeDet(){
-  const l=PE_CUR; if(!l) return; const t=peTot(PE_ITENS), aberto=l.status==='ABERTO', adm=isAdm();
+  const l=PE_CUR; if(!l) return; const t=peTot(PE_ITENS), aberto=l.status==='DISPONIVEL', adm=isAdm();
   $('pe-st').innerHTML=peTag(l.status);
   $('pe-ttl').textContent='📦 Lote '+l.lote;
-  $('pe-sub').innerHTML=`Criado por <b>${esc(l.criado_por||'')}</b> em ${fmtDT(l.criado_em)}${l.status==='FECHADO'?` · fechado por <b>${esc(l.fechado_por||'')}</b> em ${fmtDT(l.fechado_em)}`:''}${l.obs?'<br>📝 '+esc(l.obs):''}`;
+  $('pe-sub').innerHTML=`Criado por <b>${esc(l.criado_por||'')}</b> em ${fmtDT(l.criado_em)}${l.status==='VENDIDO'?` · vendido por <b>${esc(l.fechado_por||'')}</b> em ${fmtDT(l.fechado_em)}`:''}${l.obs?'<br>📝 '+esc(l.obs):''}`;
   const nc=PE_ITENS.filter(i=>i.cadastrado===false).length;
   $('pe-kp').innerHTML=`<div><b>${fmt(l.caixas)}</b><span>Caixas</span></div><div><b>${fmt(t.skus)}</b><span>Produtos</span></div><div><b>${fmt(t.pares)}</b><span>Pares</span></div><div><b class="${nc?'c-red':''}">${fmt(nc)}</b><span>Fora do SB1</span></div>`;
-  let a=`<button class="btn btn-ghost btn-sm" onclick="peExportLote()">⬇ XLSX</button>`;
-  if(aberto) a+=`<button class="btn btn-ghost btn-sm" onclick="peEditar()">✎ Editar lote</button><button class="btn btn-grn btn-sm" onclick="peFechar(true)">✓ Fechar lote</button>`;
-  else if(adm) a+=`<button class="btn btn-ghost btn-sm" onclick="peFechar(false)">↺ Reabrir lote</button>`;
+  let a=`<button class="btn btn-ghost btn-sm" onclick="peExportLote()">⬇ XLSX</button>${PE_LAST?`<button class="btn btn-ghost btn-sm" onclick="peFotoTirar(${PE_LAST},false)">📷 Foto do último bipado</button>`:''}`;
+  if(aberto) a+=`<button class="btn btn-ghost btn-sm" onclick="peEditar()">✎ Editar lote</button><button class="btn btn-grn btn-sm" onclick="peFechar(true)">💰 Marcar como vendido</button>`;
+  else if(adm) a+=`<button class="btn btn-ghost btn-sm" onclick="peFechar(false)">↺ Voltar para disponível</button>`;
   if(adm) a+=`<button class="btn btn-sm" style="background:var(--red);color:#fff;margin-left:auto" onclick="peExcluirLote()">🗑 Excluir lote</button>`;
   $('pe-acts').innerHTML=a;
   $('pe-scan-card').classList.toggle('hide',!aberto);
   peRenderItens();
 }
 function peRenderItens(){
-  const l=PE_CUR; if(!l) return; const aberto=l.status==='ABERTO';
+  const l=PE_CUR; if(!l) return; const aberto=l.status==='DISPONIVEL';
   const q=$('pe-fq').value.trim().toUpperCase(), qd=q.replace(/\D/g,'');
   let L=PE_ITENS.slice();
   if(q) L=L.filter(i=>String(i.descricao||'').toUpperCase().includes(q)||(qd.length>=3&&(String(i.ean_key).includes(eanKey(qd))||String(i.codigo||'').includes(qd)))||String(i.codigo||'').toUpperCase().includes(q));
@@ -3493,7 +3502,8 @@ function peRenderItens(){
   $('pe-itens').innerHTML=L.length?L.map(i=>`<div class="irow${i.id===PE_HL?' pe-hl':i.id===PE_LAST?' pe-last':''}">
       <div class="ibody"><div class="iean">${esc(i.ean13||i.ean_key)}${i.codigo?' · cód. '+esc(i.codigo):''}</div>
         <div class="inm${i.cadastrado===false?' c-red':''}">${esc(i.descricao||'')}</div>
-        <div class="isub">${i.cadastrado===false?'<span class="tag t-red">EAN fora do SB1</span> ':''}${esc(i.atualizado_por||'')} · ${fmtDT(i.atualizado_em)}</div></div>
+        <div class="isub">${i.cadastrado===false?'<span class="tag t-red">EAN fora do SB1</span> ':''}${esc(i.atualizado_por||'')} · ${fmtDT(i.atualizado_em)}</div>${peFotosItem(i.id)}</div>
+      <button class="pe-bt cam" title="Tirar foto do produto (segure para escolher da galeria)" onclick="peFotoTirar(${i.id},false)" oncontextmenu="event.preventDefault();peFotoTirar(${i.id},true)">📷</button>
       ${aberto?`<button class="pe-bt" title="Tirar 1 par" onclick="peAjuste(${i.id},-1)">−</button>`:''}
       <div class="pe-qty" title="${aberto?'Clique para informar a quantidade':'Pares'}" ${aberto?`onclick="peQtd(${i.id})"`:''}>${fmt(i.qtd)}</div>
       ${aberto?`<button class="pe-bt" title="Somar 1 par" onclick="peAjuste(${i.id},1)">+</button><button class="pe-bt del" title="Remover produto do lote" onclick="peRemover(${i.id})">🗑</button>`:''}
@@ -3518,7 +3528,7 @@ async function peProduto(key){
   PE_PROD[key]=r; return r;
 }
 async function peAddItem(raw,mult,loteId){
-  if(!PE_CUR||PE_CUR.id!==loteId||PE_CUR.status!=='ABERTO') return;
+  if(!PE_CUR||PE_CUR.id!==loteId||PE_CUR.status!=='DISPONIVEL') return;
   const key=eanKey(raw); const p=await peProduto(key);
   const ean=p&&p.ean13?p.ean13:(raw.length===14&&raw[0]==='0'?raw.slice(1):raw);
   const {data,error}=await getSB().rpc('pe_bipar',{p_lote:loteId,p_ean:ean,p_key:key,p_codigo:p?p.codigo:null,p_desc:p?p.descricao:'NÃO CADASTRADO NO SB1',p_cad:!!p,p_qtd:mult,p_user:CU.name});
@@ -3549,13 +3559,13 @@ async function peRemover(id){
 }
 async function peFechar(fechar){
   const l=PE_CUR; if(!l) return;
-  if(fechar){ const t=peTot(PE_ITENS); if(!t.skus){ toast('Bipe ao menos um produto antes de fechar',1); return; }
-    if(!confirm(`Fechar o lote ${l.lote}?\n\n${fmt(l.caixas)} caixa(s) · ${fmt(t.skus)} produto(s) · ${fmt(t.pares)} pares\nDepois de fechado não é possível bipar.`)) return; }
-  else if(!confirm('Reabrir o lote '+l.lote+' para bipagem?')) return;
-  const upd=fechar?{status:'FECHADO',fechado_por:CU.name,fechado_em:new Date().toISOString()}:{status:'ABERTO',fechado_por:null,fechado_em:null};
+  if(fechar){ const t=peTot(PE_ITENS); if(!t.skus){ toast('Bipe ao menos um produto antes de marcar como vendido',1); return; }
+    if(!confirm(`Marcar o lote ${l.lote} como VENDIDO?\n\n${fmt(l.caixas)} caixa(s) · ${fmt(t.skus)} produto(s) · ${fmt(t.pares)} pares\nDepois de vendido não é possível bipar.`)) return; }
+  else if(!confirm('Voltar o lote '+l.lote+' para DISPONÍVEL?')) return;
+  const upd=fechar?{status:'VENDIDO',fechado_por:CU.name,fechado_em:new Date().toISOString()}:{status:'DISPONIVEL',fechado_por:null,fechado_em:null};
   const {error}=await getSB().from('pe_lotes').update(upd).eq('id',l.id);
   if(error){ beep(false); return toast(peErrMsg(error),1,4000); }
-  Object.assign(l,upd); beep(true); toast(fechar?'✓ Lote fechado':'Lote reaberto'); renderPeDet(); if(!fechar) focusLater('pe-scan');
+  Object.assign(l,upd); beep(true); toast(fechar?'✓ Lote marcado como vendido':'Lote disponível novamente'); renderPeDet(); if(!fechar) focusLater('pe-scan');
 }
 async function peExcluirLote(){
   const l=PE_CUR; if(!l||!isAdm()) return;
@@ -3568,16 +3578,16 @@ async function peExcluirLote(){
 // Exportação
 function peExportLote(){
   const l=PE_CUR; if(!l) return;
-  const aoa=[['LOTE','CAIXAS','EAN13','CODIGO','DESCRICAO','PARES','NO SB1','ULTIMA BIPAGEM','POR']];
-  PE_ITENS.slice().sort((a,b)=>(a.descricao||'').localeCompare(b.descricao||'')).forEach(i=>aoa.push([l.lote,l.caixas,i.ean13||i.ean_key,i.codigo||'',i.descricao||'',Number(i.qtd)||0,i.cadastrado===false?'NÃO':'SIM',fmtDT(i.atualizado_em),i.atualizado_por||'']));
-  xlsxSave([['Lote '+String(l.lote).slice(0,24),aoa,[14,8,16,16,50,8,8,17,18]]],'ponta_estoque_lote_'+String(l.lote).replace(/[^\w-]/g,'_'));
+  const aoa=[['LOTE','CAIXAS','EAN13','CODIGO','DESCRICAO','PARES','NO SB1','ULTIMA BIPAGEM','POR','FOTOS']];
+  PE_ITENS.slice().sort((a,b)=>(a.descricao||'').localeCompare(b.descricao||'')).forEach(i=>aoa.push([l.lote,l.caixas,i.ean13||i.ean_key,i.codigo||'',i.descricao||'',Number(i.qtd)||0,i.cadastrado===false?'NÃO':'SIM',fmtDT(i.atualizado_em),i.atualizado_por||'',(PE_FOTOS[i.id]||[]).map(f=>f.url).join(' ')]));
+  xlsxSave([['Lote '+String(l.lote).slice(0,24),aoa,[14,8,16,16,50,8,8,17,18,40]]],'ponta_estoque_lote_'+String(l.lote).replace(/[^\w-]/g,'_'));
 }
 async function peExportTodos(){
   try{
     const its=await fetchAll('pe_itens','id,lote_id,ean13,ean_key,codigo,descricao,qtd,cadastrado,atualizado_em,atualizado_por');
     if(!PE_LOTES.length) await peCarregar();
     const LM={}; PE_LOTES.forEach(l=>LM[l.id]=l);
-    const lotes=[['LOTE','STATUS','CAIXAS','PRODUTOS','PARES','OBS','CRIADO EM','CRIADO POR','FECHADO EM','FECHADO POR']];
+    const lotes=[['LOTE','STATUS','CAIXAS','PRODUTOS','PARES','OBS','CRIADO EM','CRIADO POR','VENDIDO EM','VENDIDO POR']];
     PE_LOTES.forEach(l=>{ const t=peTot(its.filter(i=>i.lote_id===l.id)); lotes.push([l.lote,(PE_ST[l.status]||[0,l.status])[1],l.caixas,t.skus,t.pares,l.obs||'',fmtDT(l.criado_em),l.criado_por||'',fmtDT(l.fechado_em),l.fechado_por||'']); });
     const prod=[['LOTE','STATUS','EAN13','CODIGO','DESCRICAO','PARES','NO SB1','ULTIMA BIPAGEM','POR']];
     its.forEach(i=>{ const l=LM[i.lote_id]||{}; prod.push([l.lote||i.lote_id,(PE_ST[l.status]||[0,l.status||''])[1],i.ean13||i.ean_key,i.codigo||'',i.descricao||'',Number(i.qtd)||0,i.cadastrado===false?'NÃO':'SIM',fmtDT(i.atualizado_em),i.atualizado_por||'']); });
@@ -3612,6 +3622,56 @@ async function peImportSB1(file){
     Object.keys(PE_PROD).forEach(k=>delete PE_PROD[k]);
     beep(true); toast('✓ Cadastro SB1 importado: '+fmt(regs.length)+' produtos',0,4000); peSb1Info();
   }catch(e){ beep(false); el.innerHTML='<span class="c-red">'+esc(peErrMsg(e))+'</span>'; }
+}
+
+// ── V1.26 — fotos do produto no lote (tabela pe_fotos + bucket pe-fotos) ──
+const PE_FT_BUCKET='pe-fotos', PE_FT_SQL='Rode o script controle_mercadoria_V1.26_ponta_estoque.sql no Supabase';
+let PE_FOTOS={}, PE_FT_UP={}, _peFtItem=null;
+async function peFotosCarregar(loteId){
+  try{ const {data,error}=await getSB().from('pe_fotos').select('*').eq('lote_id',loteId).order('id',{ascending:true}); if(error) throw error;
+    if(!PE_CUR||PE_CUR.id!==loteId) return;
+    PE_FOTOS={}; (data||[]).forEach(f=>(PE_FOTOS[f.item_id]=PE_FOTOS[f.item_id]||[]).push(f));
+  }catch(e){ PE_FOTOS={}; }
+  peRenderItens();
+}
+function peFotosItem(id){
+  const fs=PE_FOTOS[id]||[], up=PE_FT_UP[id]||0; if(!fs.length&&!up) return '';
+  return `<div class="pe-fts">${fs.map((f,k)=>`<div class="pe-ft" title="${esc(f.criado_por||'')} · ${fmtDT(f.criado_em)}" onclick="peFotoVer(${id},${k})"><img loading="lazy" src="${esc(f.url)}" alt=""></div>`).join('')}${Array.from({length:up},()=>'<div class="pe-ft up">enviando…</div>').join('')}</div>`;
+}
+function peFotoTirar(itemId,galeria){ _peFtItem=itemId; $(galeria?'pe-ft-gal':'pe-ft-cam').click(); }
+async function peFotoUpload(inp){
+  const files=[...inp.files]; inp.value=''; const itemId=_peFtItem; if(!files.length||!PE_CUR||!itemId) return;
+  const loteId=PE_CUR.id, sb=getSB(); let ok=0; const erros=[];
+  PE_FT_UP[itemId]=(PE_FT_UP[itemId]||0)+files.length; peRenderItens();
+  for(const f of files){
+    try{
+      const blob=await fotoReduz(f);
+      const path=`lote_${loteId}/item_${itemId}/${Date.now()}_${Math.random().toString(36).slice(2,8)}.jpg`;
+      const {error:e1}=await sb.storage.from(PE_FT_BUCKET).upload(path,blob,{contentType:'image/jpeg',upsert:false}); if(e1) throw e1;
+      const url=sb.storage.from(PE_FT_BUCKET).getPublicUrl(path).data.publicUrl;
+      const {data,error:e2}=await sb.from('pe_fotos').insert({lote_id:loteId,item_id:itemId,path,url,criado_por:CU.name}).select().single(); if(e2) throw e2;
+      if(PE_CUR&&PE_CUR.id===loteId) (PE_FOTOS[itemId]=PE_FOTOS[itemId]||[]).push(data); ok++;
+    }catch(e){ erros.push(e.message||String(e)); }
+    PE_FT_UP[itemId]--; peRenderItens();
+  }
+  if(erros.length){ beep(false); const m=erros[0]; toast(/bucket|pe_fotos|policy|row-level/i.test(m)?PE_FT_SQL:'Erro na foto: '+m,1,5000); }
+  else { beep(true); toast('✓ '+ok+' foto(s) do produto salva(s)'); }
+  if(PE_CUR&&PE_CUR.status==='DISPONIVEL') focusLater('pe-scan');
+}
+function peFotoVer(itemId,k){
+  const fs=PE_FOTOS[itemId]||[], f=fs[k]; if(!f) return; const it=PE_ITENS.find(x=>x.id===itemId);
+  $('ft-img').src=f.url; $('ft-dl').href=f.url;
+  $('ft-ttl').textContent=(it?cut(it.descricao||'',40)+' · ':'')+'Foto '+(k+1)+'/'+fs.length+' · '+(f.criado_por||'')+' · '+fmtDT(f.criado_em);
+  const pode=isAdm()||(CU&&f.criado_por===CU.name);
+  $('ft-del').classList.toggle('hide',!pode); $('ft-del').onclick=()=>peFotoExcluir(itemId,f.id);
+  $('ft-ovl').classList.remove('hide');
+}
+async function peFotoExcluir(itemId,id){
+  const f=(PE_FOTOS[itemId]||[]).find(x=>x.id===id); if(!f||!confirm('Excluir esta foto?')) return;
+  const sb=getSB();
+  try{ await sb.storage.from(PE_FT_BUCKET).remove([f.path]); }catch(e){}
+  const {error}=await sb.from('pe_fotos').delete().eq('id',id); if(error) return toast('Erro: '+error.message,1);
+  PE_FOTOS[itemId]=(PE_FOTOS[itemId]||[]).filter(x=>x.id!==id); $('ft-ovl').classList.add('hide'); peRenderItens(); toast('Foto excluída');
 }
 onEnter('pe-scan',peScan);
 onEnter('pe-lote',()=>$('pe-caixas').focus());
