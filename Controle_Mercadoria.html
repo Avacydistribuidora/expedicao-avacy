@@ -1190,7 +1190,7 @@ body.restrito #acoes-wrap{display:none!important}
 <div class="ovl center hide" id="grd-ovl" onclick="if(event.target===this)closeGrd()">
   <div class="sheet" style="max-width:480px">
     <div class="sh-title"><span>🏷 Cadastro de grade</span><button class="sh-x" onclick="closeGrd()">✕</button></div>
-    <div class="sh-sub">Exportação da Z01 (qry001 .csv ou .xlsx): <b>Z01_LOTE</b> (GTIN), <b>Z01_GRADE</b> (descrição), <b>Z01_QTD</b> (pares), <b>Z01_FABRIC</b>. Itens existentes são atualizados e novos são incluídos.</div>
+    <div class="sh-sub">Exportação da Z01 (qry001 .csv ou .xlsx): <b>Z01_LOTE</b> (GTIN), <b>Z01_GRADE</b> (descrição), <b>Z01_QTD</b> (pares), <b>Z01_FABRIC</b> e, opcional, <b>LINK_FOTO</b> (foto usada na Queima de estoque). Itens existentes são atualizados e novos são incluídos.</div>
     <div class="sh-sub" id="grd-info"></div>
     <label class="imp-file" onclick="document.getElementById('grd-file').click()">
       <span style="font-size:22px">📄</span>
@@ -1287,7 +1287,7 @@ body.restrito #acoes-wrap{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.32';
+const APP_VERSION='V1.33';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -2942,7 +2942,7 @@ function grdParse(aoa){
     const h=(aoa[i]||[]).map(nrm); const fi=re=>h.findIndex(x=>re.test(x));
     const g=fi(/LOTE|GTIN|EAN|BARRA/); if(g<0) continue;
     const d=h.findIndex((x,ix)=>ix!==g&&/GRADE|DESC/.test(x));
-    hi=i; C={g,d:d<0?1:d,p:fi(/QTD|PARES|QUANT/),f:fi(/FABRIC|MARCA/)}; break;
+    hi=i; C={g,d:d<0?1:d,p:fi(/QTD|PARES|QUANT/),f:fi(/FABRIC|MARCA/),l:fi(/LINK|FOTO|URL|IMAGEM/)}; break;
   }
   const map={}; let lidas=0, ign=0;
   aoa.slice(hi+1).forEach(r=>{
@@ -2952,11 +2952,12 @@ function grdParse(aoa){
     if(!/^\d{8,14}$/.test(g)){ ign++; return; }
     const pr=C.p>=0?parseInt(String(r[C.p]).trim()):NaN;
     map[g]={gtin:g,descricao:String(r[C.d]??'').replace(/\s+/g,' ').trim(),pares:isNaN(pr)?null:pr,fabricante:C.f>=0?String(r[C.f]??'').trim():''};
+    if(C.l>=0){ const u=String(r[C.l]??'').trim(); if(/^https?:\/\//i.test(u)) map[g].foto=u; }   // sem link: mantém a foto já gravada
   });
   GRD=Object.values(map);
-  const fabs=new Set(GRD.map(x=>x.fabricante).filter(Boolean));
+  const fabs=new Set(GRD.map(x=>x.fabricante).filter(Boolean)); const nFoto=GRD.filter(x=>x.foto).length, temFoto=C.l>=0;
   $('grd-prev').innerHTML=`Linhas lidas: <b>${fmt(lidas)}</b> · ignoradas: <b class="${ign?'c-ylw':''}">${fmt(ign)}</b><br>
-    Grades únicas (GTIN): <b class="c-grn">${fmt(GRD.length)}</b> · Fabricantes: <b>${fmt(fabs.size)}</b>
+    Grades únicas (GTIN): <b class="c-grn">${fmt(GRD.length)}</b> · Fabricantes: <b>${fmt(fabs.size)}</b>${temFoto?` · Com foto: <b class="c-acc">${fmt(nFoto)}</b>`:''}
     ${hi<0?'<br><span class="c-ylw">⚠ Cabeçalho não reconhecido — usei A=GTIN, B=Descrição, C=Pares, D=Fabricante</span>':''}
     ${GRD[0]?`<br><span class="c-mut">Ex.: ${esc(GRD[0].gtin)} · ${esc(cut(GRD[0].descricao,40))} · ${GRD[0].pares??'—'} pares</span>`:''}`;
   $('grd-ok').disabled=!GRD.length;
@@ -2968,7 +2969,13 @@ async function grdGravar(){
   try{
     for(let i=0;i<GRD.length;i+=B){
       const lote=GRD.slice(i,i+B).map(x=>({...x,atualizado_em:now}));
-      const {error}=await sb.from('est_grade').upsert(lote,{onConflict:'gtin'}); if(error) throw error;
+      // linhas com foto e sem foto vão em lotes separados (sem foto não apaga a foto já gravada)
+      const cF=lote.filter(x=>x.foto), sF=lote.filter(x=>!x.foto).map(({foto,...r})=>r);
+      let error=null;
+      if(sF.length) ({error}=await sb.from('est_grade').upsert(sF,{onConflict:'gtin'}));
+      if(!error&&cF.length){ ({error}=await sb.from('est_grade').upsert(cF,{onConflict:'gtin'}));
+        if(error&&/foto/.test(error.message||'')){ GRD.forEach(x=>delete x.foto); toast('Fotos não gravadas — rode o script controle_mercadoria_V1.33_foto_grade.sql',1,6000); ({error}=await sb.from('est_grade').upsert(cF.map(({foto,...r})=>r),{onConflict:'gtin'})); } }
+      if(error) throw error;
       prev.innerHTML=`Gravando... <b>${fmt(Math.min(i+B,GRD.length))}</b> / ${fmt(GRD.length)}`;
     }
     let msg=`<span class="c-grn">✓ ${fmt(GRD.length)} grades gravadas</span>`;
@@ -2978,7 +2985,7 @@ async function grdGravar(){
       msg+=`<br>${fmt(data||0)} registro(s) de saldo com descrição atualizada`;
       await loadSaldo();
     }
-    GRADE={}; GRD.forEach(x=>{ GRADE[x.gtin]={descr:x.descricao,pares:x.pares,fab:x.fabricante}; });
+    GRADE={}; GRD.forEach(x=>{ GRADE[x.gtin]={descr:x.descricao,pares:x.pares,fab:x.fabricante}; if('foto' in x) QM_FOTO[x.gtin]=x.foto||''; });
     prev.innerHTML=msg; toast('✓ Cadastro de grade atualizado');
   }catch(e){ prev.innerHTML='<span class="c-red">Erro: '+esc(e.message||e)+'</span>'; toast('Erro ao gravar grade',1); }
   finally{ btn.disabled=false; }
@@ -3470,6 +3477,7 @@ function cgExport(){
 // ═════════════════════ QUEIMA DE ESTOQUE (V1.32) ═════════════════════
 // Produtos com saldo no app > 0 e < limite (padrão 5) e SEM divergência com o Protheus (saldo app = saldo Protheus).
 let QM_LIM_SHOW=150; const QM_CAD={}; let _qmBusy=false;
+const QM_FOTO={};   // gtin → link da foto do cadastro de grade (est_grade.foto) — V1.33
 function qmLim(){ const v=parseInt($('qm-lim').value,10); return v>0?v:5; }
 function qmDados(){
   if(!PROT_OK) return [];
@@ -3477,8 +3485,12 @@ function qmDados(){
   return posData().filter(x=>x.inv>0&&x.inv<lim&&x.dif===0);
 }
 async function qmCadastro(L){
-  if(_qmBusy) return; const falta=[...new Set(L.map(x=>eanKey(x.gtin)).filter(k=>k&&!(k in QM_CAD)))]; if(!falta.length) return;
+  if(_qmBusy) return; const falta=[...new Set(L.map(x=>eanKey(x.gtin)).filter(k=>k&&!(k in QM_CAD)))]; if(!falta.length&&L.every(x=>x.gtin in QM_FOTO)) return;
   _qmBusy=true;
+  try{ const gs=[...new Set(L.map(x=>x.gtin).filter(g=>!(g in QM_FOTO)))];
+    for(let k=0;k<gs.length;k+=150){ const ch=gs.slice(k,k+150); const {data,error}=await getSB().from('est_grade').select('gtin,foto').in('gtin',ch);
+      if(error) break; ch.forEach(g=>QM_FOTO[g]=''); (data||[]).forEach(r=>QM_FOTO[r.gtin]=r.foto||''); }
+  }catch(e){}
   try{ for(let k=0;k<falta.length;k+=150){ const ch=falta.slice(k,k+150);
       let {data,error}=await getSB().from('pe_produtos').select('codigo,descricao,ean_key,familia,cor,foto').in('ean_key',ch);
       if(error&&/cor|foto|familia/.test(error.message||'')) ({data,error}=await getSB().from('pe_produtos').select('codigo,descricao,ean_key').in('ean_key',ch));
@@ -3489,6 +3501,20 @@ async function qmCadastro(L){
       ch.forEach(f=>PE_CF_FAM[f]=[]); (data||[]).forEach(r=>PE_CF_FAM[r.familia]=(r.fotos||[]).map(peCfUrl)); }
   }catch(e){}
   _qmBusy=false; if(CUR_TAB==='qme') qmRender(true);
+}
+
+function qmFotos(x){ const it=qmItem(x), g=QM_FOTO[x.gtin]?peCfUrl(QM_FOTO[x.gtin]):''; const cad=peCfFotos(it); return g?[g,...cad.filter(u=>u!==g)]:cad; }
+function qmThumb(x){
+  const f=qmFotos(x); if(!f.length) return `<div class="pe-cf vazio" title="Sem foto — importe o cadastro de grade com LINK_FOTO">👟</div>`;
+  return `<div class="pe-cf" title="Fotos (${f.length})" onclick="qmVer(${esc(JSON.stringify(x.gtin))})"><img loading="lazy" src="${esc(f[0])}" alt="" onerror="this.style.opacity=.15">${f.length>1?`<span class="n">${f.length}</span>`:''}</div>`;
+}
+function qmVer(gtin){
+  const x=qmDados().find(y=>y.gtin===gtin)||{gtin,descr:'',ends:[]}; const f=qmFotos(x); if(!f.length) return;
+  _peCf={fotos:f,k:0};
+  $('pe-cf-ttl').textContent=cut(x.descr||'',48);
+  $('pe-cf-sub').innerHTML=`EAN ${esc(gtin)}${QM_FOTO[gtin]?' · <b class="c-grn">1ª foto = cadastro de grade</b>':''}${f.length>1?' · demais: fotos do modelo':''}`;
+  $('pe-cf-strip').innerHTML=f.map((u,k)=>`<img loading="lazy" src="${esc(u)}" data-k="${k}" onclick="peCfIr(${k})" onerror="this.style.opacity=.2" alt="">`).join('');
+  peCfIr(0); $('pe-cf-ovl').classList.remove('hide');
 }
 function qmItem(x){ const c=QM_CAD[eanKey(x.gtin)]; return {codigo:c?c.codigo:'',descricao:x.descr||(c&&c.descricao)||''}; }
 function qmRender(semBusca){
@@ -3505,7 +3531,7 @@ function qmRender(semBusca){
   const pill=$('qm-pill'); if(pill){ pill.textContent=tot.length; pill.classList.toggle('hide',!tot.length); }
   if(!semBusca) qmCadastro(L.slice(0,QM_LIM_SHOW));
   $('qm-list').innerHTML=!PROT_OK?'':L.length?L.slice(0,QM_LIM_SHOW).map(x=>{ const it=qmItem(x), pg=Number(PROT[x.gtin]&&PROT[x.gtin].pares)||0;
-    return `<div class="qm-card">${peCfThumb(it)}
+    return `<div class="qm-card">${qmThumb(x)}
       <div class="ibody"><div class="iean">${esc(x.gtin)}${it.codigo?' · cód. '+esc(it.codigo):''}</div>
         <div class="inm" style="white-space:normal">${esc(x.descr||it.descricao||'—')}</div>
         <div class="isub">Protheus: <b>${fmt(x.prot)}</b> vol · <span class="c-grn">✓ sem divergência</span>${pg?` · ${fmt(pg)} pares/vol`:''}</div>
@@ -3519,12 +3545,12 @@ async function qmExport(){
   await qmCadastro(L);
   let EX; try{ EX=await peExcelJS(); }catch(e){
     const aoa=[['EAN','CODIGO','DESCRICAO','SALDO (VOL)','PROTHEUS (VOL)','PARES/VOL','PARES','ENDERECOS','FOTO']];
-    L.forEach(x=>{ const it=qmItem(x), pg=Number(PROT[x.gtin]&&PROT[x.gtin].pares)||0; aoa.push([x.gtin,it.codigo,x.descr,x.inv,x.prot,pg||'',pg?x.inv*pg:'',x.ends.map(r=>r.endereco+' ('+r.qtd+')').join(', '),peCfFotos(it)[0]||'']); });
+    L.forEach(x=>{ const it=qmItem(x), pg=Number(PROT[x.gtin]&&PROT[x.gtin].pares)||0; aoa.push([x.gtin,it.codigo,x.descr,x.inv,x.prot,pg||'',pg?x.inv*pg:'',x.ends.map(r=>r.endereco+' ('+r.qtd+')').join(', '),qmFotos(x)[0]||'']); });
     return peXlsxSave([['Queima',aoa,[16,16,50,10,10,9,8,40,14]]],'queima_estoque'); }
   const wb=new EX.Workbook(); wb.creator='Avacy · Controle de Mercadoria';
   const vol=L.reduce((s,x)=>s+x.inv,0), par=L.reduce((s,x)=>s+x.inv*(Number(PROT[x.gtin]&&PROT[x.gtin].pares)||0),0);
   const cols=[{h:'EAN',w:16,t:'txtnum'},{h:'CÓDIGO',w:17,t:'txtnum'},{h:'DESCRIÇÃO',w:50},{h:'SALDO (VOL)',w:11,t:'int',bold:true},{h:'PROTHEUS (VOL)',w:11,t:'int'},{h:'PARES/VOL',w:9,t:'int'},{h:'PARES',w:9,t:'int',bold:true},{h:'ENDEREÇOS',w:38,wrap:true},{h:'COR',w:7,t:'txtnum',al:'center'},{h:'FOTO',w:14,t:'link'}];
-  const rows=L.map(x=>{ const it=qmItem(x), pg=Number(PROT[x.gtin]&&PROT[x.gtin].pares)||0; return [x.gtin,it.codigo||'',x.descr||it.descricao||'',x.inv,x.prot,pg||null,pg?x.inv*pg:null,x.ends.map(r=>r.endereco+' ('+fmt(r.qtd)+')').join(', '),peCor(it)||'',peCfFotos(it)[0]||'']; });
+  const rows=L.map(x=>{ const it=qmItem(x), pg=Number(PROT[x.gtin]&&PROT[x.gtin].pares)||0; return [x.gtin,it.codigo||'',x.descr||it.descricao||'',x.inv,x.prot,pg||null,pg?x.inv*pg:null,x.ends.map(r=>r.endereco+' ('+fmt(r.qtd)+')').join(', '),peCor(it)||'',qmFotos(x)[0]||'']; });
   peXlAba(wb,'Queima de estoque',{titulo:'🔥 QUEIMA DE ESTOQUE',tab:'FFEA580C',sub:`Saldo abaixo de ${qmLim()} unidades e sem divergência com o Protheus · Gerado em ${fmtDT(new Date().toISOString())} por ${CU?CU.name:''}`,
     kpis:[['Produtos',L.length,'FFEA580C'],['Volumes',vol,'FFEA580C'],['Pares (aprox.)',par||'—','FFEA580C']],
     cols,rows,total:cols.map((c,ix)=>ix===0?'TOTAL':['SALDO (VOL)','PROTHEUS (VOL)','PARES'].includes(c.h)?'SUM':c.h==='DESCRIÇÃO'?`${fmt(L.length)} produto(s)`:null),freezeCol:3});
