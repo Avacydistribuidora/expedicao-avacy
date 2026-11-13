@@ -349,6 +349,17 @@ body:not(.adm) .adm-only{display:none!important}
 .pe-res{border:1px solid var(--bdr);border-radius:10px;padding:4px 10px;margin-top:10px;background:#fff;max-height:340px;overflow:auto}
 .pe-res-h{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;padding:6px 0 2px;font-weight:700}
 @media(max-width:640px){.pe-kp{grid-template-columns:repeat(2,1fr)}}
+/* V1.27 — foto do cadastro (família Z01) */
+.pe-cf{position:relative;width:56px;height:56px;border-radius:9px;overflow:hidden;border:1px solid var(--bdr);background:var(--bg3);flex-shrink:0;cursor:pointer}
+.pe-cf img{width:100%;height:100%;object-fit:contain;background:#fff;display:block}
+.pe-cf .n{position:absolute;right:2px;bottom:2px;background:rgba(13,33,103,.85);color:#fff;font-size:9.5px;font-weight:700;border-radius:6px;padding:0 4px}
+.pe-cf.vazio{display:flex;align-items:center;justify-content:center;font-size:20px;opacity:.45;cursor:default}
+.pe-cf-ovl .sheet{max-width:900px;align-items:center}
+.pe-cf-img{max-width:100%;max-height:62vh;border-radius:8px;background:#fff;object-fit:contain}
+.pe-cf-nav{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;border:none;background:rgba(13,33,103,.75);color:#fff;font-size:22px;cursor:pointer}
+.pe-cf-strip{display:flex;gap:6px;overflow-x:auto;width:100%;padding:2px 0 4px}
+.pe-cf-strip img{width:52px;height:52px;object-fit:contain;background:#fff;border:2px solid var(--bdr);border-radius:7px;cursor:pointer;flex-shrink:0}
+.pe-cf-strip img.on{border-color:var(--navy)}
 /* V1.26 — fotos do produto (ponta de estoque) */
 .pe-fts{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
 .pe-ft{width:46px;height:46px;border-radius:7px;overflow:hidden;border:1px solid var(--bdr);cursor:pointer;background:var(--bg3);flex-shrink:0}
@@ -723,7 +734,7 @@ body.devonly #acoes-wrap{display:none!important}
     <div id="pe-list-view" style="display:flex;flex-direction:column;gap:10px">
       <div class="card">
         <div class="ct"><span>📦 Ponta de Estoque</span><span class="row" style="gap:6px;flex-wrap:wrap;justify-content:flex-end">
-          <button class="btn btn-ghost btn-sm adm-only" onclick="$('pe-sb1-file').click()" title="Importar cadastro de produtos (SB1)">⬆ Cadastro SB1</button>
+          <button class="btn btn-ghost btn-sm adm-only" onclick="$('pe-sb1-file').click()" title="Importar cadastro SB1 (CODIGO_PRODUTO;DESCRICAO;EAN13) ou relatório de fotos (…;FAMILIA_Z01;LINK_FOTO)">⬆ Cadastro SB1 / Fotos</button>
           <button class="btn btn-ghost btn-sm" onclick="peExportTodos()">⬇ XLSX</button>
           <button class="btn btn-acc btn-sm" onclick="peNovo()">+ Novo lote</button></span></div>
         <input type="file" id="pe-sb1-file" accept=".csv,.txt" class="hide" onchange="peImportSB1(this.files[0]);this.value=''">
@@ -1192,6 +1203,37 @@ body.devonly #acoes-wrap{display:none!important}
   </div>
 </div>
 
+<!-- ══════════ OVERLAY: VENDA DO LOTE (V1.28) ══════════ -->
+<div class="ovl center hide" id="pe-vd-ovl" onclick="if(event.target===this)peVendaFechar()">
+  <div class="sheet" style="max-width:460px">
+    <div class="sh-title"><span>💰 Informar venda do lote</span><button class="sh-x" onclick="peVendaFechar()">✕</button></div>
+    <div class="sh-sub" id="pe-vd-sub"></div>
+    <label class="flbl">Cliente</label>
+    <input id="pe-vd-cli" class="inp" type="text" placeholder="Opcional" autocomplete="off">
+    <label class="flbl">NF da venda</label>
+    <input id="pe-vd-nf" class="inp" type="text" inputmode="numeric" placeholder="Opcional" autocomplete="off">
+    <label class="flbl">Observação</label>
+    <textarea id="pe-vd-obs" class="inp" placeholder="Opcional"></textarea>
+    <div class="sh-sub">Depois de vendido o lote não aceita mais bipagem.</div>
+    <div class="row" style="margin-top:10px"><button class="btn btn-ghost" style="flex:1" onclick="peVendaFechar()">Cancelar</button><button class="btn btn-grn" style="flex:2" id="pe-vd-ok" onclick="peVendaConfirmar()">💰 Confirmar venda</button></div>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: FOTOS DO CADASTRO (V1.27) ══════════ -->
+<div class="ovl center hide pe-cf-ovl" id="pe-cf-ovl" onclick="if(event.target===this)this.classList.add('hide')">
+  <div class="sheet">
+    <div class="sh-title" style="width:100%"><span id="pe-cf-ttl">Fotos do cadastro</span><button class="sh-x" onclick="$('pe-cf-ovl').classList.add('hide')">✕</button></div>
+    <div class="sh-sub" id="pe-cf-sub" style="width:100%"></div>
+    <div style="position:relative;width:100%;display:flex;justify-content:center">
+      <img id="pe-cf-img" class="pe-cf-img" alt="" onerror="this.alt='Não foi possível carregar a imagem — use Abrir página da foto'">
+      <button class="pe-cf-nav" style="left:4px" onclick="peCfNav(-1)">‹</button>
+      <button class="pe-cf-nav" style="right:4px" onclick="peCfNav(1)">›</button>
+    </div>
+    <div class="pe-cf-strip" id="pe-cf-strip"></div>
+    <a id="pe-cf-link" class="btn btn-ghost" style="width:100%;text-align:center;text-decoration:none" target="_blank" rel="noopener">🔗 Abrir página da foto</a>
+  </div>
+</div>
+
 <!-- ══════════ OVERLAY: QR ══════════ -->
 <div class="ovl center hide" id="qr-ovl" onclick="if(event.target===this)this.classList.add('hide')">
   <div class="sheet" style="max-width:300px;text-align:center;align-items:center">
@@ -1204,7 +1246,7 @@ body.devonly #acoes-wrap{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.26';
+const APP_VERSION='V1.28';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -3380,8 +3422,8 @@ function cgExport(){
 // ═════════════════════ PONTA DE ESTOQUE (V1.25) — lotes de pares avulsos ═════════════════════
 let PE_LOTES=[], PE_F='DISPONIVEL', PE_CUR=null, PE_ITENS=[], PE_Q=Promise.resolve(), PE_LAST=null, PE_EDIT=null, PE_HL=null;
 const PE_PROD={};               // ean_key → {codigo, descricao, ean13} | null
-const PE_SQL_MSG='Rode os scripts controle_mercadoria_V1.25 e V1.26 (ponta de estoque) no Supabase';
-function peErrMsg(e){ const m=(e&&e.message)||String(e); return /pe_(lotes|itens|produtos|bipar)/.test(m)?PE_SQL_MSG:'Erro: '+m; }
+const PE_SQL_MSG='Rode os scripts controle_mercadoria_V1.25, V1.26 e V1.27 (ponta de estoque) no Supabase';
+function peErrMsg(e){ const m=(e&&e.message)||String(e); return /pe_(lotes|itens|produtos|bipar|familia_fotos|fotos)|familia/.test(m)?PE_SQL_MSG:'Erro: '+m; }
 function eanKey(v){ const d=String(v??'').replace(/\D/g,'').replace(/^0+/,''); return d; }
 function peView(v){ ['list','new','det'].forEach(x=>$('pe-'+x+'-view').classList.toggle('hide',x!==v)); }
 function peTot(its){ return { skus:its.length, pares:its.reduce((s,i)=>s+(Number(i.qtd)||0),0) }; }
@@ -3391,7 +3433,7 @@ function peTag(st){ const t=PE_ST[st]||['t-mut',st]; return `<span class="tag ${
 async function peCarregar(){
   try{
     const {data,error}=await getSB().from('pe_lotes').select('*, pe_itens(qtd)').order('criado_em',{ascending:false}).limit(1000);
-    if(error) throw error; PE_LOTES=data||[];
+    if(error) throw error; PE_LOTES=(data||[]).map(peNorm);
   }catch(e){ PE_LOTES=[]; $('pe-list').innerHTML='<div class="card"><div class="empty c-red">'+esc(peErrMsg(e))+'</div></div>'; return; }
   renderPeList(); pePill(); peSb1Info();
 }
@@ -3409,9 +3451,9 @@ function renderPeList(){
   if(q) L=PE_LOTES.filter(l=>[l.lote,l.obs,l.criado_por,'#'+l.id].some(x=>String(x||'').toUpperCase().includes(q)));
   $('pe-list').innerHTML=L.length?L.map(l=>{ const t=peTot(l.pe_itens||[]);
     return `<div class="dcard ${esc(l.status)}" onclick="peAbrir(${l.id})">
-      <div class="dc-top"><div class="dc-nf">📦 Lote ${esc(l.lote)}</div>${peTag(l.status)}</div>
+      <div class="dc-top"><div class="dc-nf">📦 Lote ${esc(l.lote)}</div>${l.status==='DISPONIVEL'&&t.skus?`<button class="btn btn-grn btn-sm" style="padding:4px 10px;font-size:12px" onclick="event.stopPropagation();peVendaAbrir(${l.id})">💰 Informar venda</button>`:''}${peTag(l.status)}</div>
       <div class="dc-l"><b>${fmt(l.caixas)}</b> caixa(s) · <b>${fmt(t.skus)}</b> produto(s) · <b class="c-acc">${fmt(t.pares)} pares</b>${l.obs?' · '+esc(cut(l.obs,40)):''}</div>
-      <div class="dc-l">📅 ${fmtDT(l.criado_em)} · ${esc(l.criado_por||'')}${l.status==='VENDIDO'?` · vendido por ${esc(l.fechado_por||'')} em ${fmtDT(l.fechado_em)}`:''}</div>
+      <div class="dc-l">📅 ${fmtDT(l.criado_em)} · ${esc(l.criado_por||'')}${l.status==='VENDIDO'?` · 💰 vendido por ${esc(l.fechado_por||'')} em ${fmtDT(l.fechado_em)}${l.venda_cliente||l.venda_nf?' · '+esc([l.venda_cliente,l.venda_nf?'NF '+l.venda_nf:''].filter(Boolean).join(' · ')):''}`:''}</div>
     </div>`; }).join(''):(q?'':'<div class="card"><div class="empty">Nenhum lote neste filtro</div></div>');
 }
 
@@ -3430,9 +3472,10 @@ async function pePesquisarItens(){
     const {data,error}=await q; if(error) throw error; if(seq!==_peQSeq) return;
     const R=(data||[]).sort((a,b)=>(a.descricao||'').localeCompare(b.descricao||'')||String(a.pe_lotes?.lote).localeCompare(String(b.pe_lotes?.lote)));
     if(!R.length){ el.innerHTML='<div class="pe-res"><div class="empty">Nenhum produto bipado encontrado para "'+esc(raw)+'"</div></div>'; return; }
+    await peCfCarregar(R); if(seq!==_peQSeq) return;
     const tot=R.reduce((s,i)=>s+(Number(i.qtd)||0),0);
     el.innerHTML=`<div class="pe-res"><div class="pe-res-h">${R.length} ocorrência(s) em lotes · ${fmt(tot)} pares${R.length>=200?' (mostrando 200)':''}</div>`+
-      R.map(i=>`<div class="irow click" onclick="peAbrir(${i.lote_id},${i.id})"><div class="ibody"><div class="iean">${esc(i.ean13||i.ean_key)}${i.codigo?' · '+esc(i.codigo):''}</div><div class="inm">${esc(i.descricao||'')}</div>
+      R.map(i=>`<div class="irow click" onclick="peAbrir(${i.lote_id},${i.id})">${peCfThumb(i,true)}<div class="ibody"><div class="iean">${esc(i.ean13||i.ean_key)}${i.codigo?' · '+esc(i.codigo):''}</div><div class="inm">${esc(i.descricao||'')}</div>
         <div class="isub">📦 Lote <b>${esc(i.pe_lotes?.lote||'#'+i.lote_id)}</b> ${i.pe_lotes?peTag(i.pe_lotes.status):''}</div></div><div class="pe-qty" style="cursor:pointer">${fmt(i.qtd)}</div></div>`).join('')+'</div>';
   }catch(e){ if(seq===_peQSeq) el.innerHTML='<div class="pe-res"><div class="empty c-red">'+esc(peErrMsg(e))+'</div></div>'; }
 }
@@ -3470,9 +3513,9 @@ async function peAbrir(id,hl){
       sb.from('pe_itens').select('*').eq('lote_id',id).order('atualizado_em',{ascending:false})]);
     if(e1) throw e1; if(e2) throw e2;
     if(!PE_CUR||PE_CUR.id!==id){ PE_LAST=null; PE_FOTOS={}; $('pe-msg').className='pe-msg'; $('pe-msg').textContent=''; $('pe-fq').value=''; $('pe-mult').value='1'; }
-    PE_CUR=l; PE_ITENS=its||[]; PE_HL=hl||null;
+    PE_CUR=peNorm(l); PE_ITENS=its||[]; PE_HL=hl||null;
   }catch(e){ toast(peErrMsg(e),1,5000); return; }
-  peFotosCarregar(id);
+  peFotosCarregar(id); peCfCarregar(PE_ITENS).then(()=>{ if(PE_CUR&&PE_CUR.id===id) peRenderItens(); });
   peView('det'); renderPeDet();
   if(PE_HL) setTimeout(()=>{ document.querySelector('#pe-itens .pe-hl')?.scrollIntoView({behavior:'smooth',block:'center'}); setTimeout(()=>{ PE_HL=null; peRenderItens(); },5000); },150);
   else if(PE_CUR.status==='DISPONIVEL') focusLater('pe-scan');
@@ -3481,11 +3524,11 @@ function renderPeDet(){
   const l=PE_CUR; if(!l) return; const t=peTot(PE_ITENS), aberto=l.status==='DISPONIVEL', adm=isAdm();
   $('pe-st').innerHTML=peTag(l.status);
   $('pe-ttl').textContent='📦 Lote '+l.lote;
-  $('pe-sub').innerHTML=`Criado por <b>${esc(l.criado_por||'')}</b> em ${fmtDT(l.criado_em)}${l.status==='VENDIDO'?` · vendido por <b>${esc(l.fechado_por||'')}</b> em ${fmtDT(l.fechado_em)}`:''}${l.obs?'<br>📝 '+esc(l.obs):''}`;
+  $('pe-sub').innerHTML=`Criado por <b>${esc(l.criado_por||'')}</b> em ${fmtDT(l.criado_em)}${l.status==='VENDIDO'?`<br>💰 Vendido por <b>${esc(l.fechado_por||'')}</b> em ${fmtDT(l.fechado_em)}${l.venda_cliente?' · Cliente <b>'+esc(l.venda_cliente)+'</b>':''}${l.venda_nf?' · NF <b>'+esc(l.venda_nf)+'</b>':''}${l.venda_obs?' · '+esc(l.venda_obs):''}`:''}${l.obs?'<br>📝 '+esc(l.obs):''}`;
   const nc=PE_ITENS.filter(i=>i.cadastrado===false).length;
   $('pe-kp').innerHTML=`<div><b>${fmt(l.caixas)}</b><span>Caixas</span></div><div><b>${fmt(t.skus)}</b><span>Produtos</span></div><div><b>${fmt(t.pares)}</b><span>Pares</span></div><div><b class="${nc?'c-red':''}">${fmt(nc)}</b><span>Fora do SB1</span></div>`;
   let a=`<button class="btn btn-ghost btn-sm" onclick="peExportLote()">⬇ XLSX</button>${PE_LAST?`<button class="btn btn-ghost btn-sm" onclick="peFotoTirar(${PE_LAST},false)">📷 Foto do último bipado</button>`:''}`;
-  if(aberto) a+=`<button class="btn btn-ghost btn-sm" onclick="peEditar()">✎ Editar lote</button><button class="btn btn-grn btn-sm" onclick="peFechar(true)">💰 Marcar como vendido</button>`;
+  if(aberto) a+=`<button class="btn btn-ghost btn-sm" onclick="peEditar()">✎ Editar lote</button><button class="btn btn-grn btn-sm" onclick="peVendaAbrir(PE_CUR.id)">💰 Informar venda do lote</button>`;
   else if(adm) a+=`<button class="btn btn-ghost btn-sm" onclick="peFechar(false)">↺ Voltar para disponível</button>`;
   if(adm) a+=`<button class="btn btn-sm" style="background:var(--red);color:#fff;margin-left:auto" onclick="peExcluirLote()">🗑 Excluir lote</button>`;
   $('pe-acts').innerHTML=a;
@@ -3500,6 +3543,7 @@ function peRenderItens(){
   const t=peTot(PE_ITENS);
   $('pe-it-n').textContent=PE_ITENS.length?`· ${fmt(t.skus)} produto(s) · ${fmt(t.pares)} pares`:'';
   $('pe-itens').innerHTML=L.length?L.map(i=>`<div class="irow${i.id===PE_HL?' pe-hl':i.id===PE_LAST?' pe-last':''}">
+      ${peCfThumb(i)}
       <div class="ibody"><div class="iean">${esc(i.ean13||i.ean_key)}${i.codigo?' · cód. '+esc(i.codigo):''}</div>
         <div class="inm${i.cadastrado===false?' c-red':''}">${esc(i.descricao||'')}</div>
         <div class="isub">${i.cadastrado===false?'<span class="tag t-red">EAN fora do SB1</span> ':''}${esc(i.atualizado_por||'')} · ${fmtDT(i.atualizado_em)}</div>${peFotosItem(i.id)}</div>
@@ -3539,6 +3583,7 @@ async function peAddItem(raw,mult,loteId){
   else { beep(false); peMsg('warn',`⚠ EAN <b>${esc(ean)}</b> não encontrado no cadastro SB1 — registrado assim mesmo (total ${fmt(it.qtd)}). Confira o produto.`); }
   if(mult>1) $('pe-mult').value='1';
   renderPeDet();
+  if(it.codigo&&!(it.codigo in PE_CF_COD)) peCfCarregar([it]).then(()=>peRenderItens());
 }
 async function peSetQtd(id,qtd){
   const i=PE_ITENS.find(x=>x.id===id); if(!i) return;
@@ -3563,6 +3608,7 @@ async function peFechar(fechar){
     if(!confirm(`Marcar o lote ${l.lote} como VENDIDO?\n\n${fmt(l.caixas)} caixa(s) · ${fmt(t.skus)} produto(s) · ${fmt(t.pares)} pares\nDepois de vendido não é possível bipar.`)) return; }
   else if(!confirm('Voltar o lote '+l.lote+' para DISPONÍVEL?')) return;
   const upd=fechar?{status:'VENDIDO',fechado_por:CU.name,fechado_em:new Date().toISOString()}:{status:'DISPONIVEL',fechado_por:null,fechado_em:null};
+  if(!fechar&&('venda_cliente' in l)) Object.assign(upd,{venda_cliente:null,venda_nf:null,venda_obs:null});
   const {error}=await getSB().from('pe_lotes').update(upd).eq('id',l.id);
   if(error){ beep(false); return toast(peErrMsg(error),1,4000); }
   Object.assign(l,upd); beep(true); toast(fechar?'✓ Lote marcado como vendido':'Lote disponível novamente'); renderPeDet(); if(!fechar) focusLater('pe-scan');
@@ -3578,20 +3624,25 @@ async function peExcluirLote(){
 // Exportação
 function peExportLote(){
   const l=PE_CUR; if(!l) return;
-  const aoa=[['LOTE','CAIXAS','EAN13','CODIGO','DESCRICAO','PARES','NO SB1','ULTIMA BIPAGEM','POR','FOTOS']];
-  PE_ITENS.slice().sort((a,b)=>(a.descricao||'').localeCompare(b.descricao||'')).forEach(i=>aoa.push([l.lote,l.caixas,i.ean13||i.ean_key,i.codigo||'',i.descricao||'',Number(i.qtd)||0,i.cadastrado===false?'NÃO':'SIM',fmtDT(i.atualizado_em),i.atualizado_por||'',(PE_FOTOS[i.id]||[]).map(f=>f.url).join(' ')]));
-  xlsxSave([['Lote '+String(l.lote).slice(0,24),aoa,[14,8,16,16,50,8,8,17,18,40]]],'ponta_estoque_lote_'+String(l.lote).replace(/[^\w-]/g,'_'));
+  const nF=Math.max(1,...PE_ITENS.map(i=>(PE_FOTOS[i.id]||[]).length));
+  const aoa=[['LOTE','CAIXAS','EAN13','CODIGO','DESCRICAO','PARES','NO SB1','ULTIMA BIPAGEM','POR','FAMILIA Z01','FOTO CADASTRO','FOTOS DO MODELO',...Array.from({length:nF},(_,k)=>'FOTO LOTE '+(k+1))]];
+  PE_ITENS.slice().sort((a,b)=>(a.descricao||'').localeCompare(b.descricao||'')).forEach(i=>{ const cf=peCfFotos(i), fs=PE_FOTOS[i.id]||[];
+    aoa.push([l.lote,l.caixas,i.ean13||i.ean_key,i.codigo||'',i.descricao||'',Number(i.qtd)||0,i.cadastrado===false?'NÃO':'SIM',fmtDT(i.atualizado_em),i.atualizado_por||'',PE_CF_COD[i.codigo]||'',cf[0]||'',cf.length||'',...Array.from({length:nF},(_,k)=>fs[k]?fs[k].url:'')]); });
+  peXlsxSave([['Lote '+String(l.lote).slice(0,24),aoa,[14,8,16,16,50,8,8,17,18,16,14,10,...Array(nF).fill(13)]]],'ponta_estoque_lote_'+String(l.lote).replace(/[^\w-]/g,'_'));
 }
 async function peExportTodos(){
   try{
     const its=await fetchAll('pe_itens','id,lote_id,ean13,ean_key,codigo,descricao,qtd,cadastrado,atualizado_em,atualizado_por');
     if(!PE_LOTES.length) await peCarregar();
     const LM={}; PE_LOTES.forEach(l=>LM[l.id]=l);
-    const lotes=[['LOTE','STATUS','CAIXAS','PRODUTOS','PARES','OBS','CRIADO EM','CRIADO POR','VENDIDO EM','VENDIDO POR']];
-    PE_LOTES.forEach(l=>{ const t=peTot(its.filter(i=>i.lote_id===l.id)); lotes.push([l.lote,(PE_ST[l.status]||[0,l.status])[1],l.caixas,t.skus,t.pares,l.obs||'',fmtDT(l.criado_em),l.criado_por||'',fmtDT(l.fechado_em),l.fechado_por||'']); });
-    const prod=[['LOTE','STATUS','EAN13','CODIGO','DESCRICAO','PARES','NO SB1','ULTIMA BIPAGEM','POR']];
-    its.forEach(i=>{ const l=LM[i.lote_id]||{}; prod.push([l.lote||i.lote_id,(PE_ST[l.status]||[0,l.status||''])[1],i.ean13||i.ean_key,i.codigo||'',i.descricao||'',Number(i.qtd)||0,i.cadastrado===false?'NÃO':'SIM',fmtDT(i.atualizado_em),i.atualizado_por||'']); });
-    xlsxSave([['Lotes',lotes,[14,10,8,9,8,30,17,18,17,18]],['Produtos',prod,[14,10,16,16,50,8,8,17,18]]],'ponta_estoque');
+    const lotes=[['LOTE','STATUS','CAIXAS','PRODUTOS','PARES','OBS','CRIADO EM','CRIADO POR','VENDIDO EM','VENDIDO POR','CLIENTE DA VENDA','NF DA VENDA','OBS DA VENDA']];
+    PE_LOTES.forEach(l=>{ const t=peTot(its.filter(i=>i.lote_id===l.id)); lotes.push([l.lote,(PE_ST[l.status]||[0,l.status])[1],l.caixas,t.skus,t.pares,l.obs||'',fmtDT(l.criado_em),l.criado_por||'',fmtDT(l.fechado_em),l.fechado_por||'',l.venda_cliente||'',l.venda_nf||'',l.venda_obs||'']); });
+    await peCfCarregar(its);
+    let FT={}; try{ (await fetchAll('pe_fotos','id,item_id,url')).forEach(f=>(FT[f.item_id]=FT[f.item_id]||[]).push(f.url)); }catch(e){}
+    const nF=Math.max(1,...Object.values(FT).map(v=>v.length));
+    const prod=[['LOTE','STATUS','EAN13','CODIGO','DESCRICAO','PARES','NO SB1','ULTIMA BIPAGEM','POR','FAMILIA Z01','FOTO CADASTRO','FOTOS DO MODELO',...Array.from({length:nF},(_,k)=>'FOTO LOTE '+(k+1))]];
+    its.forEach(i=>{ const l=LM[i.lote_id]||{}, cf=peCfFotos(i), fs=FT[i.id]||[]; prod.push([l.lote||i.lote_id,(PE_ST[l.status]||[0,l.status||''])[1],i.ean13||i.ean_key,i.codigo||'',i.descricao||'',Number(i.qtd)||0,i.cadastrado===false?'NÃO':'SIM',fmtDT(i.atualizado_em),i.atualizado_por||'',PE_CF_COD[i.codigo]||'',cf[0]||'',cf.length||'',...Array.from({length:nF},(_,k)=>fs[k]||'')]); });
+    peXlsxSave([['Lotes',lotes,[14,10,8,9,8,30,17,18,17,18,30,12,30]],['Produtos',prod,[14,10,16,16,50,8,8,17,18,16,14,10,...Array(nF).fill(13)]]],'ponta_estoque');
   }catch(e){ toast(peErrMsg(e),1,5000); }
 }
 
@@ -3606,8 +3657,10 @@ async function peImportSB1(file){
     const linhas=txt.split(/\r?\n/).filter(x=>x.trim()); if(!linhas.length) throw new Error('Arquivo vazio');
     const head=linhas[0].split(';').map(h=>limpa(h).toUpperCase());
     const iC=head.findIndex(h=>['CODIGO_PRODUTO','CODIGO','B1_COD','PRODUTO'].includes(h));
-    const iD=head.findIndex(h=>['DESCRICAO','B1_DESC','DESCRIÇÃO'].includes(h));
+    const iD=head.findIndex(h=>['DESCRICAO','DESCRICAO_PRODUTO','B1_DESC','DESCRIÇÃO'].includes(h));
+    const iF=head.findIndex(h=>['FAMILIA_Z01','FAMILIA','Z01_FAMILIA'].includes(h)), iL=head.findIndex(h=>['LINK_FOTO','FOTO','URL_FOTO'].includes(h));
     const iE=head.findIndex(h=>['EAN13','EAN','B1_CODBAR','CODBAR'].includes(h));
+    if(iC>=0&&iF>=0&&iL>=0) return await peImportFotos(linhas,head,limpa,iC,iD,iE,iF,iL);
     if(iC<0||iD<0||iE<0) throw new Error('Cabeçalho esperado: CODIGO_PRODUTO;DESCRICAO;EAN13');
     const M=new Map();
     for(let k=1;k<linhas.length;k++){ const c=linhas[k].split(';').map(limpa); const cod=c[iC]; if(!cod) continue;
@@ -3673,6 +3726,113 @@ async function peFotoExcluir(itemId,id){
   const {error}=await sb.from('pe_fotos').delete().eq('id',id); if(error) return toast('Erro: '+error.message,1);
   PE_FOTOS[itemId]=(PE_FOTOS[itemId]||[]).filter(x=>x.id!==id); $('ft-ovl').classList.add('hide'); peRenderItens(); toast('Foto excluída');
 }
+
+// ── V1.27 — fotos do cadastro (relatório CODIGO;DESCRICAO;EAN13;FAMILIA_Z01;LINK_FOTO) ──
+// As fotos vêm por família Z01 (todas as cores/tamanhos do modelo). Mostra primeiro as da cor do produto.
+const PE_CF_COD={};   // codigo → familia ('' = sem família)
+const PE_CF_FAM={};   // familia → [urls]
+function peCfUrl(u){ return String(u||'').trim().replace(/%7Bw%7Dx%7Bh%7D|\{w\}x\{h\}/i,'800x800'); }
+function peCor(i){ const m=String(i.descricao||'').match(/\b(\d{4})\b/); if(m) return m[1]; const c=String(i.codigo||''); return c.length===14?c.slice(7,11):''; }
+function peCfFotos(i){
+  const f=PE_CF_COD[i.codigo]; const all=f?(PE_CF_FAM[f]||[]):[]; if(!all.length) return [];
+  const cor=peCor(i); if(!cor) return all;
+  const re=new RegExp('(^|\\D)'+cor+'(\\D|$)'); const nome=u=>decodeURIComponent(u.split('?')[0].split('/').pop()||'');
+  const m=all.filter(u=>re.test(nome(u))); return m.length?m.concat(all.filter(u=>!m.includes(u))):all;
+}
+function peCfCorOk(i){ const f=peCfFotos(i), cor=peCor(i); return !!(f.length&&cor&&new RegExp('(^|\\D)'+cor+'(\\D|$)').test(decodeURIComponent(f[0].split('/').pop()||''))); }
+async function peCfCarregar(itens){
+  const cods=[...new Set((itens||[]).map(i=>i.codigo).filter(c=>c&&!(c in PE_CF_COD)))];
+  try{
+    for(let k=0;k<cods.length;k+=150){ const lote=cods.slice(k,k+150);
+      const {data,error}=await getSB().from('pe_produtos').select('codigo,familia').in('codigo',lote); if(error) throw error;
+      lote.forEach(c=>PE_CF_COD[c]=''); (data||[]).forEach(r=>PE_CF_COD[r.codigo]=r.familia||''); }
+    const fams=[...new Set(cods.map(c=>PE_CF_COD[c]).filter(f=>f&&!(f in PE_CF_FAM)))];
+    for(let k=0;k<fams.length;k+=100){ const lote=fams.slice(k,k+100);
+      const {data,error}=await getSB().from('pe_familia_fotos').select('familia,fotos').in('familia',lote); if(error) throw error;
+      lote.forEach(f=>PE_CF_FAM[f]=[]); (data||[]).forEach(r=>PE_CF_FAM[r.familia]=(r.fotos||[]).map(peCfUrl)); }
+  }catch(e){ cods.forEach(c=>{ if(!(c in PE_CF_COD)) PE_CF_COD[c]=''; }); }
+}
+function peCfThumb(i,mini){
+  const f=peCfFotos(i);
+  if(!f.length) return mini?'':`<div class="pe-cf vazio" title="Sem foto no cadastro">👟</div>`;
+  return `<div class="pe-cf" ${mini?'style="width:44px;height:44px"':''} title="Fotos do cadastro (${f.length})${peCfCorOk(i)?' · cor '+peCor(i):''}" onclick="event.stopPropagation();peCfVer(${esc(JSON.stringify(i.codigo))},${esc(JSON.stringify(i.descricao||''))})"><img loading="lazy" src="${esc(f[0])}" alt="" onerror="this.style.opacity=.15">${f.length>1?`<span class="n">${f.length}</span>`:''}</div>`;
+}
+let _peCf={fotos:[],k:0};
+function peCfVer(codigo,descricao){
+  const i={codigo,descricao}; const f=peCfFotos(i); if(!f.length) return;
+  _peCf={fotos:f,k:0,i};
+  $('pe-cf-ttl').textContent=cut(descricao,48);
+  $('pe-cf-sub').innerHTML=`Cód. ${esc(codigo)} · Família Z01 ${esc(PE_CF_COD[codigo]||'')}${peCfCorOk(i)?` · <b class="c-grn">fotos da cor ${esc(peCor(i))} primeiro</b>`:' · fotos do modelo (todas as cores)'}`;
+  $('pe-cf-strip').innerHTML=f.map((u,k)=>`<img loading="lazy" src="${esc(u)}" data-k="${k}" onclick="peCfIr(${k})" onerror="this.style.opacity=.2" alt="">`).join('');
+  peCfIr(0); $('pe-cf-ovl').classList.remove('hide');
+}
+function peCfIr(k){ const f=_peCf.fotos; if(!f.length) return; k=(k+f.length)%f.length; _peCf.k=k;
+  $('pe-cf-img').src=f[k]; $('pe-cf-link').href=f[k]; $('pe-cf-link').textContent=`🔗 Abrir página da foto (${k+1}/${f.length})`;
+  document.querySelectorAll('#pe-cf-strip img').forEach(im=>im.classList.toggle('on',+im.dataset.k===k));
+  document.querySelector(`#pe-cf-strip img[data-k="${k}"]`)?.scrollIntoView({block:'nearest',inline:'center'}); }
+function peCfNav(d){ peCfIr(_peCf.k+d); }
+document.addEventListener('keydown',e=>{ if($('pe-cf-ovl')&&!$('pe-cf-ovl').classList.contains('hide')){ if(e.key==='ArrowRight') peCfNav(1); else if(e.key==='ArrowLeft') peCfNav(-1); else if(e.key==='Escape') $('pe-cf-ovl').classList.add('hide'); } });
+
+// Excel com link clicável: toda célula que for URL vira hiperlink "Abrir foto"
+function peXlsxSave(sheets,nome){
+  if(typeof XLSX==='undefined') return toast('Biblioteca Excel não carregou',1);
+  const wb=XLSX.utils.book_new();
+  sheets.forEach(([n,aoa,w])=>{ const ws=XLSX.utils.aoa_to_sheet(aoa);
+    Object.keys(ws).forEach(a=>{ if(a[0]==='!') return; const c=ws[a]; if(c&&c.t==='s'&&/^https?:\/\//i.test(c.v)){ c.l={Target:c.v,Tooltip:c.v}; c.v='🔗 Abrir foto'; } });
+    if(w) ws['!cols']=w.map(x=>({wch:x})); XLSX.utils.book_append_sheet(wb,ws,n); });
+  XLSX.writeFile(wb,nome+'_'+new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')+'.xlsx');
+}
+
+async function peImportFotos(linhas,head,limpa,iC,iD,iE,iF,iL){
+  const el=$('pe-sb1-info');
+  const P=new Map(), F=new Map();
+  for(let k=1;k<linhas.length;k++){ const c=linhas[k].split(';').map(limpa); const cod=c[iC]; if(!cod) continue;
+    const fam=c[iF]||'', ean=(iE>=0?c[iE]:'').replace(/\D/g,''), url=c[iL]||'';
+    if(!P.has(cod)) P.set(cod,{codigo:cod,descricao:iD>=0?c[iD]:'',ean13:ean||null,ean_key:eanKey(ean)||null,familia:fam||null,atualizado_em:new Date().toISOString()});
+    if(fam){ if(!F.has(fam)) F.set(fam,new Set()); if(/^https?:\/\//i.test(url)) F.get(fam).add(url); }
+  }
+  const prods=[...P.values()], fams=[...F.entries()].map(([familia,set])=>({familia,fotos:[...set],atualizado_em:new Date().toISOString()}));
+  const comFoto=fams.filter(f=>f.fotos.length).length, nFotos=fams.reduce((s,f)=>s+f.fotos.length,0);
+  if(!confirm(`Importar relatório de fotos do cadastro?\n\n${fmt(prods.length)} produtos · ${fmt(fams.length)} famílias Z01\n${fmt(comFoto)} famílias com foto · ${fmt(nFotos)} links de foto\n\nAs fotos de cada família são substituídas pelas deste arquivo.`)) return;
+  const sb=getSB();
+  for(let k=0;k<prods.length;k+=1000){ el.innerHTML=`⏳ Atualizando produtos… <b>${fmt(Math.min(k+1000,prods.length))}</b> / ${fmt(prods.length)}`;
+    const {error}=await sb.from('pe_produtos').upsert(prods.slice(k,k+1000),{onConflict:'codigo'}); if(error) throw error; }
+  for(let k=0;k<fams.length;k+=200){ el.innerHTML=`⏳ Gravando fotos das famílias… <b>${fmt(Math.min(k+200,fams.length))}</b> / ${fmt(fams.length)}`;
+    const {error}=await sb.from('pe_familia_fotos').upsert(fams.slice(k,k+200),{onConflict:'familia'}); if(error) throw error; }
+  Object.keys(PE_CF_COD).forEach(k=>delete PE_CF_COD[k]); Object.keys(PE_CF_FAM).forEach(k=>delete PE_CF_FAM[k]); Object.keys(PE_PROD).forEach(k=>delete PE_PROD[k]);
+  beep(true); toast(`✓ Fotos importadas: ${fmt(comFoto)} famílias · ${fmt(nFotos)} links`,0,4500); peSb1Info();
+  if(PE_CUR) peAbrir(PE_CUR.id);
+}
+
+// ── V1.28 — informar venda do lote ──
+function peNorm(l){ if(l){ if(l.status==='ABERTO') l.status='DISPONIVEL'; else if(l.status==='FECHADO') l.status='VENDIDO'; } return l; }
+let _peVdId=null;
+async function peVendaAbrir(id){
+  let l=(PE_CUR&&PE_CUR.id===id)?PE_CUR:PE_LOTES.find(x=>x.id===id); if(!l) return;
+  const t=peTot(PE_CUR&&PE_CUR.id===id?PE_ITENS:(l.pe_itens||[]));
+  if(!t.skus){ toast('Bipe ao menos um produto antes de informar a venda',1); return; }
+  _peVdId=id;
+  $('pe-vd-sub').innerHTML=`📦 Lote <b>${esc(l.lote)}</b> · ${fmt(l.caixas)} caixa(s) · ${fmt(t.skus)} produto(s) · <b>${fmt(t.pares)} pares</b>`;
+  $('pe-vd-cli').value=''; $('pe-vd-nf').value=''; $('pe-vd-obs').value=''; $('pe-vd-ok').disabled=false;
+  $('pe-vd-ovl').classList.remove('hide'); focusLater('pe-vd-cli');
+}
+function peVendaFechar(){ $('pe-vd-ovl').classList.add('hide'); _peVdId=null; }
+async function peVendaConfirmar(){
+  const id=_peVdId; if(!id) return; const btn=$('pe-vd-ok'); btn.disabled=true;
+  const extra={venda_cliente:$('pe-vd-cli').value.trim()||null,venda_nf:$('pe-vd-nf').value.trim()||null,venda_obs:$('pe-vd-obs').value.trim()||null};
+  const upd={status:'VENDIDO',fechado_por:CU.name,fechado_em:new Date().toISOString()};
+  let {error}=await getSB().from('pe_lotes').update({...upd,...extra}).eq('id',id);
+  if(error&&/venda_/.test(error.message||'')){   // colunas da V1.28 ainda não criadas → grava só o status
+    ({error}=await getSB().from('pe_lotes').update(upd).eq('id',id));
+    if(!error) toast('Venda registrada, mas sem cliente/NF — rode o script controle_mercadoria_V1.28_venda_lote.sql',1,6000);
+    Object.keys(extra).forEach(k=>extra[k]=undefined);
+  }
+  if(error){ btn.disabled=false; beep(false); return toast(peErrMsg(error),1,5000); }
+  [PE_CUR&&PE_CUR.id===id?PE_CUR:null, PE_LOTES.find(x=>x.id===id)].forEach(o=>{ if(o){ Object.assign(o,upd); Object.keys(extra).forEach(k=>{ if(extra[k]!==undefined) o[k]=extra[k]; }); } });
+  peVendaFechar(); beep(true); toast('💰 Lote marcado como vendido');
+  if(PE_CUR&&PE_CUR.id===id&&!$('pe-det-view').classList.contains('hide')) renderPeDet(); else { renderPeList(); pePill(); }
+}
+onEnter('pe-vd-nf',peVendaConfirmar);
 onEnter('pe-scan',peScan);
 onEnter('pe-lote',()=>$('pe-caixas').focus());
 
