@@ -349,6 +349,15 @@ body:not(.adm) .adm-only{display:none!important}
 .pe-res{border:1px solid var(--bdr);border-radius:10px;padding:4px 10px;margin-top:10px;background:#fff;max-height:340px;overflow:auto}
 .pe-res-h{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;padding:6px 0 2px;font-weight:700}
 @media(max-width:640px){.pe-kp{grid-template-columns:repeat(2,1fr)}}
+/* V1.32 — Queima de estoque */
+.qm-card{background:#fff;border:1px solid var(--bdr);border-left:4px solid #ea580c;border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start}
+.qm-saldo{text-align:center;min-width:64px}
+.qm-saldo b{display:block;font-size:24px;color:#ea580c;line-height:1}
+.qm-saldo span{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
+.qm-ends{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.qm-ends span{font-size:12px;background:var(--bg3);border-radius:6px;padding:2px 7px}
+.qm-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.qm-top .inp{margin:0}
 /* V1.27 — foto do cadastro (família Z01) */
 .pe-cf{position:relative;width:56px;height:56px;border-radius:9px;overflow:hidden;border:1px solid var(--bdr);background:var(--bg3);flex-shrink:0;cursor:pointer}
 .pe-cf img{width:100%;height:100%;object-fit:contain;background:#fff;display:block}
@@ -518,6 +527,7 @@ body.restrito #acoes-wrap{display:none!important}
       <div class="sbSec">Devoluções</div>
       <button class="nav-it" id="t-dev" onclick="goTab('dev')"><i><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg></i><span class="lb">Devoluções</span><span class="pill hide" id="dev-pill">0</span></button>
       <button class="nav-it" id="t-pte" onclick="goTab('pte')"><i><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/><path d="M7.5 5.2l9 4"/></svg></i><span class="lb">Ponta de Estoque</span><span class="pill hide" id="pe-pill">0</span></button>
+      <button class="nav-it" id="t-qme" onclick="goTab('qme')"><i><svg viewBox="0 0 24 24"><path d="M12 22c4.4 0 7-2.9 7-6.6 0-3.9-3.2-6.2-4.4-10.4-2.3 1.7-3.4 4-3.3 6.1C9.8 10.2 9 8.8 8.8 7.2 6.4 9 5 11.8 5 15.4 5 19.1 7.6 22 12 22z"/><path d="M12 22c-1.9 0-3-1.3-3-3 0-1.9 1.6-3 3-5 1.4 2 3 3.1 3 5 0 1.7-1.1 3-3 3z"/></svg></i><span class="lb">Queima de estoque</span><span class="pill hide" id="qm-pill">0</span></button>
       <div class="sbSec adm-only">Administração</div>
       <button class="nav-it adm-only" id="t-his" onclick="goTab('his')"><i><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 3"/></svg></i><span class="lb">Histórico</span></button>
       <button class="nav-it adm-only" id="t-vnd" onclick="goTab('vnd')"><i><svg viewBox="0 0 24 24"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg></i><span class="lb">Baixa de vendas</span></button>
@@ -825,6 +835,22 @@ body.restrito #acoes-wrap{display:none!important}
       </div>
     </div>
     <div id="ap-list" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+
+  <!-- ── QUEIMA DE ESTOQUE (V1.32) ── -->
+  <div class="pg hide" id="p-qme">
+    <div class="card">
+      <div class="ct"><span>🔥 Queima de estoque</span><button class="btn btn-ghost btn-sm" onclick="qmExport()">⬇ XLSX</button></div>
+      <div class="sh-sub" style="margin-bottom:10px">Produtos com saldo no estoque <b>abaixo de <span id="qm-lim-t">5</span> unidades</b> (volumes) e <b>sem divergência com o Protheus</b> (saldo do app = saldo Protheus).</div>
+      <div class="qm-top" style="margin-bottom:8px">
+        <input id="qm-q" class="inp" style="flex:1;min-width:180px" type="text" placeholder="Pesquisar descrição, EAN ou endereço..." oninput="qmRender()" autocomplete="off">
+        <label class="sh-sub" style="white-space:nowrap">Abaixo de <input id="qm-lim" class="inp" type="number" min="1" value="5" style="width:64px;display:inline-block;padding:7px 8px" oninput="qmRender()"> un.</label>
+        <select id="qm-ord" class="inp" style="width:auto" onchange="qmRender()"><option value="DES">Descrição A-Z</option><option value="MENOR">Menor saldo</option><option value="MAIOR">Maior saldo</option><option value="END">Endereço</option></select>
+      </div>
+      <div class="pe-kp" id="qm-kp"></div>
+      <div class="sh-sub hide c-red" id="qm-noprt" style="margin-top:8px">⚠ Saldo Protheus ainda não importado — sem ele não dá para conferir a divergência. Peça ao administrador para importar (Ações › Importar saldo Protheus).</div>
+    </div>
+    <div id="qm-list" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
   </div>
 
   <!-- ── ACESSOS POR USUÁRIO (V1.30) ── -->
@@ -1261,7 +1287,7 @@ body.restrito #acoes-wrap{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.31';
+const APP_VERSION='V1.32';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -1425,8 +1451,8 @@ function enterMain(){
   $('uNome').textContent=CU.name; $('uAv').textContent=CU.name.split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase();
   const dvo=CU.role==='dev';
   aplicarPermissoes();
-  const pm=CU_PERM; const soPte=pm&&pm.length===1&&pm[0]==='pte', soDev=pm&&pm.length===1&&pm[0]==='dev';
-  $('uRole').textContent=adm?'Admin':pm?(pm.length>1?'Devol. + Ponta':soPte?'Ponta de Estoque':'Devolução'):'Operador'; $('uRole').className='rb'+(adm?'':soPte?' pt':pm?' dv':' op');
+  const pm=CU_PERM; const soPte=!!(pm&&pm.includes('pte')&&!pm.includes('dev')), soDev=!!(pm&&pm.includes('dev')&&!pm.includes('pte'));
+  $('uRole').textContent=adm?'Admin':pm?(soPte?'Ponta de Estoque':soDev?'Devolução':'Devol. + Ponta'):'Operador'; $('uRole').className='rb'+(adm?'':soPte?' pt':pm?' dv':' op');
   $('acoes-wrap').classList.toggle('hide',!adm);
   $('con-kpis').classList.toggle('hide',!adm);
   $('dd-adm').classList.toggle('hide',!adm);
@@ -1443,8 +1469,8 @@ function go(s){ document.querySelectorAll('.scr').forEach(x=>x.classList.remove(
 function goTab(t){
   if(CU_PERM&&!CU_PERM.includes(t)) t=CU_PERM[0];
   CUR_TAB=t;
-  ['con','mov','end','kdx','cgr','dev','pte','his','apr','acs','vnd','prt'].forEach(x=>{ $('t-'+x).classList.toggle('on',x===t); $('p-'+x).classList.toggle('hide',x!==t); });
-  $('h-title').textContent={con:'Consulta',mov:'Estoque',end:'Endereço',kdx:'Kardex',cgr:'Cadastro de Grade',dev:'Devoluções',pte:'Ponta de Estoque',his:'Histórico',apr:'Aprovações',acs:'Acessos',vnd:'Baixa de vendas',prt:'Ajuste Protheus'}[t];
+  ['con','mov','end','kdx','cgr','dev','pte','qme','his','apr','acs','vnd','prt'].forEach(x=>{ $('t-'+x).classList.toggle('on',x===t); $('p-'+x).classList.toggle('hide',x!==t); });
+  $('h-title').textContent={con:'Consulta',mov:'Estoque',end:'Endereço',kdx:'Kardex',cgr:'Cadastro de Grade',dev:'Devoluções',pte:'Ponta de Estoque',qme:'Queima de estoque',his:'Histórico',apr:'Aprovações',acs:'Acessos',vnd:'Baixa de vendas',prt:'Ajuste Protheus'}[t];
   toggleSb(false); loadDevPill(); prtPill();
   if(t==='con'){ renderKpis(); focusLater('con-inp'); }
   if(t==='mov'){ renderMov(); renderPos(); }
@@ -1457,6 +1483,7 @@ function goTab(t){
   if(t==='cgr'){ if(CG_CUR) cgAbrir(CG_CUR.id); else if($('cg-new-view').classList.contains('hide')){ cgView('list'); cgCarregar(); } }
   if(!CU_PERM) cgPill();
   if(t==='acs') acsCarregar();
+  if(t==='qme') qmRender();
   if(t==='prt') prtCarregar();
   if(t==='pte'){ if(PE_CUR) peAbrir(PE_CUR.id); else { peView('list'); peCarregar(); } }
 }
@@ -1474,6 +1501,7 @@ async function doSync(btn){
     if(CUR_TAB==='kdx'&&$('kdx-inp').value.trim()) await kdxBuscar();
     if(CUR_TAB==='vnd') await vbCarregar();
     if(CUR_TAB==='prt') await prtCarregar();
+    if(CUR_TAB==='qme') qmRender();
     toast('✓ Dados atualizados');
   }catch(e){ toast('Erro ao sincronizar',1); }
   finally{ btn.disabled=false; btn.textContent='↻'; }
@@ -3438,10 +3466,75 @@ function cgExport(){
 
 
 
+
+// ═════════════════════ QUEIMA DE ESTOQUE (V1.32) ═════════════════════
+// Produtos com saldo no app > 0 e < limite (padrão 5) e SEM divergência com o Protheus (saldo app = saldo Protheus).
+let QM_LIM_SHOW=150; const QM_CAD={}; let _qmBusy=false;
+function qmLim(){ const v=parseInt($('qm-lim').value,10); return v>0?v:5; }
+function qmDados(){
+  if(!PROT_OK) return [];
+  const lim=qmLim();
+  return posData().filter(x=>x.inv>0&&x.inv<lim&&x.dif===0);
+}
+async function qmCadastro(L){
+  if(_qmBusy) return; const falta=[...new Set(L.map(x=>eanKey(x.gtin)).filter(k=>k&&!(k in QM_CAD)))]; if(!falta.length) return;
+  _qmBusy=true;
+  try{ for(let k=0;k<falta.length;k+=150){ const ch=falta.slice(k,k+150);
+      let {data,error}=await getSB().from('pe_produtos').select('codigo,descricao,ean_key,familia,cor,foto').in('ean_key',ch);
+      if(error&&/cor|foto|familia/.test(error.message||'')) ({data,error}=await getSB().from('pe_produtos').select('codigo,descricao,ean_key').in('ean_key',ch));
+      ch.forEach(c=>QM_CAD[c]=null); (data||[]).forEach(r=>{ if(!QM_CAD[r.ean_key]) QM_CAD[r.ean_key]=r; if(r.codigo){ PE_CF_COD[r.codigo]=r.familia||''; PE_CF_P[r.codigo]={cor:r.cor||'',foto:r.foto||''}; } }); }
+    const its=Object.values(QM_CAD).filter(Boolean).map(r=>({codigo:r.codigo,descricao:r.descricao}));
+    const fams=[...new Set(its.map(i=>PE_CF_COD[i.codigo]).filter(f=>f&&!(f in PE_CF_FAM)))];
+    for(let k=0;k<fams.length;k+=100){ const ch=fams.slice(k,k+100); const {data}=await getSB().from('pe_familia_fotos').select('familia,fotos').in('familia',ch);
+      ch.forEach(f=>PE_CF_FAM[f]=[]); (data||[]).forEach(r=>PE_CF_FAM[r.familia]=(r.fotos||[]).map(peCfUrl)); }
+  }catch(e){}
+  _qmBusy=false; if(CUR_TAB==='qme') qmRender(true);
+}
+function qmItem(x){ const c=QM_CAD[eanKey(x.gtin)]; return {codigo:c?c.codigo:'',descricao:x.descr||(c&&c.descricao)||''}; }
+function qmRender(semBusca){
+  if(!$('qm-list')) return;
+  $('qm-lim-t').textContent=qmLim(); $('qm-noprt').classList.toggle('hide',PROT_OK);
+  const q=($('qm-q').value||'').trim().toUpperCase(), qa=normAddr(q);
+  let L=qmDados();
+  if(!semBusca) posFillDescr(L);
+  if(q) L=L.filter(x=>x.gtin.includes(q)||eanKey(x.gtin).includes(q)||(x.descr||'').toUpperCase().includes(q)||x.ends.some(r=>r.endereco.includes(qa)));
+  const o=$('qm-ord').value;
+  L.sort(o==='MENOR'?(a,b)=>a.inv-b.inv||a.descr.localeCompare(b.descr):o==='MAIOR'?(a,b)=>b.inv-a.inv||a.descr.localeCompare(b.descr):o==='END'?(a,b)=>(a.ends[0]?.endereco||'').localeCompare(b.ends[0]?.endereco||''):(a,b)=>(a.descr||'').localeCompare(b.descr||''));
+  const tot=qmDados(), vol=tot.reduce((s,x)=>s+x.inv,0), par=tot.reduce((s,x)=>s+x.inv*(Number(PROT[x.gtin]&&PROT[x.gtin].pares)||0),0);
+  $('qm-kp').innerHTML=`<div><b>${fmt(tot.length)}</b><span>Produtos</span></div><div><b>${fmt(vol)}</b><span>Volumes</span></div><div><b>${par?fmt(par):'—'}</b><span>Pares (aprox.)</span></div><div><b>${fmt(new Set(tot.flatMap(x=>x.ends.map(r=>r.endereco))).size)}</b><span>Endereços</span></div>`;
+  const pill=$('qm-pill'); if(pill){ pill.textContent=tot.length; pill.classList.toggle('hide',!tot.length); }
+  if(!semBusca) qmCadastro(L.slice(0,QM_LIM_SHOW));
+  $('qm-list').innerHTML=!PROT_OK?'':L.length?L.slice(0,QM_LIM_SHOW).map(x=>{ const it=qmItem(x), pg=Number(PROT[x.gtin]&&PROT[x.gtin].pares)||0;
+    return `<div class="qm-card">${peCfThumb(it)}
+      <div class="ibody"><div class="iean">${esc(x.gtin)}${it.codigo?' · cód. '+esc(it.codigo):''}</div>
+        <div class="inm" style="white-space:normal">${esc(x.descr||it.descricao||'—')}</div>
+        <div class="isub">Protheus: <b>${fmt(x.prot)}</b> vol · <span class="c-grn">✓ sem divergência</span>${pg?` · ${fmt(pg)} pares/vol`:''}</div>
+        <div class="qm-ends">${x.ends.map(r=>`<span>📍 <b>${esc(r.endereco)}</b> · ${fmt(r.qtd)}</span>`).join('')}</div></div>
+      <div class="qm-saldo"><b>${fmt(x.inv)}</b><span>vol.</span>${pg?`<div class="sh-sub">${fmt(x.inv*pg)} pares</div>`:''}</div></div>`; }).join('')+(L.length>QM_LIM_SHOW?`<div style="text-align:center"><button class="btn btn-ghost btn-sm" onclick="QM_LIM_SHOW+=150;qmRender()">Mostrar mais (${fmt(L.length-QM_LIM_SHOW)})</button></div>`:'')
+    :`<div class="card"><div class="empty">Nenhum produto ${q?'encontrado':'abaixo de '+qmLim()+' unidades sem divergência'}</div></div>`;
+}
+async function qmExport(){
+  if(!PROT_OK) return toast('Saldo Protheus não importado',1);
+  const L=qmDados().sort((a,b)=>(a.descr||'').localeCompare(b.descr||'')); if(!L.length) return toast('Nenhum produto na queima',1);
+  await qmCadastro(L);
+  let EX; try{ EX=await peExcelJS(); }catch(e){
+    const aoa=[['EAN','CODIGO','DESCRICAO','SALDO (VOL)','PROTHEUS (VOL)','PARES/VOL','PARES','ENDERECOS','FOTO']];
+    L.forEach(x=>{ const it=qmItem(x), pg=Number(PROT[x.gtin]&&PROT[x.gtin].pares)||0; aoa.push([x.gtin,it.codigo,x.descr,x.inv,x.prot,pg||'',pg?x.inv*pg:'',x.ends.map(r=>r.endereco+' ('+r.qtd+')').join(', '),peCfFotos(it)[0]||'']); });
+    return peXlsxSave([['Queima',aoa,[16,16,50,10,10,9,8,40,14]]],'queima_estoque'); }
+  const wb=new EX.Workbook(); wb.creator='Avacy · Controle de Mercadoria';
+  const vol=L.reduce((s,x)=>s+x.inv,0), par=L.reduce((s,x)=>s+x.inv*(Number(PROT[x.gtin]&&PROT[x.gtin].pares)||0),0);
+  const cols=[{h:'EAN',w:16,t:'txtnum'},{h:'CÓDIGO',w:17,t:'txtnum'},{h:'DESCRIÇÃO',w:50},{h:'SALDO (VOL)',w:11,t:'int',bold:true},{h:'PROTHEUS (VOL)',w:11,t:'int'},{h:'PARES/VOL',w:9,t:'int'},{h:'PARES',w:9,t:'int',bold:true},{h:'ENDEREÇOS',w:38,wrap:true},{h:'COR',w:7,t:'txtnum',al:'center'},{h:'FOTO',w:14,t:'link'}];
+  const rows=L.map(x=>{ const it=qmItem(x), pg=Number(PROT[x.gtin]&&PROT[x.gtin].pares)||0; return [x.gtin,it.codigo||'',x.descr||it.descricao||'',x.inv,x.prot,pg||null,pg?x.inv*pg:null,x.ends.map(r=>r.endereco+' ('+fmt(r.qtd)+')').join(', '),peCor(it)||'',peCfFotos(it)[0]||'']; });
+  peXlAba(wb,'Queima de estoque',{titulo:'🔥 QUEIMA DE ESTOQUE',tab:'FFEA580C',sub:`Saldo abaixo de ${qmLim()} unidades e sem divergência com o Protheus · Gerado em ${fmtDT(new Date().toISOString())} por ${CU?CU.name:''}`,
+    kpis:[['Produtos',L.length,'FFEA580C'],['Volumes',vol,'FFEA580C'],['Pares (aprox.)',par||'—','FFEA580C']],
+    cols,rows,total:cols.map((c,ix)=>ix===0?'TOTAL':['SALDO (VOL)','PROTHEUS (VOL)','PARES'].includes(c.h)?'SUM':c.h==='DESCRIÇÃO'?`${fmt(L.length)} produto(s)`:null),freezeCol:3});
+  await peXlBaixar(wb,'queima_estoque'); toast('✓ Relatório da queima gerado');
+}
+
 // ═════════════════════ ACESSO POR USUÁRIO (V1.30) ═════════════════════
 // Tabela cm_acessos (username → modulos). Sem registro = padrão do perfil do Inventário.
 //   modulos: ['*'] completo · ['dev'] só Devoluções · ['pte'] só Ponta de Estoque · ['dev','pte'] os dois
-const ACS_OPC=[['','Padrão do perfil'],['*','Completo (todas as telas)'],['dev','Só Devoluções'],['pte','Só Ponta de Estoque'],['dev,pte','Devoluções + Ponta de Estoque']];
+const ACS_OPC=[['','Padrão do perfil'],['*','Completo (todas as telas)'],['dev','Só Devoluções'],['pte','Só Ponta de Estoque + Queima'],['dev,pte','Devoluções + Ponta de Estoque + Queima']];
 let CU_PERM=null, CU_ACS=null, ACS=[];
 async function loadAcesso(){
   CU_ACS=null; if(!CU||CU.role==='adm') return;
@@ -3450,7 +3543,7 @@ async function loadAcesso(){
 }
 function permissoesDe(role,mods){
   if(role==='adm') return null;                               // admin: tudo
-  if(mods&&mods.length){ if(mods.includes('*')) return null; const v=mods.filter(m=>m==='dev'||m==='pte'); if(v.length) return v; }
+  if(mods&&mods.length){ if(mods.includes('*')) return null; const v=mods.filter(m=>m==='dev'||m==='pte'||m==='qme'); if(v.includes('pte')&&!v.includes('qme')) v.push('qme'); if(v.length) return v; }
   return role==='dev'?['dev']:null;                           // padrão do perfil
 }
 function aplicarPermissoes(){
@@ -3468,7 +3561,7 @@ async function acsCarregar(){
   acsRender();
 }
 function acsValor(u){ const r=ACS.find(a=>a.username===String(u.user).toLowerCase()); return r&&r.modulos&&r.modulos.length?r.modulos.join(','):''; }
-function acsEfetivo(u){ const v=acsValor(u); const pm=permissoesDe(u.role,v?v.split(','):null); return !pm?'Todas as telas':pm.map(m=>m==='dev'?'Devoluções':'Ponta de Estoque').join(' + '); }
+function acsEfetivo(u){ const v=acsValor(u); const pm=permissoesDe(u.role,v?v.split(','):null); return !pm?'Todas as telas':pm.map(m=>m==='dev'?'Devoluções':m==='pte'?'Ponta de Estoque':'Queima').join(' + '); }
 function acsRender(){
   const q=($('acs-q').value||'').trim().toUpperCase();
   const L=USERS.filter(u=>u.user!=='admin'&&(!q||[u.name,u.user].some(x=>String(x||'').toUpperCase().includes(q))))
