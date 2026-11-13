@@ -342,7 +342,7 @@ body:not(.adm) .adm-only{display:none!important}
 .pe-bt.del{color:var(--red)}
 .irow.pe-last{background:#ecfdf5;border-radius:8px;padding-left:6px;padding-right:6px}
 .irow.pe-hl{background:#fff6c7;border-radius:8px;padding-left:6px;padding-right:6px}
-.pe-kp{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.pe-kp{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-top:10px}
 .pe-kp div{background:var(--bg3);border-radius:10px;padding:8px 10px}
 .pe-kp b{display:block;font-size:20px;color:var(--navy)}
 .pe-kp span{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
@@ -1290,7 +1290,7 @@ body.restrito #acoes-wrap{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.38';
+const APP_VERSION='V1.39';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -3498,7 +3498,7 @@ async function qmCadastro(L){
   try{ for(let k=0;k<falta.length;k+=150){ const ch=falta.slice(k,k+150);
       let {data,error}=await getSB().from('pe_produtos').select('codigo,descricao,ean_key,familia,cor,foto').in('ean_key',ch);
       if(error&&/cor|foto|familia/.test(error.message||'')) ({data,error}=await getSB().from('pe_produtos').select('codigo,descricao,ean_key').in('ean_key',ch));
-      ch.forEach(c=>QM_CAD[c]=null); (data||[]).forEach(r=>{ if(!QM_CAD[r.ean_key]) QM_CAD[r.ean_key]=r; if(r.codigo){ PE_CF_COD[r.codigo]=r.familia||''; PE_CF_P[r.codigo]={cor:r.cor||'',foto:r.foto||''}; } }); }
+      ch.forEach(c=>QM_CAD[c]=null); (data||[]).forEach(r=>{ if(!QM_CAD[r.ean_key]) QM_CAD[r.ean_key]=r; if(r.codigo){ PE_CF_COD[r.codigo]=r.familia||''; PE_CF_P[r.codigo]={...(PE_CF_P[r.codigo]||{}),cor:r.cor||'',foto:r.foto||''}; } }); }
     const its=Object.values(QM_CAD).filter(Boolean).map(r=>({codigo:r.codigo,descricao:r.descricao}));
     const fams=[...new Set(its.map(i=>PE_CF_COD[i.codigo]).filter(f=>f&&!(f in PE_CF_FAM)))];
     for(let k=0;k<fams.length;k+=100){ const ch=fams.slice(k,k+100); const {data}=await getSB().from('pe_familia_fotos').select('familia,fotos').in('familia',ch);
@@ -3649,6 +3649,11 @@ let PE_LOTES=[], PE_F='DISPONIVEL', PE_CUR=null, PE_ITENS=[], PE_Q=Promise.resol
 const PE_PROD={};               // ean_key → {codigo, descricao, ean13} | null
 const PE_SQL_MSG='Rode os scripts controle_mercadoria_V1.25, V1.26 e V1.27 (ponta de estoque) no Supabase';
 function peErrMsg(e){ const m=(e&&e.message)||String(e); return /pe_(lotes|itens|produtos|bipar|familia_fotos|fotos)|familia/.test(m)?PE_SQL_MSG:'Erro: '+m; }
+function pePreco(v){ const s=String(v??'').trim(); if(!s) return null; const n=s.includes(',')?parseFloat(s.replace(/\./g,'').replace(',','.')):parseFloat(s); return Number.isFinite(n)&&n>0?Math.round(n*100)/100:null; }
+function brl(n){ return n?'R$ '+Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'; }
+function pePc(i){ const p=PE_CF_P[i.codigo]; return p&&p.pc||0; }
+function pePv(i){ const p=PE_CF_P[i.codigo]; return p&&p.pv||0; }
+function peValores(its){ const r=its.reduce((a,i)=>{ const q=Number(i.qtd)||0; a.c+=q*pePc(i); a.v+=q*pePv(i); return a; },{c:0,v:0}); r.c=Math.round(r.c*100)/100; r.v=Math.round(r.v*100)/100; return r; }
 function eanKey(v){ const d=String(v??'').replace(/\D/g,'').replace(/^0+/,''); return d; }
 // V1.38 — corrige EAN do SB1 com 14 dígitos: EAN13 com um dígito a mais no fim (ex. 79099898091740 → 7909989809174)
 // ou código de caixa (DUN-14) → EAN13 do par.
@@ -3747,7 +3752,7 @@ async function peAbrir(id,hl){
     if(!PE_CUR||PE_CUR.id!==id){ PE_LAST=null; PE_FOTOS={}; $('pe-msg').className='pe-msg'; $('pe-msg').textContent=''; $('pe-fq').value=''; $('pe-mult').value='1'; }
     PE_CUR=peNorm(l); PE_ITENS=its||[]; PE_HL=hl||null;
   }catch(e){ toast(peErrMsg(e),1,5000); return; }
-  peFotosCarregar(id); peCfCarregar(PE_ITENS).then(()=>{ if(PE_CUR&&PE_CUR.id===id) peRenderItens(); });
+  peFotosCarregar(id); peCfCarregar(PE_ITENS).then(()=>{ if(PE_CUR&&PE_CUR.id===id) renderPeDet(); });
   peView('det'); renderPeDet();
   if(PE_HL) setTimeout(()=>{ document.querySelector('#pe-itens .pe-hl')?.scrollIntoView({behavior:'smooth',block:'center'}); setTimeout(()=>{ PE_HL=null; peRenderItens(); },5000); },150);
   else if(PE_CUR.status==='DISPONIVEL') focusLater('pe-scan');
@@ -3758,7 +3763,7 @@ function renderPeDet(){
   $('pe-ttl').textContent='📦 Lote '+l.lote;
   $('pe-sub').innerHTML=`Criado por <b>${esc(l.criado_por||'')}</b> em ${fmtDT(l.criado_em)}${l.status==='VENDIDO'?`<br>💰 Vendido por <b>${esc(l.fechado_por||'')}</b> em ${fmtDT(l.fechado_em)}${l.venda_cliente?' · Cliente <b>'+esc(l.venda_cliente)+'</b>':''}${l.venda_nf?' · NF <b>'+esc(l.venda_nf)+'</b>':''}${l.venda_obs?' · '+esc(l.venda_obs):''}`:''}${l.obs?'<br>📝 '+esc(l.obs):''}`;
   const nc=PE_ITENS.filter(i=>i.cadastrado===false).length;
-  $('pe-kp').innerHTML=`<div><b>${fmt(l.caixas)}</b><span>Caixas</span></div><div><b>${fmt(t.skus)}</b><span>Produtos</span></div><div><b>${fmt(t.pares)}</b><span>Pares</span></div><div><b class="${nc?'c-red':''}">${fmt(nc)}</b><span>Fora do SB1</span></div>`;
+  $('pe-kp').innerHTML=`<div><b>${fmt(l.caixas)}</b><span>Caixas</span></div><div><b>${fmt(t.skus)}</b><span>Produtos</span></div><div><b>${fmt(t.pares)}</b><span>Pares</span></div><div><b style="font-size:16px">${brl(peValores(PE_ITENS).c)}</b><span>Total custo</span></div><div><b style="font-size:16px" class="c-grn">${brl(peValores(PE_ITENS).v)}</b><span>Total venda</span></div>${nc?`<div><b class="c-red">${fmt(nc)}</b><span>Fora do SB1</span></div>`:''}`;
   let a=`<button class="btn btn-ghost btn-sm" onclick="peExportLote()">⬇ XLSX</button>${PE_LAST?`<button class="btn btn-ghost btn-sm" onclick="peFotoTirar(${PE_LAST},false)">📷 Foto do último bipado</button>`:''}`;
   if(aberto) a+=`<button class="btn btn-ghost btn-sm" onclick="peEditar()">✎ Editar lote</button><button class="btn btn-grn btn-sm" onclick="peVendaAbrir(PE_CUR.id)">💰 Vendido</button>`;
   else if(adm) a+=`<button class="btn btn-ghost btn-sm" onclick="peFechar(false)">↺ Voltar para disponível</button>`;
@@ -3778,7 +3783,7 @@ function peRenderItens(){
       ${peCfThumb(i)}
       <div class="ibody"><div class="iean">${esc(i.ean13||i.ean_key)}${i.codigo?' · cód. '+esc(i.codigo):''}</div>
         <div class="inm${i.cadastrado===false?' c-red':''}">${esc(i.descricao||'')}</div>
-        <div class="isub">${i.cadastrado===false?'<span class="tag t-red">EAN fora do SB1</span> ':''}${esc(i.atualizado_por||'')} · ${fmtDT(i.atualizado_em)}</div>${peFotosItem(i.id)}</div>
+        <div class="isub">${pePc(i)||pePv(i)?`Custo <b>${brl(pePc(i))}</b> · Venda <b class="c-grn">${brl(pePv(i))}</b> · `:''}${i.cadastrado===false?'<span class="tag t-red">EAN fora do SB1</span> ':''}${esc(i.atualizado_por||'')} · ${fmtDT(i.atualizado_em)}</div>${peFotosItem(i.id)}</div>
       <button class="pe-bt cam" title="Tirar foto do produto (segure para escolher da galeria)" onclick="peFotoTirar(${i.id},false)" oncontextmenu="event.preventDefault();peFotoTirar(${i.id},true)">📷</button>
       ${aberto?`<button class="pe-bt" title="Tirar 1 par" onclick="peAjuste(${i.id},-1)">−</button>`:''}
       <div class="pe-qty" title="${aberto?'Clique para informar a quantidade':'Pares'}" ${aberto?`onclick="peQtd(${i.id})"`:''}>${fmt(i.qtd)}</div>
@@ -3816,7 +3821,7 @@ async function peAddItem(raw,mult,loteId){
   else { beep(false); peMsg('warn',`⚠ EAN <b>${esc(ean)}</b> não encontrado no cadastro SB1 — registrado assim mesmo (total ${fmt(it.qtd)}). Confira o produto.`); }
   if(mult>1) $('pe-mult').value='1';
   renderPeDet();
-  if(it.codigo&&!(it.codigo in PE_CF_COD)) peCfCarregar([it]).then(()=>peRenderItens());
+  if(it.codigo&&!(it.codigo in PE_CF_COD)) peCfCarregar([it]).then(()=>renderPeDet());
 }
 async function peSetQtd(id,qtd){
   const i=PE_ITENS.find(x=>x.id===id); if(!i) return;
@@ -3882,12 +3887,17 @@ function peXlAba(wb,nome,o){
   let r=4;
   // KPIs (rótulo em cima, valor embaixo)
   if(o.kpis&&o.kpis.length){
-    r++; const span=Math.max(1,Math.floor(n/o.kpis.length));
-    o.kpis.forEach((k,ix)=>{ const c1=1+ix*span, c2=ix===o.kpis.length-1?n:c1+span-1;
+    r++;
+    // distribui as colunas entre os indicadores pela largura (evita "###" em colunas estreitas)
+    const W=C.reduce((s,c)=>s+(c.w||12),0), K=o.kpis.length, faixas=[]; let ini=1, acc=0;
+    for(let ix=0;ix<K;ix++){ let fim=ini; acc+=C[ini-1].w||12; const alvo=W*(ix+1)/K;
+      while(fim<n-(K-ix-1)&&acc+(C[fim].w||12)/2<alvo){ acc+=C[fim].w||12; fim++; }
+      if(ix===K-1) fim=n; faixas.push([ini,fim]); ini=fim+1; if(ini>n) ini=n; }
+    o.kpis.forEach((k,ix)=>{ const [c1,c2]=faixas[ix];
       ws.mergeCells(r,c1,r,c2); ws.mergeCells(r+1,c1,r+1,c2);
       const a=ws.getCell(r,c1), b=ws.getCell(r+1,c1);
       a.value=k[0].toUpperCase(); a.font={size:8,bold:true,color:{argb:PE_XL.mut}}; a.alignment={horizontal:'center'};
-      b.value=k[1]; b.font={size:15,bold:true,color:{argb:k[2]||PE_XL.navy}}; b.alignment={horizontal:'center'}; if(typeof k[1]==='number') b.numFmt='#,##0';
+      b.value=k[1]; b.font={size:15,bold:true,color:{argb:k[2]||PE_XL.navy}}; b.alignment={horizontal:'center'}; if(typeof k[1]==='number') b.numFmt=k[3]==='brl'?'"R$" #,##0.00':'#,##0';
       for(let c=c1;c<=c2;c++){ ws.getCell(r,c).fill=fill(PE_XL.cinza); ws.getCell(r+1,c).fill=fill(PE_XL.cinza); } });
     ws.getRow(r+1).height=22; r+=2;
   }
@@ -3904,10 +3914,11 @@ function peXlAba(wb,nome,o){
     C.forEach((c,ix)=>{ let v=row[ix]; const cell=R.getCell(ix+1);
       if(c.t==='link'){ if(v){ cell.value={text:c.txt||'🔗 Abrir foto',hyperlink:v,tooltip:v}; cell.font={color:{argb:'FF1D4ED8'},underline:true,size:10}; } }
       else if(c.t==='dt'){ const d=peDt(v); cell.value=d; if(d) cell.numFmt='dd/mm/yyyy hh:mm'; cell.font={size:10}; }
+      else if(c.t==='brl'){ cell.value=v?Number(v):null; cell.numFmt='"R$" #,##0.00'; cell.font={size:10,bold:!!c.bold,color:{argb:c.bold?PE_XL.navy:PE_XL.txt}}; }
       else if(c.t==='int'){ cell.value=v===''||v==null?null:Number(v); cell.numFmt='#,##0'; cell.font={size:10,bold:!!c.bold,color:{argb:c.bold?PE_XL.navy:PE_XL.txt}}; }
       else if(c.t==='txtnum'){ cell.value=v==null?'':String(v); cell.numFmt='@'; cell.font={size:10,name:'Consolas'}; }
       else { cell.value=v==null?'':v; cell.font={size:10,bold:!!c.bold,color:{argb:c.bold?PE_XL.navy:PE_XL.txt}}; }
-      cell.alignment={vertical:'middle',horizontal:c.al||(c.t==='int'?'center':'left'),wrapText:!!c.wrap};
+      cell.alignment={vertical:'middle',horizontal:c.al||(c.t==='int'?'center':c.t==='brl'?'right':'left'),wrapText:!!c.wrap};
       cell.fill=fill(dest||zebra); cell.border=bord;
       if(c.badge){ const b=c.badge(v,row); if(b){ cell.font={size:10,bold:true,color:{argb:b[0]}}; cell.fill=fill(b[1]); cell.alignment={vertical:'middle',horizontal:'center'}; } }
     });
@@ -3916,7 +3927,7 @@ function peXlAba(wb,nome,o){
   // total
   if(o.total&&o.rows.length){ const T=ws.getRow(last+1);
     C.forEach((c,ix)=>{ const cell=T.getCell(ix+1); cell.fill=fill(PE_XL.navy); cell.font={bold:true,size:11,color:{argb:'FFFFFFFF'}}; cell.border=bord; cell.alignment={vertical:'middle',horizontal:c.t==='int'?'center':'left'};
-      const tv=o.total[ix]; if(tv==='SUM'){ const col=ws.getColumn(ix+1).letter; cell.value={formula:`SUBTOTAL(9,${col}${hr+1}:${col}${last})`}; cell.numFmt='#,##0'; } else if(tv!=null) cell.value=tv; });
+      const tv=o.total[ix]; if(tv==='SUM'){ const col=ws.getColumn(ix+1).letter; cell.value={formula:`SUBTOTAL(9,${col}${hr+1}:${col}${last})`}; cell.numFmt=c.t==='brl'?'"R$" #,##0.00':'#,##0'; } else if(tv!=null) cell.value=tv; });
     T.height=22; }
   if(o.rows.length) ws.autoFilter={from:{row:hr,column:1},to:{row:last,column:n}};
   ws.views=[{state:'frozen',ySplit:hr,xSplit:o.freezeCol||0,showGridLines:false}];
@@ -3933,16 +3944,13 @@ const PE_BADGE_ST=v=>v==='Vendido'?[PE_XL.verde,PE_XL.verdeBg]:v==='Disponível'
 const PE_BADGE_SB1=v=>v==='NÃO'?['FFB91C1C',PE_XL.vermBg]:v==='SIM'?[PE_XL.verde,PE_XL.verdeBg]:null;
 function peColsProd(nF,comLote){
   return [...(comLote?[{h:'LOTE',w:14,bold:true},{h:'STATUS',w:12,badge:PE_BADGE_ST}]:[]),
-    {h:'EAN13',w:16,t:'txtnum'},{h:'CÓDIGO',w:17,t:'txtnum'},{h:'DESCRIÇÃO',w:52},{h:'PARES',w:9,t:'int',bold:true},
-    {h:'NO SB1',w:8,al:'center',badge:PE_BADGE_SB1},{h:'FAMÍLIA Z01',w:16,t:'txtnum'},{h:'COR',w:7,t:'txtnum',al:'center'},
-    {h:'FOTO CADASTRO',w:15,t:'link'},{h:'FOTOS MODELO',w:9,t:'int'},
-    ...Array.from({length:nF},(_,k)=>({h:'FOTO LOTE '+(k+1),w:14,t:'link'})),
-    {h:'ÚLTIMA BIPAGEM',w:17,t:'dt'},{h:'POR',w:18}];
+    {h:'EAN13',w:16,t:'txtnum'},{h:'CÓDIGO',w:17,t:'txtnum'},{h:'DESCRIÇÃO',w:52},{h:'COR',w:7,t:'txtnum',al:'center'},{h:'PARES',w:9,t:'int',bold:true},
+    {h:'PREÇO CUSTO',w:13,t:'brl'},{h:'PREÇO VENDA',w:13,t:'brl'},{h:'TOTAL CUSTO',w:14,t:'brl',bold:true},{h:'TOTAL VENDA',w:14,t:'brl',bold:true},
+    {h:'FOTO',w:14,t:'link'}];
 }
 function peLinhaProd(i,fs,lote){
-  const cf=peCfFotos(i);
-  return [...(lote?[lote.lote,peStLbl(lote.status)]:[]),i.ean13||i.ean_key,i.codigo||'',i.descricao||'',Number(i.qtd)||0,i.cadastrado===false?'NÃO':'SIM',
-    PE_CF_COD[i.codigo]||'',peCor(i)||'',cf[0]||'',cf.length||null,...fs,i.atualizado_em,i.atualizado_por||''];
+  const q=Number(i.qtd)||0, pc=pePc(i), pv=pePv(i);
+  return [...(lote?[lote.lote,peStLbl(lote.status)]:[]),i.ean13||i.ean_key,i.codigo||'',i.descricao||'',peCor(i)||'',q,pc||null,pv||null,pc?q*pc:null,pv?q*pv:null,peCfFotos(i)[0]||''];
 }
 async function peExportLote(){
   const l=PE_CUR; if(!l) return;
@@ -3952,11 +3960,11 @@ async function peExportLote(){
   const cols=peColsProd(nF,false);
   const rows=PE_ITENS.slice().sort((a,b)=>(a.descricao||'').localeCompare(b.descricao||'')).map(i=>{ const fs=PE_FOTOS[i.id]||[]; return peLinhaProd(i,Array.from({length:nF},(_,k)=>fs[k]?fs[k].url:''),null); });
   const wb=new EX.Workbook(); wb.creator='Avacy · Controle de Mercadoria'; wb.created=new Date();
-  const total=cols.map((c,ix)=>ix===0?'TOTAL':c.h==='PARES'?'SUM':c.h==='DESCRIÇÃO'?`${fmt(t.skus)} produto(s)`:null);
+  const total=cols.map((c,ix)=>ix===0?'TOTAL':['PARES','TOTAL CUSTO','TOTAL VENDA'].includes(c.h)?'SUM':c.h==='DESCRIÇÃO'?`${fmt(t.skus)} produto(s)`:null); const vl=peValores(PE_ITENS);
   peXlAba(wb,'Lote '+l.lote,{titulo:`📦 PONTA DE ESTOQUE — LOTE ${l.lote}`,sub:`Gerado em ${fmtDT(new Date().toISOString())} por ${CU?CU.name:''}`,tab:l.status==='VENDIDO'?PE_XL.verde:PE_XL.azul,
-    kpis:[['Status',peStLbl(l.status),l.status==='VENDIDO'?PE_XL.verde:'FF1D4ED8'],['Caixas',Number(l.caixas)||0],['Produtos',t.skus],['Pares',t.pares],['Fora do SB1',nc,nc?'FFB91C1C':PE_XL.navy]],
+    kpis:[['Status',peStLbl(l.status),l.status==='VENDIDO'?PE_XL.verde:'FF1D4ED8'],['Caixas',Number(l.caixas)||0],['Produtos',t.skus],['Pares',t.pares],['Total custo',vl.c||'—',PE_XL.navy,'brl'],['Total venda',vl.v||'—',PE_XL.verde,'brl']],
     info:[['Criado por',`${l.criado_por||''} em ${fmtDT(l.criado_em)}`],...(l.status==='VENDIDO'?[['Vendido por',`${l.fechado_por||''} em ${fmtDT(l.fechado_em)}`],['Cliente',l.venda_cliente||''],['NF da venda',l.venda_nf||''],['Obs. da venda',l.venda_obs||'']]:[]),...(l.obs?[['Observação',l.obs]]:[])],
-    cols,rows,total,rowFill:r=>r[4]==='NÃO'?'FFFFF7ED':null,freezeCol:3});
+    cols,rows,total,freezeCol:3});
   await peXlBaixar(wb,'ponta_estoque_lote_'+String(l.lote).replace(/[^\w-]/g,'_'));
   toast('✓ Relatório do lote gerado');
 }
@@ -3974,23 +3982,25 @@ async function peExportTodos(){
     const parDe=ls=>its.filter(i=>ls.some(l=>l.id===i.lote_id)).reduce((s,i)=>s+(Number(i.qtd)||0),0);
     const wb=new EX.Workbook(); wb.creator='Avacy · Controle de Mercadoria'; wb.created=new Date();
     const sub=`Gerado em ${fmtDT(new Date().toISOString())} por ${CU?CU.name:''}`;
-    const kpis=[['Lotes disponíveis',disp.length,'FF1D4ED8'],['Pares disponíveis',parDe(disp),'FF1D4ED8'],['Lotes vendidos',vend.length,PE_XL.verde],['Pares vendidos',parDe(vend),PE_XL.verde]];
+    const vDisp=peValores(its.filter(i=>disp.some(l=>l.id===i.lote_id)));
+    const kpis=[['Lotes disponíveis',disp.length,'FF1D4ED8'],['Pares disponíveis',parDe(disp),'FF1D4ED8'],['Venda disponível',vDisp.v||'—','FF1D4ED8','brl'],['Lotes vendidos',vend.length,PE_XL.verde],['Pares vendidos',parDe(vend),PE_XL.verde]];
     // 1) Lotes
-    const lc=[{h:'LOTE',w:14,bold:true},{h:'STATUS',w:12,badge:PE_BADGE_ST},{h:'CAIXAS',w:8,t:'int'},{h:'PRODUTOS',w:10,t:'int'},{h:'PARES',w:9,t:'int',bold:true},
+    const lc=[{h:'LOTE',w:14,bold:true},{h:'STATUS',w:12,badge:PE_BADGE_ST},{h:'CAIXAS',w:8,t:'int'},{h:'PRODUTOS',w:10,t:'int'},{h:'PARES',w:9,t:'int',bold:true},{h:'TOTAL CUSTO',w:14,t:'brl'},{h:'TOTAL VENDA',w:14,t:'brl',bold:true},
       {h:'OBSERVAÇÃO',w:30,wrap:true},{h:'CRIADO EM',w:17,t:'dt'},{h:'CRIADO POR',w:18},{h:'VENDIDO EM',w:17,t:'dt'},{h:'VENDIDO POR',w:18},{h:'CLIENTE',w:30},{h:'NF VENDA',w:12,t:'txtnum'},{h:'OBS. VENDA',w:30,wrap:true}];
     const lr=PE_LOTES.slice().sort((a,b)=>(a.status===b.status?0:a.status==='DISPONIVEL'?-1:1)||String(a.lote).localeCompare(String(b.lote),'pt-BR',{numeric:true})).map(l=>{ const tt=peTot(its.filter(i=>i.lote_id===l.id));
-      return [l.lote,peStLbl(l.status),Number(l.caixas)||0,tt.skus,tt.pares,l.obs||'',l.criado_em,l.criado_por||'',l.status==='VENDIDO'?l.fechado_em:null,l.status==='VENDIDO'?l.fechado_por||'':'',l.venda_cliente||'',l.venda_nf||'',l.venda_obs||'']; });
-    peXlAba(wb,'Lotes',{titulo:'📦 PONTA DE ESTOQUE — RESUMO DOS LOTES',sub,kpis,cols:lc,rows:lr,total:lc.map((c,ix)=>ix===0?'TOTAL':['CAIXAS','PRODUTOS','PARES'].includes(c.h)?'SUM':null),freezeCol:1});
+      const vv=peValores(its.filter(i=>i.lote_id===l.id));
+      return [l.lote,peStLbl(l.status),Number(l.caixas)||0,tt.skus,tt.pares,vv.c||null,vv.v||null,l.obs||'',l.criado_em,l.criado_por||'',l.status==='VENDIDO'?l.fechado_em:null,l.status==='VENDIDO'?l.fechado_por||'':'',l.venda_cliente||'',l.venda_nf||'',l.venda_obs||'']; });
+    peXlAba(wb,'Lotes',{titulo:'📦 PONTA DE ESTOQUE — RESUMO DOS LOTES',sub,kpis,cols:lc,rows:lr,total:lc.map((c,ix)=>ix===0?'TOTAL':['CAIXAS','PRODUTOS','PARES','TOTAL CUSTO','TOTAL VENDA'].includes(c.h)?'SUM':null),freezeCol:1});
     // 2) Disponível por produto (soma dos lotes disponíveis)
     const ag=new Map(); its.filter(i=>LM[i.lote_id]&&LM[i.lote_id].status==='DISPONIVEL').forEach(i=>{ const k=i.ean_key; const a=ag.get(k)||{i,pares:0,lotes:new Set()}; a.pares+=Number(i.qtd)||0; a.lotes.add(LM[i.lote_id].lote); ag.set(k,a); });
-    const pc=[{h:'EAN13',w:16,t:'txtnum'},{h:'CÓDIGO',w:17,t:'txtnum'},{h:'DESCRIÇÃO',w:52},{h:'PARES DISPONÍVEIS',w:12,t:'int',bold:true},{h:'Nº LOTES',w:9,t:'int'},{h:'LOTES',w:30,wrap:true},{h:'COR',w:7,t:'txtnum',al:'center'},{h:'FOTO CADASTRO',w:15,t:'link'}];
-    const pr=[...ag.values()].sort((a,b)=>(a.i.descricao||'').localeCompare(b.i.descricao||'')).map(a=>[a.i.ean13||a.i.ean_key,a.i.codigo||'',a.i.descricao||'',a.pares,a.lotes.size,[...a.lotes].sort().join(', '),peCor(a.i)||'',peCfFotos(a.i)[0]||'']);
-    peXlAba(wb,'Disponível por produto',{titulo:'👟 PONTA DE ESTOQUE — PARES DISPONÍVEIS POR PRODUTO',sub:sub+' · soma dos lotes com status Disponível',tab:'FF1D4ED8',cols:pc,rows:pr,total:pc.map((c,ix)=>ix===0?'TOTAL':c.h==='PARES DISPONÍVEIS'?'SUM':c.h==='DESCRIÇÃO'?`${fmt(pr.length)} produto(s)`:null),freezeCol:3});
+    const pc=[{h:'EAN13',w:16,t:'txtnum'},{h:'CÓDIGO',w:17,t:'txtnum'},{h:'DESCRIÇÃO',w:52},{h:'COR',w:7,t:'txtnum',al:'center'},{h:'PARES DISPONÍVEIS',w:12,t:'int',bold:true},{h:'PREÇO CUSTO',w:13,t:'brl'},{h:'PREÇO VENDA',w:13,t:'brl'},{h:'TOTAL CUSTO',w:14,t:'brl',bold:true},{h:'TOTAL VENDA',w:14,t:'brl',bold:true},{h:'LOTES',w:30,wrap:true},{h:'FOTO',w:14,t:'link'}];
+    const pr=[...ag.values()].sort((a,b)=>(a.i.descricao||'').localeCompare(b.i.descricao||'')).map(a=>{ const c1=pePc(a.i), v1=pePv(a.i); return [a.i.ean13||a.i.ean_key,a.i.codigo||'',a.i.descricao||'',peCor(a.i)||'',a.pares,c1||null,v1||null,c1?a.pares*c1:null,v1?a.pares*v1:null,[...a.lotes].sort().join(', '),peCfFotos(a.i)[0]||'']; });
+    peXlAba(wb,'Disponível por produto',{titulo:'👟 PONTA DE ESTOQUE — PARES DISPONÍVEIS POR PRODUTO',sub:sub+' · soma dos lotes com status Disponível',tab:'FF1D4ED8',cols:pc,rows:pr,total:pc.map((c,ix)=>ix===0?'TOTAL':['PARES DISPONÍVEIS','TOTAL CUSTO','TOTAL VENDA'].includes(c.h)?'SUM':c.h==='DESCRIÇÃO'?`${fmt(pr.length)} produto(s)`:null),freezeCol:3});
     // 3) Produtos por lote (detalhado)
     const dc=peColsProd(nF,true);
     const dr=its.slice().sort((a,b)=>String(LM[a.lote_id]?.lote||'').localeCompare(String(LM[b.lote_id]?.lote||''),'pt-BR',{numeric:true})||(a.descricao||'').localeCompare(b.descricao||''))
       .map(i=>{ const fs=FT[i.id]||[]; return peLinhaProd(i,Array.from({length:nF},(_,k)=>fs[k]||''),LM[i.lote_id]||{lote:i.lote_id,status:''}); });
-    peXlAba(wb,'Produtos por lote',{titulo:'📋 PONTA DE ESTOQUE — PRODUTOS POR LOTE',sub,cols:dc,rows:dr,total:dc.map((c,ix)=>ix===0?'TOTAL':c.h==='PARES'?'SUM':null),rowFill:r=>r[6]==='NÃO'?'FFFFF7ED':null,freezeCol:5});
+    peXlAba(wb,'Produtos por lote',{titulo:'📋 PONTA DE ESTOQUE — PRODUTOS POR LOTE',sub,cols:dc,rows:dr,total:dc.map((c,ix)=>ix===0?'TOTAL':['PARES','TOTAL CUSTO','TOTAL VENDA'].includes(c.h)?'SUM':null),freezeCol:5});
     await peXlBaixar(wb,'ponta_estoque');
     toast('✓ Relatório da Ponta de Estoque gerado');
   }catch(e){ toast(peErrMsg(e),1,5000); }
@@ -4035,11 +4045,12 @@ async function peImportSB1(file){
     const iD=head.findIndex(h=>['DESCRICAO','DESCRICAO_PRODUTO','B1_DESC','DESCRIÇÃO'].includes(h));
     const iF=head.findIndex(h=>['FAMILIA_Z01','FAMILIA','Z01_FAMILIA'].includes(h)), iL=head.findIndex(h=>['LINK_FOTO','FOTO','URL_FOTO'].includes(h));
     const iE=head.findIndex(h=>['EAN13','EAN','B1_CODBAR','CODBAR'].includes(h));
+    const iPC0=head.findIndex(h=>['PRECO_CUSTO','CUSTO'].includes(h)), iPV0=head.findIndex(h=>['PRECO_VENDA','VENDA'].includes(h));
     if(iC>=0&&iF>=0&&iL>=0) return await peImportFotos(linhas,head,limpa,iC,iD,iE,iF,iL);
     if(iC<0||iD<0||iE<0) throw new Error('Cabeçalho esperado: CODIGO_PRODUTO;DESCRICAO;EAN13');
     const M=new Map();
     for(let k=1;k<linhas.length;k++){ const c=linhas[k].split(';').map(limpa); const cod=c[iC]; if(!cod) continue;
-      const ean=eanNorm(c[iE]); M.set(cod,{codigo:cod,descricao:c[iD]||'',ean13:ean||null,ean_key:eanKey(ean)||null,atualizado_em:new Date().toISOString()}); }
+      const ean=eanNorm(c[iE]); M.set(cod,{codigo:cod,descricao:c[iD]||'',ean13:ean||null,ean_key:eanKey(ean)||null,atualizado_em:new Date().toISOString(),...(iPC0>=0?{preco_custo:pePreco(c[iPC0])}:{}),...(iPV0>=0?{preco_venda:pePreco(c[iPV0])}:{})}); }
     const regs=[...M.values()];
     if(!confirm(`Importar ${fmt(regs.length)} produtos do cadastro SB1?\n(${fmt(regs.filter(r=>r.ean_key).length)} com EAN). Produtos existentes são atualizados.`)) return;
     const P=1000;
@@ -4124,10 +4135,11 @@ async function peCfCarregar(itens){
   const cods=[...new Set((itens||[]).map(i=>i.codigo).filter(c=>c&&!(c in PE_CF_COD)))];
   try{
     for(let k=0;k<cods.length;k+=150){ const lote=cods.slice(k,k+150);
-      let {data,error}=await getSB().from('pe_produtos').select('codigo,familia,cor,foto').in('codigo',lote);
+      let {data,error}=await getSB().from('pe_produtos').select('codigo,familia,cor,foto,preco_custo,preco_venda').in('codigo',lote);
+      if(error&&/preco_/.test(error.message||'')) ({data,error}=await getSB().from('pe_produtos').select('codigo,familia,cor,foto').in('codigo',lote));
       if(error&&/cor|foto/.test(error.message||'')) ({data,error}=await getSB().from('pe_produtos').select('codigo,familia').in('codigo',lote));
       if(error) throw error;
-      lote.forEach(c=>PE_CF_COD[c]=''); (data||[]).forEach(r=>{ PE_CF_COD[r.codigo]=r.familia||''; PE_CF_P[r.codigo]={cor:r.cor||'',foto:r.foto||''}; }); }
+      lote.forEach(c=>PE_CF_COD[c]=''); (data||[]).forEach(r=>{ PE_CF_COD[r.codigo]=r.familia||''; PE_CF_P[r.codigo]={cor:r.cor||'',foto:r.foto||'',pc:Number(r.preco_custo)||0,pv:Number(r.preco_venda)||0}; }); }
     const fams=[...new Set(cods.map(c=>PE_CF_COD[c]).filter(f=>f&&!(f in PE_CF_FAM)))];
     for(let k=0;k<fams.length;k+=100){ const lote=fams.slice(k,k+100);
       const {data,error}=await getSB().from('pe_familia_fotos').select('familia,fotos').in('familia',lote); if(error) throw error;
@@ -4167,22 +4179,25 @@ function peXlsxSave(sheets,nome){
 
 async function peImportFotos(linhas,head,limpa,iC,iD,iE,iF,iL){
   const el=$('pe-sb1-info'); const iCor=head.findIndex(h=>['COR_Z01','COR','Z01_COR'].includes(h));
+  const iPC=head.findIndex(h=>['PRECO_CUSTO','CUSTO','B1_CUSTD'].includes(h)), iPV=head.findIndex(h=>['PRECO_VENDA','VENDA','B1_PRV1'].includes(h));
   const P=new Map(), F=new Map();
   for(let k=1;k<linhas.length;k++){ const c=linhas[k].split(';').map(limpa); const cod=c[iC]; if(!cod) continue;
     const fam=c[iF]||'', ean=eanNorm(iE>=0?c[iE]:''), url=c[iL]||'', okUrl=/^https?:\/\//i.test(url);
     if(!P.has(cod)) P.set(cod,{codigo:cod,descricao:iD>=0?c[iD]:'',ean13:ean||null,ean_key:eanKey(ean)||null,familia:fam||null,atualizado_em:new Date().toISOString(),...(iCor>=0?{cor:c[iCor]||null,foto:okUrl?url:null}:{})});
     else if(iCor>=0&&okUrl&&!P.get(cod).foto) P.get(cod).foto=url;
+    if(iPC>=0||iPV>=0){ const pp=P.get(cod); if(iPC>=0) pp.preco_custo=pePreco(c[iPC]); if(iPV>=0) pp.preco_venda=pePreco(c[iPV]); }
     if(fam){ if(!F.has(fam)) F.set(fam,new Set()); if(/^https?:\/\//i.test(url)) F.get(fam).add(url); }
   }
   // V1.29: soma as fotos às que já existem na família (não perde as do relatório anterior)
   if(iCor>=0&&F.size){ try{ const ks=[...F.keys()]; for(let k=0;k<ks.length;k+=100){ const {data}=await getSB().from('pe_familia_fotos').select('familia,fotos').in('familia',ks.slice(k,k+100)); (data||[]).forEach(r=>(r.fotos||[]).forEach(u=>F.get(r.familia)&&F.get(r.familia).add(u))); } }catch(e){} }
   let prods=[...P.values()]; const fams=[...F.entries()].map(([familia,set])=>({familia,fotos:[...set],atualizado_em:new Date().toISOString()}));
   const comFoto=fams.filter(f=>f.fotos.length).length, nFotos=fams.reduce((s,f)=>s+f.fotos.length,0);
-  const nProdFoto=prods.filter(x=>x.foto).length;
-  if(!confirm(`Importar cadastro com fotos?\n\n${fmt(prods.length)} produtos · ${fmt(fams.length)} famílias Z01${iCor>=0?`\n${fmt(nProdFoto)} produtos com foto própria (cor Z01)`:''}\n${fmt(comFoto)} famílias com foto · ${fmt(nFotos)} links de foto`)) return;
+  const nProdFoto=prods.filter(x=>x.foto).length, nPreco=prods.filter(x=>x.preco_venda||x.preco_custo).length;
+  if(!confirm(`Importar cadastro com fotos?\n\n${fmt(prods.length)} produtos · ${fmt(fams.length)} famílias Z01${iCor>=0?`\n${fmt(nProdFoto)} produtos com foto própria (cor Z01)`:''}${iPC>=0||iPV>=0?`\n${fmt(nPreco)} produtos com preço de custo/venda`:''}\n${fmt(comFoto)} famílias com foto · ${fmt(nFotos)} links de foto`)) return;
   const sb=getSB();
   for(let k=0;k<prods.length;k+=1000){ el.innerHTML=`⏳ Atualizando produtos… <b>${fmt(Math.min(k+1000,prods.length))}</b> / ${fmt(prods.length)}`;
     let {error}=await sb.from('pe_produtos').upsert(prods.slice(k,k+1000),{onConflict:'codigo'});
+    if(error&&/preco_/.test(error.message||'')){ prods=prods.map(({preco_custo,preco_venda,...r})=>r); toast('Preços não gravados — rode o script controle_mercadoria_V1.39_precos.sql',1,6000); ({error}=await sb.from('pe_produtos').upsert(prods.slice(k,k+1000),{onConflict:'codigo'})); }
     if(error&&/'?(cor|foto)'?/.test(error.message||'')&&iCor>=0){ prods=prods.map(({cor,foto,...r})=>r); toast('Rode o script controle_mercadoria_V1.29_bipagem_fotos.sql para gravar a foto e a cor de cada produto',1,6000); ({error}=await sb.from('pe_produtos').upsert(prods.slice(k,k+1000),{onConflict:'codigo'})); }
     if(error) throw error; }
   for(let k=0;k<fams.length;k+=200){ el.innerHTML=`⏳ Gravando fotos das famílias… <b>${fmt(Math.min(k+200,fams.length))}</b> / ${fmt(fams.length)}`;
