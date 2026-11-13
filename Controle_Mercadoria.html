@@ -1290,7 +1290,7 @@ body.restrito #acoes-wrap{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.39';
+const APP_VERSION='V1.40';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -2934,6 +2934,13 @@ function grdLer(inp){
         const wb=XLSX.read(e.target.result,{type:'array'});
         aoa=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''});
       }
+      // V1.40 — planilha do cadastro SB1 (CODIGO_PRODUTO/EAN13/PRECO/LINK_FOTO) não é cadastro de grade: manda para a importação de produtos
+      const h0=(aoa[0]||[]).map(nrm).join(';');
+      if(/CODIGO_PRODUTO/.test(h0)&&/EAN13|PRECO_|LINK_FOTO/.test(h0)){
+        closeGrd(); toast('Esta é a planilha do cadastro de produtos (SB1) — importando preços e fotos dos produtos…',0,4000);
+        if($('pe-sb1-info')) peImportSB1(f).then(()=>{ Object.keys(QM_CAD).forEach(k=>delete QM_CAD[k]); Object.keys(QM_FOTO).forEach(k=>delete QM_FOTO[k]); });
+        return;
+      }
       grdParse(aoa);
     }catch(x){ $('grd-prev').innerHTML='<span class="c-red">Erro ao ler: '+esc(x.message)+'</span>'; }
   };
@@ -4203,7 +4210,8 @@ async function peImportFotos(linhas,head,limpa,iC,iD,iE,iF,iL){
   for(let k=0;k<fams.length;k+=200){ el.innerHTML=`⏳ Gravando fotos das famílias… <b>${fmt(Math.min(k+200,fams.length))}</b> / ${fmt(fams.length)}`;
     const {error}=await sb.from('pe_familia_fotos').upsert(fams.slice(k,k+200),{onConflict:'familia'}); if(error) throw error; }
   Object.keys(PE_CF_COD).forEach(k=>delete PE_CF_COD[k]); Object.keys(PE_CF_FAM).forEach(k=>delete PE_CF_FAM[k]); Object.keys(PE_CF_P).forEach(k=>delete PE_CF_P[k]); Object.keys(PE_PROD).forEach(k=>delete PE_PROD[k]);
-  beep(true); toast(`✓ Fotos importadas: ${fmt(comFoto)} famílias · ${fmt(nFotos)} links`,0,4500); peSb1Info();
+  beep(true); toast(`✓ Cadastro importado: ${fmt(prods.length)} produtos${nPreco?` · ${fmt(nPreco)} com preço`:''} · ${fmt(nProdFoto)} com foto`,0,6000); peSb1Info();
+  el.innerHTML=`<span class="c-grn">✓ Cadastro importado: <b>${fmt(prods.length)}</b> produtos${prods.some(x=>'preco_venda' in x)?` · <b>${fmt(nPreco)}</b> com preço`:''} · <b>${fmt(nProdFoto)}</b> com foto</span>`;
   if(PE_CUR) peAbrir(PE_CUR.id);
 }
 
