@@ -1290,7 +1290,7 @@ body.restrito #acoes-wrap{display:none!important}
 <div class="toast" id="toast"></div>
 <script>
 // ═════════════════════ CONFIG ═════════════════════
-const APP_VERSION='V1.35';
+const APP_VERSION='V1.36';
 const SUPA_URL='https://wureelywtpcdxbmyblqj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const INV_PADRAO='Julho-2026';
@@ -3578,16 +3578,15 @@ async function qmExport(){
   const L=qmDados().sort((a,b)=>(a.descr||'').localeCompare(b.descr||'')); if(!L.length) return toast('Nenhum produto na queima',1);
   await qmCadastro(L);
   let EX; try{ EX=await peExcelJS(); }catch(e){
-    const aoa=[['EAN','CODIGO','DESCRICAO','SALDO (VOL)','PROTHEUS (VOL)','PARES/VOL','PARES','ENDERECOS','FOTO']];
-    L.forEach(x=>{ const it=qmItem(x), pg=Number(PROT[x.gtin]&&PROT[x.gtin].pares)||0; aoa.push([x.gtin,it.codigo,x.descr,x.inv,x.prot,pg||'',pg?x.inv*pg:'',x.ends.map(r=>r.endereco+' ('+r.qtd+')').join(', '),qmFotos(x)[0]||'']); });
-    return peXlsxSave([['Queima',aoa,[16,16,50,10,10,9,8,40,14]]],'queima_estoque'); }
+    const aoa=[['EAN','DESCRICAO','PARES/VOL','COR','FOTO']];
+    L.forEach(x=>{ const it=qmItem(x), pg=Number(PROT[x.gtin]&&PROT[x.gtin].pares)||0; aoa.push([x.gtin,x.descr||it.descricao||'',pg||'',peCor(it)||'',qmFotos(x)[0]||'']); });
+    return peXlsxSave([['Queima',aoa,[16,55,10,8,14]]],'queima_estoque'); }
   const wb=new EX.Workbook(); wb.creator='Avacy · Controle de Mercadoria';
-  const vol=L.reduce((s,x)=>s+x.inv,0), par=L.reduce((s,x)=>s+x.inv*(Number(PROT[x.gtin]&&PROT[x.gtin].pares)||0),0);
-  const cols=[{h:'EAN',w:16,t:'txtnum'},{h:'CÓDIGO',w:17,t:'txtnum'},{h:'DESCRIÇÃO',w:50},{h:'SALDO (VOL)',w:11,t:'int',bold:true},{h:'PROTHEUS (VOL)',w:11,t:'int'},{h:'PARES/VOL',w:9,t:'int'},{h:'PARES',w:9,t:'int',bold:true},{h:'ENDEREÇOS',w:38,wrap:true},{h:'COR',w:7,t:'txtnum',al:'center'},{h:'FOTO',w:14,t:'link'}];
-  const rows=L.map(x=>{ const it=qmItem(x), pg=Number(PROT[x.gtin]&&PROT[x.gtin].pares)||0; return [x.gtin,it.codigo||'',x.descr||it.descricao||'',x.inv,x.prot,pg||null,pg?x.inv*pg:null,x.ends.map(r=>r.endereco+' ('+fmt(r.qtd)+')').join(', '),peCor(it)||'',qmFotos(x)[0]||'']; });
+  const cols=[{h:'EAN',w:16,t:'txtnum'},{h:'DESCRIÇÃO',w:58},{h:'PARES/VOL',w:11,t:'int'},{h:'COR',w:8,t:'txtnum',al:'center'},{h:'FOTO',w:15,t:'link'}];
+  const rows=L.map(x=>{ const it=qmItem(x), pg=Number(PROT[x.gtin]&&PROT[x.gtin].pares)||0; return [x.gtin,x.descr||it.descricao||'',pg||null,peCor(it)||'',qmFotos(x)[0]||'']; });
   peXlAba(wb,'Queima de estoque',{titulo:'🔥 QUEIMA DE ESTOQUE',tab:'FFEA580C',sub:`Saldo abaixo de ${qmLim()} unidades e sem divergência com o Protheus · Gerado em ${fmtDT(new Date().toISOString())} por ${CU?CU.name:''}`,
-    kpis:[['Produtos',L.length,'FFEA580C'],['Volumes',vol,'FFEA580C'],['Pares (aprox.)',par||'—','FFEA580C']],
-    cols,rows,total:cols.map((c,ix)=>ix===0?'TOTAL':['SALDO (VOL)','PROTHEUS (VOL)','PARES'].includes(c.h)?'SUM':c.h==='DESCRIÇÃO'?`${fmt(L.length)} produto(s)`:null),freezeCol:3});
+    kpis:[['Produtos',L.length,'FFEA580C'],['Com foto',L.filter(x=>qmFotos(x).length).length,'FFEA580C']],
+    cols,rows,total:cols.map((c,ix)=>ix===0?'TOTAL':c.h==='DESCRIÇÃO'?`${fmt(L.length)} produto(s)`:null),freezeCol:2});
   await peXlBaixar(wb,'queima_estoque'); toast('✓ Relatório da queima gerado');
 }
 
