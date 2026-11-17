@@ -709,7 +709,7 @@ tr.nf-hl td { background:#fff6c7 !important; transition:background .3s; }
         <div style="font-size:26px">📂</div>
         <b>Clique ou arraste o CSV exportado do Protheus</b><br>
         <span style="font-size:11px;color:#888">Arquivo qry001_*.csv (FILIAL; NOTA_FISCAL; SERIE; … DATA_DIGITACAO; VALOR_BRUTO).
-        Toda NF de carreta que constar no arquivo fica marcada como <b>classificada</b>.</span>
+        Com a coluna <b>STATUS</b>: <b>"A"</b> = classificada (com a data de digitação) · em branco = <b>pendente</b>.</span>
       </div>
       <input type="file" id="pxInput" accept=".csv,text/csv,.txt" style="display:none"
         onchange="importarProtheus(this.files[0]);this.value=''">
@@ -785,7 +785,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 // ════════════════════════════════════════════════════════════════════════════
 // ── VERSÃO — atualizar a cada deploy no GitHub ─────────────────────────────
 // ════════════════════════════════════════════════════════════════════════════
-const APP_VERSION     = 'V3.6';               // ← atualizar a cada deploy
+const APP_VERSION     = 'V3.7';               // ← atualizar a cada deploy
 const GITHUB_REPO     = 'Avacydistribuidora/expedicao-avacy';
 const GITHUB_FILE     = 'Extrator_DANFE.html';
 
@@ -2632,6 +2632,8 @@ function pxParseCSV(txt) {
   const iForn = idx('NOME_FORNECEDOR', 'FORNECEDOR', 'A2_NOME');
   const iEmi = idx('DATA_EMISSAO', 'F1_EMISSAO'), iDig = idx('DATA_DIGITACAO', 'F1_DTDIGIT');
   const iVal = idx('VALOR_BRUTO', 'F1_VALBRUT');
+  // V3.7 — coluna STATUS: "A" = classificada (usa a DATA_DIGITACAO); em branco = pendente
+  const iSt = idx('STATUS', 'F1_STATUS', 'STATUS_NF', 'SITUACAO');
   const out = new Map(); let ignorados = 0;
   for (let i = 1; i < linhas.length; i++) {
     const c = linhas[i].split(sep).map(limpa);
@@ -2641,14 +2643,18 @@ function pxParseCSV(txt) {
     if (forn && !forn.includes('ALPARGATAS')) { ignorados++; continue; }   // só NFs da Alpargatas
     const valor = iVal >= 0 ? parseFloat(String(c[iVal]).replace(/\./g, '').replace(',', '.')) || null : null;
     const dig = iDig >= 0 ? c[iDig] : '';
+    const classif = iSt < 0 ? true : String(c[iSt] || '').trim().toUpperCase() === 'A';
     const ant = out.get(nf);
-    if (ant && String(ant.dt_digitacao || '') >= dig) continue;   // mantém a digitação mais recente
-    out.set(nf, {
+    if (ant) {
+      if (ant.classif && !classif) continue;                                   // classificada prevalece sobre pendente
+      if (ant.classif === classif && String(ant.dt_digitacao || '') >= dig) continue; // mantém a digitação mais recente
+    }
+    out.set(nf, { classif,
       nf, serie: iSer >= 0 ? c[iSer] : null, filial: iFil >= 0 ? c[iFil] : null, loja: iLoja >= 0 ? c[iLoja] : null,
       dt_emissao: iEmi >= 0 ? c[iEmi] : null, dt_digitacao: dig || null, valor,
     });
   }
-  return { regs: [...out.values()], ignorados };
+  return { regs: [...out.values()], ignorados, temStatus: iSt >= 0 };
 }
 
 async function importarProtheus(file) {
@@ -2658,20 +2664,30 @@ async function importarProtheus(file) {
   const add = m => { log.textContent += m + '\n'; log.scrollTop = log.scrollHeight; };
   try {
     add(`📄 ${file.name}`);
-    const { regs, ignorados } = pxParseCSV(await pxLerArquivo(file));
-    add(`• ${regs.length.toLocaleString('pt-BR')} NF(s) Alpargatas no arquivo${ignorados ? ` (${ignorados} de outros fornecedores ignoradas)` : ''}`);
-    if (!regs.length) { add('⚠️ Nenhuma NF encontrada.'); return; }
+    const { regs: todas, ignorados, temStatus } = pxParseCSV(await pxLerArquivo(file));
+    const regs = todas.filter(r => r.classif), pendArq = todas.filter(r => !r.classif);
+    add(`• ${todas.length.toLocaleString('pt-BR')} NF(s) Alpargatas no arquivo${ignorados ? ` (${ignorados} de outros fornecedores ignoradas)` : ''}`);
+    if (temStatus) add(`• STATUS "A" (classificadas): ${regs.length.toLocaleString('pt-BR')} · em branco (pendentes): ${pendArq.length.toLocaleString('pt-BR')}`);
+    else add('• Arquivo sem coluna STATUS: todas as NFs do arquivo serão consideradas classificadas.');
+    if (!todas.length) { add('⚠️ Nenhuma NF encontrada.'); return; }
 
-    // Quais NFs das carretas passam a constar como classificadas
+    // Quais NFs das carretas passam a constar como classificadas / voltam para pendente
     const nfsCarretas = new Set(); getCarretas().forEach(c => c.nfs.forEach(f => nfsCarretas.add(pxKey(f))));
     const novas = regs.filter(r => nfsCarretas.has(r.nf) && !pxMap.has(r.nf)).length;
+    const voltam = pendArq.filter(r => pxMap.has(r.nf)).map(r => r.nf);
 
-    regs.forEach(r => pxMap.set(r.nf, r));
+    const limpa = r => { const { classif, ...x } = r; return x; };
+    regs.forEach(r => pxMap.set(r.nf, limpa(r)));
+    voltam.forEach(nf => pxMap.delete(nf));
     if (pxOk && db) {
       add('⏳ Gravando no Supabase…');
       for (let i = 0; i < regs.length; i += 500) {
-        const lote = regs.slice(i, i + 500).map(r => ({ ...r, atualizado_em: new Date().toISOString() }));
+        const lote = regs.slice(i, i + 500).map(r => ({ ...limpa(r), atualizado_em: new Date().toISOString() }));
         const { error } = await db.from('nf_protheus').upsert(lote, { onConflict: 'nf' });
+        if (error) throw error;
+      }
+      for (let i = 0; i < voltam.length; i += 300) {
+        const { error } = await db.from('nf_protheus').delete().in('nf', voltam.slice(i, i + 300));
         if (error) throw error;
       }
       add('✅ Gravado no Supabase.');
@@ -2683,6 +2699,7 @@ async function importarProtheus(file) {
     let tot = 0, ok = 0;
     getCarretas().forEach(c => { const r = pxContar(c); tot += r.n; ok += r.ok; });
     add(`\n🧾 ${novas} NF(s) de carretas marcadas como classificadas agora.`);
+    if (voltam.length) add(`↩️ ${voltam.length} NF(s) que estavam como classificadas voltaram para pendente (STATUS em branco).`);
     add(`📊 Situação geral: ${ok}/${tot} NFs classificadas · ${tot - ok} pendente(s).`);
     const pend = getCarretas().filter(c => { const r = pxContar(c); return r.n && r.ok < r.n; })
       .sort((a, b) => a.num - b.num).map(c => { const r = pxContar(c); return `${c.num}ª (${r.n - r.ok})`; });
