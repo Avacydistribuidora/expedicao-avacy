@@ -260,6 +260,23 @@ body.oper .hUser{display:flex}
 .opTag{margin-left:6px}
 /* v2.3 — entregas sempre em CAIXA ALTA (tabela, cartões, visualização e formulário) */
 .tw tbody td,.opCard,.vgrid>div,#ovEnt input:not([type=date]):not([type=time]):not([type=number]),#ovEnt textarea{text-transform:uppercase}
+/* v3.5 — perfil Fretes: só a tela de Fretes */
+body.fretes .sbNav .nav-it:not([data-t=fretes]), body.fretes .sbNav .sbSec, body.fretes .fr-adm{display:none!important}
+/* v3.1 — Fretes: frete x valor da mercadoria */
+.tag.cort{background:#e3f6ea;color:#15803d}.tag.minf{background:#fde8e8;color:#b91c1c}.tag.semv{background:#eef0f4;color:#6b7a99}
+.segb{display:inline-flex;border:1px solid var(--border);border-radius:9px;overflow:hidden;background:#fff}
+.segb button{border:none;background:none;padding:7px 12px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit}
+.segb button.on{background:var(--navy);color:#fff}
+.frcfg{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}
+.frcfg label{display:block;font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.frcfg input,.frcfg select{padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit}
+.pct{font-weight:800}.pct.ok{color:#15803d}.pct.at{color:#b45309}.pct.al{color:#b91c1c}
+.cmp{width:100%;border-collapse:collapse}.cmp td,.cmp th{padding:7px 9px;border-bottom:1px solid var(--border);font-size:12.5px}
+.cmp th{position:static;background:none;color:var(--muted);font-size:10.5px}
+.vmIn{width:110px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;text-align:right;font-size:12px}
+.grid2>*{min-width:0}
+.tw td .tag{white-space:nowrap}
+.frnote{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5}
 /* v2.0 — veículos e custos operacionais */
 .tag.operacao{background:#e8eef7;color:#334e7a}
 .vchips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
@@ -329,10 +346,14 @@ table.km td.n{min-width:70px}
     <button class="nav-it" data-t="carrinho" onclick="setTab('carrinho')"><i><svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg></i><span class="lb">Carrinho</span><span class="pill" id="pl-carrinho">0</span></button>
     <button class="nav-it" data-t="agregados" onclick="setTab('agregados')"><i><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/></svg></i><span class="lb">Agregados</span><span class="pill" id="pl-agregados">0</span></button>
     <div class="sbSec adm-only">Administração</div>
+    <button class="nav-it adm-only" data-t="fretes" onclick="setTab('fretes')"><i><svg viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></i><span class="lb">Fretes</span></button>
     <button class="nav-it adm-only" data-t="veiculos" onclick="setTab('veiculos')"><i><svg viewBox="0 0 24 24"><path d="M5 17h14M5 17a2 2 0 1 0 4 0M15 17a2 2 0 1 0 4 0M3 17V11l2-5h11l3 5h2v6"/><path d="M8 6v5M3 11h18"/></svg></i><span class="lb">Veículos</span></button>
     <button class="nav-it adm-only" data-t="custos" onclick="setTab('custos')"><i><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="13" rx="2"/><circle cx="12" cy="12.5" r="3"/><path d="M6 6V4h12v2"/></svg></i><span class="lb">Custos</span></button>
     <button class="nav-it adm-only" data-t="rateios" onclick="setTab('rateios')"><i><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a5 5 0 0 1 5-5h4"/><path d="M18 13l4 1.5v3c0 2.5-4 4-4 4s-4-1.5-4-4v-3z"/></svg></i><span class="lb">Pessoal &amp; Seguros</span></button>
     <button class="nav-it adm-only" onclick="abrirConfig()"><i><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></i><span class="lb">Configurações</span></button>
+    <div class="sbSec adm-only">Ações</div>
+    <button class="nav-it adm-only" onclick="abrirImportar()"><i><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg></i><span class="lb">Importar dados</span></button>
+    <button class="nav-it adm-only" onclick="abrirUsuariosFretes()"><i><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a5 5 0 0 1 5-5h4"/><path d="M19 14v6M16 17h6"/></svg></i><span class="lb">Usuários Fretes</span></button>
     <button class="nav-it" onclick="abrirSobre()"><i><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></i><span class="lb">Sobre</span></button>
   </nav>
   <div class="sbVer" id="sbVer"></div>
@@ -502,7 +523,7 @@ table.km td.n{min-width:70px}
 // ══════════════════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v3.0';
+const APP_VERSION = 'v3.5';
 const SB_URL = 'https://wureelywtpcdxbmyblqj.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const BUCKET = 'entregas-docs';
@@ -621,6 +642,9 @@ let filtros = { busca: '', so: '', resp: '' };
 let _nfAtual = null, _editEnt = null, _editCus = null, _cusFrente = null;
 let veiculos = [], vdiario = [], veicOk = true, _veicSel = null, _editVd = null, _editV = null, _editOp = null, operFiltro = '';
 let rateios = [], ratOk = true, _editRat = null, docsOk = true, _docsKeep = [], _docsBox = '';
+let vmOk = true, vmMap = {}, vmCol = '', frSort = 'frete';   // v3.1: valor da mercadoria (Fretes)
+let fretesCfg = { min: 1000, base: 'entrega', fr: '', so: '', busca: '' };
+try { Object.assign(fretesCfg, JSON.parse(localStorage.getItem('ent_fretes') || '{}'), { so: '', busca: '' }); } catch {}
 let fotosOk = true, _fotosNovas = [], _fotosExist = [], agregadosLista = [], _agregadoAtual = '', _pendRec = null;
 
 // ══════════════════════════════════════════════════════════════
@@ -650,7 +674,8 @@ function abre(id) { document.getElementById(id).classList.add('open'); }
 function fecha(id) { document.getElementById(id).classList.remove('open'); }
 function isAdmin() { return usuario?.role === 'admin'; }
 // v1.3: perfil "Operador" do Dashboard de Expedição (role = user) → acesso resumido: bipar + anexar foto
-function isOper() { return !!usuario && usuario.role !== 'admin'; }
+function isFretes() { return String(usuario?.role || '').toLowerCase() === 'fretes'; }   // v3.5: perfil que acessa só a tela de Fretes
+function isOper() { return !!usuario && usuario.role !== 'admin' && !isFretes(); }
 // v2.6: perfil "Vendedor" → só consulta a NF e vê o comprovante (fotos), sem editar nada
 function isVend() { return String(usuario?.role || '').toLowerCase() === 'vendedor'; }
 function podeExcluir() { return !isOper(); }
@@ -693,11 +718,12 @@ async function iniciar() {
   document.getElementById('uNome').textContent = usuario.username;
   document.getElementById('uAv').textContent = usuario.username.slice(0, 2).toUpperCase();
   document.getElementById('hUserNome').textContent = usuario.username;
-  const rb = document.getElementById('uRole'); rb.textContent = isVend() ? 'Vendedor' : isOper() ? 'Operador' : 'Admin'; rb.className = 'rb' + (isOper() ? ' op' : '');
+  const rb = document.getElementById('uRole'); rb.textContent = isVend() ? 'Vendedor' : isFretes() ? 'Fretes' : isOper() ? 'Operador' : 'Admin'; rb.className = 'rb' + (isOper() ? ' op' : '');
   document.getElementById('uSub').textContent = 'Controle de Entregas';
   try { if (localStorage.getItem('ent_sbmini') === '1') document.body.classList.add('sbMini'); } catch {}
   document.getElementById('mesSel').value = mes;
   if (isVend()) { document.body.classList.add('vend'); const hb = document.querySelector('#hUser .rb'); if (hb) hb.textContent = 'Vendedor'; }
+  if (isFretes()) { document.body.classList.add('fretes'); aba = 'fretes'; }
   if (isOper()) {
     document.body.classList.add('oper');
     try { const f = localStorage.getItem('ent_frente'); aba = FRENTES[f] ? f : 'avacy'; } catch { aba = 'avacy'; }
@@ -718,6 +744,9 @@ async function iniciar() {
   const tc = await db.from('entregas_custos').select('comprovantes').limit(1);
   docsOk = !tc.error;
   if (!docsOk && isAdmin()) toast('⚙️ Para anexar vários comprovantes, rode o SQL da v2.9 (Configurações).', 6000);
+  const tvm = await db.from('entregas').select('valor_mercadoria').limit(1);   // v3.1
+  vmOk = !tvm.error;
+  const tvd = await db.from('vendas_nf').select('id').limit(1); vendasOk = !tvd.error;   // v3.2
   await carregarAgregados();
   await carregar();
   setTab(aba);
@@ -744,13 +773,14 @@ async function carregar() {
     // v2.8: pessoal e seguros/rateios (não dependem da competência — vigência)
     const rt = await db.from('entregas_rateios').select('*').order('inicio', { ascending: false });
     ratOk = !rt.error; rateios = rt.data || [];
+    await carregarValoresNF();   // v3.1
     contagemMeses = {}; (cm.data || []).forEach(r => contagemMeses[r.competencia] = (contagemMeses[r.competencia] || 0) + 1);
     dot('ok');
   } catch (err) { dot('err'); toast('❌ Erro ao carregar: ' + (err.message || err), 4000); }
   renderMeses(); render();
 }
 
-function setMes(m) { if (!m) return; mes = m; document.getElementById('mesSel').value = m; carregar(); }
+function setMes(m) { if (!m) return; mes = m; vendasMes = ''; document.getElementById('mesSel').value = m; carregar(); }
 function mudaMes(d) { const [y, m] = mes.split('-').map(Number); const dt = new Date(y, m - 1 + d, 1); setMes(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`); }
 function renderMeses() {
   const y = mes.slice(0, 4);
@@ -760,7 +790,8 @@ function renderMeses() {
   }).join('');
 }
 function setTab(t) {
-  if (isOper() && ['geral', 'veiculos', 'custos', 'rateios'].includes(t)) t = 'avacy';
+  if (isFretes()) t = 'fretes';
+  if (isOper() && ['geral', 'fretes', 'veiculos', 'custos', 'rateios'].includes(t)) t = 'avacy';
   aba = t;
   if (isOper()) { try { localStorage.setItem('ent_frente', t); } catch {} }
   document.querySelectorAll('.nav-it[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === t));
@@ -800,7 +831,7 @@ function render() {
   ['avacy', 'carrinho', 'agregados'].forEach(f => document.getElementById('pl-' + f).textContent =
     isOper() ? entregas.filter(x => x.frente === f && minha(x) && !finalizada(x)).length : entregas.filter(x => x.frente === f).length);
   document.getElementById('pl-geral').textContent = entregas.length;
-  document.getElementById('main').innerHTML = isVend() ? htmlVendedor() : isOper() ? htmlOperador() : aba === 'geral' ? htmlGeral() : aba === 'veiculos' ? htmlVeiculos() : aba === 'custos' ? htmlCustosOper() : aba === 'rateios' ? htmlRateios() : htmlFrente(aba);
+  document.getElementById('main').innerHTML = isFretes() ? htmlFretes() : isVend() ? htmlVendedor() : isOper() ? htmlOperador() : aba === 'geral' ? htmlGeral() : aba === 'fretes' ? htmlFretes() : aba === 'veiculos' ? htmlVeiculos() : aba === 'custos' ? htmlCustosOper() : aba === 'rateios' ? htmlRateios() : htmlFrente(aba);
 }
 
 // v1.2: entrega finalizada = tem foto do comprovante de entrega
@@ -1171,6 +1202,7 @@ async function salvarEntrega() {
     responsavel: up(g('eResp')) || null, valor: num(g('eValor')), obs: up(g('eObs')) || null,
     atualizado_em: new Date().toISOString(),
   };
+  if (vmOk && !('frente' in rec) && !(num(_editEnt?.valor_mercadoria) > 0)) { const c = detectaColVM([rec]); const v = c ? num(rec[c]) : 0; if (v > 0) row.valor_mercadoria = v; }   // v3.1
   if (fr === 'agregados' && !row.responsavel) { toast('⚠ Informe o agregado.'); return; }
   const btn = document.getElementById('eSalvar'); btn.disabled = true;
   try {
@@ -2011,6 +2043,453 @@ async function copiarFixos(fr) {
 // ══════════════════════════════════════════════════════════════
 // EXCEL
 // ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+// v3.1 — FRETES: percentual do frete × valor da mercadoria
+//   Pedido ≥ mínimo (padrão R$ 1.000,00) → frete CORTESIA (custo absorvido pela Avacy)
+//   Pedido < mínimo → ABAIXO DO MÍNIMO (frete deveria ser cobrado do cliente)
+// ══════════════════════════════════════════════════════════════
+const FRETE_SQL = `-- v3.2: Fretes + base de vendas (qry001) — rode UMA vez no Supabase → SQL Editor
+alter table entregas add column if not exists valor_mercadoria numeric;
+
+create table if not exists vendas_nf (
+  id text primary key,                  -- filial-nota-serie
+  filial text, nota text not null, serie text,
+  cod_cliente text, loja_cliente text, cliente text, uf text,
+  cod_vendedor text, vendedor text, transportadora text,
+  data_emissao date, chave text, volume numeric, peso numeric,
+  valor_nf numeric default 0, fat text, loja text,
+  frete_fat numeric default 0, frete_loja numeric default 0,
+  importado_por text, importado_em timestamptz default now()
+);
+create index if not exists vendas_nf_nota_idx on vendas_nf (nota);
+create index if not exists vendas_nf_emis_idx on vendas_nf (data_emissao);
+alter table vendas_nf enable row level security;
+create policy "allow_all" on vendas_nf for all using (true) with check (true);`;
+let vendasOk = true, vendas = [], vendasMes = '', vendasLoad = false, vfMap = {}, vmBusc = new Set(), vdSort = 'vn';
+const VM_CANDS = ['valor_mercadoria', 'vlr_mercadoria', 'valor_merc', 'valor_produtos', 'vlr_produtos', 'valor_nf', 'vlr_nf', 'valor_total_nf', 'vlr_total_nf',
+  'valor_total', 'vlr_total', 'total_nf', 'vl_total', 'vltotal', 'valor_bruto', 'vlr_bruto', 'valor'];
+function detectaColVM(rows) {
+  const ks = [...new Set(rows.flatMap(r => Object.keys(r || {})))];
+  const temNum = k => rows.some(r => num(r?.[k]) > 0);
+  return VM_CANDS.find(k => ks.includes(k) && temNum(k))
+    || ks.find(k => /(valor|vlr|vl_|total)/i.test(k) && !/(frete|icms|ipi|_st|desc|imp|seguro|peso|vol|qtd|custo|pago)/i.test(k) && temNum(k)) || '';
+}
+// Busca valor da NF (e frete cobrado) na base de vendas importada (vendas_nf); se não houver, na base do Dashboard de Expedição (avacy_records)
+async function carregarValoresNF() {
+  if (isOper()) return;
+  const falt = [...new Set(entregas.map(x => x.nota).filter(n => n && !vmBusc.has(n)))];
+  for (let i = 0; i < falt.length; i += 150) {
+    const lote = falt.slice(i, i + 150); lote.forEach(n => { vmBusc.add(n); vmMap[n] = 0; });
+    if (vendasOk) {
+      const r = await db.from('vendas_nf').select('nota,valor_nf,frete_fat,frete_loja').in('nota', lote);
+      (r.data || []).forEach(v => { vmMap[v.nota] = Math.max(vmMap[v.nota] || 0, num(v.valor_nf)); vfMap[v.nota] = num(v.frete_fat) + num(v.frete_loja); });
+    }
+    const resto = lote.filter(n => !vmMap[n]); if (!resto.length) continue;
+    const r = await db.from('avacy_records').select('*').in('nota', resto);
+    if (r.error) continue;
+    const rows = r.data || [];
+    if (!vmCol && rows.length) vmCol = detectaColVM(rows);
+    rows.forEach(rw => { const v = vmCol ? num(rw[vmCol]) : 0; if (v > (vmMap[rw.nota] || 0)) vmMap[rw.nota] = v; });
+  }
+}
+function vmDe(x) { return num(x.valor_mercadoria) || vmMap[x.nota] || 0; }
+function salvaCfgFretes() { try { const { min, base, fr, vis } = fretesCfg; localStorage.setItem('ent_fretes', JSON.stringify({ min, base, fr, vis })); } catch {} }
+function setFrCfg(k, v) { fretesCfg[k] = v; if (k === 'vis') { fretesCfg.so = ''; fretesCfg.busca = ''; } salvaCfgFretes(); render(); }
+function pctCls(p) { return p == null ? '' : p > 10 ? 'al' : p > 5 ? 'at' : 'ok'; }
+function pctTxt(p) { return p == null || !isFinite(p) ? '—' : p.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%'; }
+function pctSpan(fr, vm) { const p = vm ? fr / vm * 100 : null; return `<span class="pct ${pctCls(p)}">${pctTxt(p)}</span>`; }
+
+// Custo de frete de cada entrega = custo lançado na entrega + rateio dos demais custos da frente
+// (fixos, despesas, veículos, pessoal e seguros) por entrega ou por volume.
+function fretesCalc() {
+  const L = [];
+  Object.keys(FRENTES).forEach(f => {
+    const r = resumo(f), E = r.E, rest = r.total - r.varEnt;
+    const peso = x => fretesCfg.base === 'volume' ? (x.volume || x.volume_nf || 0) : 1;
+    const pTot = E.reduce((s, x) => s + peso(x), 0);
+    E.forEach(x => {
+      const vm = vmDe(x), lanc = num(x.valor);
+      const rat = fretesCfg.base === 'lancado' || !pTot ? 0 : rest * peso(x) / pTot;
+      const frete = lanc + rat;
+      L.push({ x, f, vm, lanc, rat, frete, pct: vm ? frete / vm * 100 : null, cat: !vm ? 'sem' : vm >= fretesCfg.min ? 'cort' : 'min' });
+    });
+  });
+  return L;
+}
+function agrega(L) {
+  const C = L.filter(l => l.vm > 0);
+  const vm = C.reduce((s, l) => s + l.vm, 0), frC = C.reduce((s, l) => s + l.frete, 0);
+  return { n: L.length, nv: C.length, vm, frete: L.reduce((s, l) => s + l.frete, 0), freteC: frC, pct: vm ? frC / vm * 100 : null,
+           ticket: C.length ? vm / C.length : 0, medio: L.length ? L.reduce((s, l) => s + l.frete, 0) / L.length : 0 };
+}
+const CAT_TXT = { cort: ['cort', '🎁 Cortesia'], min: ['minf', '⚠ Abaixo do mínimo'], sem: ['semv', 'Sem valor NF'] };
+
+function htmlFretes() {
+  const min = num(fretesCfg.min) || 1000, vis = fretesCfg.vis === 'vendas' ? 'vendas' : 'entregas';
+  return `<div class="card"><div class="frcfg">
+      <div><label>Visão</label><div class="segb">
+        <button class="${vis === 'entregas' ? 'on' : ''}" onclick="setFrCfg('vis','entregas')">🚚 Entregas — custo × mercadoria</button>
+        <button class="${vis === 'vendas' ? 'on' : ''}" onclick="setFrCfg('vis','vendas')">🧾 Vendas — frete cobrado × NF</button></div></div>
+      <div><label>Pedido mínimo p/ frete cortesia</label><input id="frMin" inputmode="decimal" style="width:130px" value="${String(min).replace('.', ',')}" onchange="setFrCfg('min', num(this.value) || 1000)"></div>
+      ${vis === 'entregas' ? `<div><label>Custo do frete por entrega</label><div class="segb">
+        ${[['entrega', 'Rateio por entrega'], ['volume', 'Rateio por volume'], ['lancado', 'Só lançado na entrega']].map(([k, t]) => `<button class="${fretesCfg.base === k ? 'on' : ''}" onclick="setFrCfg('base','${k}')">${t}</button>`).join('')}</div></div>
+      <div><label>Frente</label><select onchange="setFrCfg('fr', this.value)"><option value="">Todas</option>${Object.keys(FRENTES).map(f => `<option value="${f}" ${fretesCfg.fr === f ? 'selected' : ''}>${FRENTES[f].nome}</option>`).join('')}</select></div>` : ''}
+      <span style="flex:1"></span>
+      <button class="btn fr-adm" onclick="abrirImportar()">📤 Importar dados</button>
+      <button class="btn pri" onclick="${vis === 'entregas' ? 'exportarFretes()' : 'exportarVendasFrete()'}">📥 Exportar em Excel</button>
+    </div>
+    ${!vendasOk && isAdmin() ? `<div class="alert warn" style="margin-top:10px">⚙️ Para importar a base de vendas (qry001) e gravar o valor da mercadoria, rode o SQL da v3.2 uma vez no Supabase. <button class="btn sm" onclick="abrirConfig()">Ver SQL</button></div>` : ''}
+  </div>
+  ${vis === 'entregas' ? htmlFretesEnt(min) : htmlFretesVendas(min)}`;
+}
+
+function htmlFretesEnt(min) {
+  const ALL = fretesCalc();
+  const L = fretesCfg.fr ? ALL.filter(l => l.f === fretesCfg.fr) : ALL;
+  const g = agrega(L), co = agrega(L.filter(l => l.cat === 'cort')), mi = agrega(L.filter(l => l.cat === 'min')), sv = L.filter(l => l.cat === 'sem');
+  const pctMin = g.medio ? g.medio / min * 100 : null;
+  const baseTxt = { entrega: 'rateio por entrega', volume: 'rateio por volume', lancado: 'só custo lançado na entrega' }[fretesCfg.base];
+  // faixas de valor de pedido
+  const ed = [0, min / 2, min, min * 2, min * 5, min * 10, Infinity];
+  const fx = ed.slice(0, -1).map((a, i) => { const b = ed[i + 1]; const S = L.filter(l => l.vm > 0 && l.vm >= a && l.vm < b);
+    return { lb: b === Infinity ? `Acima de ${brl(a)}` : `${brl(a)} a ${brl(b - 0.01)}`, cort: a >= min, ...agrega(S) }; });
+  const maxP = Math.max(1, ...fx.map(f => f.pct || 0));
+  // por frente
+  const pf = Object.keys(FRENTES).map(f => { const S = ALL.filter(l => l.f === f); return { f, ...agrega(S), nc: S.filter(l => l.cat === 'cort').length, nm: S.filter(l => l.cat === 'min').length, fc: S.filter(l => l.cat === 'cort').reduce((s, l) => s + l.frete, 0) }; });
+  // por cliente
+  const cl = {}; L.forEach(l => { const k = up(l.x.cliente || '—'); (cl[k] = cl[k] || []).push(l); });
+  const clL = Object.entries(cl).map(([k, S]) => ({ k, ...agrega(S), nm: S.filter(l => l.cat === 'min').length })).sort((a, b) => b.frete - a.frete).slice(0, 15);
+  // detalhe
+  const q = fretesCfg.busca.trim().toLowerCase();
+  const det = L.filter(l => (!fretesCfg.so || l.cat === fretesCfg.so) && (!q || [l.x.nota, l.x.cliente, l.x.loja, l.x.fat, l.x.responsavel].join(' ').toLowerCase().includes(q)))
+    .sort((a, b) => frSort === 'pct' ? (b.pct ?? -1) - (a.pct ?? -1) : frSort === 'vm' ? a.vm - b.vm : b.frete - a.frete);
+  const dt = agrega(det);
+  const cmpRow = (lb, a, b, fmt) => `<tr><td>${lb}</td><td class="n">${fmt(a)}</td><td class="n">${fmt(b)}</td></tr>`;
+
+  const fcT = L.reduce((s, l) => s + (vfMap[l.x.nota] || 0), 0);
+  return `${sv.length ? `<div class="alert info">ℹ ${sv.length} entrega(s) sem valor de mercadoria — ficam fora do % de frete. Importe a base de vendas (📤 Importar dados)${vmOk && isAdmin() ? ' ou informe o valor na tabela abaixo (filtro “Sem valor NF”)' : ''}.</div>` : ''}
+  <div class="kpis">
+    <div class="kpi"><div class="l">Valor da mercadoria entregue</div><div class="v">${brl(g.vm)}</div><div class="s">${int(g.nv)} NF(s) com valor · ticket médio ${brl(g.ticket)}</div></div>
+    <div class="kpi" style="border-left-color:var(--red)"><div class="l">Custo de frete</div><div class="v">${brl(g.frete)}</div><div class="s">${int(g.n)} entrega(s) · ${brl(g.medio)} por entrega${fcT ? ` · cobrado do cliente ${brl(fcT)}` : ''}</div></div>
+    <div class="kpi" style="border-left-color:#b45309"><div class="l">% Frete × mercadoria</div><div class="v">${pctSpan(g.freteC, g.vm)}</div><div class="s">custo médio = ${pctTxt(pctMin)} de um pedido mínimo</div></div>
+    <div class="kpi" style="border-left-color:#15803d"><div class="l">🎁 Frete cortesia (≥ ${brl(min)})</div><div class="v">${brl(co.frete)}</div><div class="s">${int(co.n)} entrega(s) · ${pctTxt(co.pct)} da mercadoria</div></div>
+    <div class="kpi" style="border-left-color:#b91c1c"><div class="l">⚠ Abaixo do mínimo (&lt; ${brl(min)})</div><div class="v" style="color:${mi.n ? '#b91c1c' : 'inherit'}">${int(mi.n)}</div><div class="s">frete ${brl(mi.frete)} · ${pctTxt(mi.pct)} da mercadoria</div></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>🎁 Cortesia × abaixo do mínimo — ${mesNome(mes)}</h3>
+      <table class="cmp"><thead><tr><th></th><th class="n">🎁 Cortesia (≥ ${brl(min)})</th><th class="n">⚠ Abaixo do mínimo</th></tr></thead><tbody>
+        ${cmpRow('Entregas', co.n, mi.n, int)}
+        ${cmpRow('Participação nas entregas', g.nv ? co.nv / g.nv * 100 : null, g.nv ? mi.nv / g.nv * 100 : null, pctTxt)}
+        ${cmpRow('Valor da mercadoria', co.vm, mi.vm, brl)}
+        ${cmpRow('Ticket médio', co.ticket, mi.ticket, brl)}
+        ${cmpRow('Custo de frete', co.frete, mi.frete, brl)}
+        ${cmpRow('Frete médio por entrega', co.medio, mi.medio, brl)}
+        <tr><td><b>% frete × mercadoria</b></td><td class="n">${pctSpan(co.freteC, co.vm)}</td><td class="n">${pctSpan(mi.freteC, mi.vm)}</td></tr>
+      </tbody></table>
+      <div class="frnote">${mi.n ? `💡 As <b>${int(mi.n)}</b> entrega(s) abaixo de ${brl(min)} custaram <b>${brl(mi.frete)}</b> de frete — valor que poderia ser cobrado do cliente pela regra do pedido mínimo.` : `✔ Nenhuma entrega abaixo do pedido mínimo neste mês.`}
+        ${co.n ? ` A Avacy absorveu <b>${brl(co.frete)}</b> em frete cortesia.` : ''}</div>
+    </div>
+    <div class="card"><h3>📊 % de frete por faixa de valor do pedido</h3>
+      <div class="tw" style="max-height:none"><table><thead><tr><th>Faixa</th><th class="n">Entregas</th><th class="n">Mercadoria</th><th class="n">Frete</th><th class="n">% frete</th><th style="width:120px"></th></tr></thead>
+      <tbody>${fx.map(f => `<tr><td>${f.cort ? '🎁' : '⚠'} ${f.lb}</td><td class="n">${int(f.n)}</td><td class="n">${brl(f.vm)}</td><td class="n">${brl(f.frete)}</td><td class="n">${pctSpan(f.freteC, f.vm)}</td>
+        <td><div class="bar"><i style="width:${(f.pct || 0) / maxP * 100}%;background:${f.cort ? '#15803d' : '#b91c1c'}"></i></div></td></tr>`).join('')}</tbody></table></div>
+      <div class="frnote">Faixas calculadas a partir do pedido mínimo. Cores do %: <span class="pct ok">até 5%</span> · <span class="pct at">5–10%</span> · <span class="pct al">acima de 10%</span>.</div>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>🚛 Fretes por frente</h3>
+      <div class="tw" style="max-height:none"><table><thead><tr><th>Frente</th><th class="n">Entregas</th><th class="n">Mercadoria</th><th class="n">Frete</th><th class="n">% frete</th><th class="n">🎁 Cortesia</th><th class="n">Frete cortesia</th><th class="n">⚠ Abaixo mín.</th></tr></thead>
+      <tbody>${pf.map(l => `<tr style="cursor:pointer" onclick="setFrCfg('fr','${l.f}')"><td><span class="tag ${l.f}">${FRENTES[l.f].ico} ${FRENTES[l.f].nome}</span></td><td class="n">${int(l.n)}</td><td class="n">${brl(l.vm)}</td><td class="n">${brl(l.frete)}</td><td class="n">${pctSpan(l.freteC, l.vm)}</td><td class="n">${int(l.nc)}</td><td class="n">${brl(l.fc)}</td><td class="n ${l.nm ? 'div-alert' : ''}">${int(l.nm)}</td></tr>`).join('')}</tbody></table></div>
+    </div>
+    <div class="card"><h3>👥 Clientes — maior custo de frete</h3>
+      ${clL.length ? `<div class="tw" style="max-height:340px"><table><thead><tr><th>Cliente</th><th class="n">Entregas</th><th class="n">Abaixo mín.</th><th class="n">Mercadoria</th><th class="n">Frete</th><th class="n">%</th></tr></thead>
+      <tbody>${clL.map(c => `<tr style="cursor:pointer" onclick="fretesCfg.busca=${esc(JSON.stringify(c.k))};render()"><td><span class="clip" title="${esc(c.k)}">${esc(c.k)}</span></td><td class="n">${int(c.n)}</td><td class="n ${c.nm ? 'div-alert' : ''}">${int(c.nm)}</td><td class="n">${brl(c.vm)}</td><td class="n">${brl(c.frete)}</td><td class="n">${pctSpan(c.freteC, c.vm)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Nenhuma entrega neste mês.</div>'}
+    </div>
+  </div>
+  <div class="card"><h3>📦 Frete por entrega — ${mesNome(mes)}</h3>
+    <div class="tools">
+      <input type="text" placeholder="🔍 NF, cliente, pedido, entregador…" value="${esc(fretesCfg.busca)}" onchange="fretesCfg.busca=this.value;render()">
+      <select onchange="fretesCfg.so=this.value;render()"><option value="">Todas</option>${Object.entries(CAT_TXT).map(([k, [, t]]) => `<option value="${k}" ${fretesCfg.so === k ? 'selected' : ''}>${t}</option>`).join('')}</select>
+      <select onchange="frSort=this.value;render()"><option value="frete" ${frSort === 'frete' ? 'selected' : ''}>Ordenar: maior frete</option><option value="pct" ${frSort === 'pct' ? 'selected' : ''}>Ordenar: maior % frete</option><option value="vm" ${frSort === 'vm' ? 'selected' : ''}>Ordenar: menor valor de mercadoria</option></select>
+      ${fretesCfg.busca || fretesCfg.so ? `<button class="btn sm" onclick="fretesCfg.busca='';fretesCfg.so='';render()">✕ Limpar filtro</button>` : ''}
+    </div>
+    ${det.length ? `<div class="tw"><table><thead><tr><th>NF</th><th>Data</th><th>Frente</th><th>Cliente</th><th class="n">Vol.</th><th class="n">Valor mercadoria</th><th class="n">Custo lançado</th><th class="n">Rateio</th><th class="n">Frete</th><th class="n">% frete</th><th class="n">Frete cobrado</th><th>Classificação</th></tr></thead>
+    <tbody>${det.map(l => { const x = l.x, [cc, ct] = CAT_TXT[l.cat]; return `<tr><td class="mono">${esc(x.nota)}</td><td>${dBR(x.data_entrega)}</td><td><span class="tag ${l.f}">${FRENTES[l.f].nome}</span></td>
+      <td><span class="clip" title="${esc(x.cliente || '')}">${esc(up(x.cliente || ''))}</span></td><td class="n">${int(x.volume || x.volume_nf || 0)}</td>
+      <td class="n">${vmOk && isAdmin() ? `<input class="vmIn" inputmode="decimal" value="${l.vm ? l.vm.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}" placeholder="0,00" title="${num(x.valor_mercadoria) ? 'Valor gravado na entrega' : l.vm ? 'Valor da base de notas (Expedição)' : 'Informe o valor da NF'}" onchange="salvarVM('${x.id}', this.value)">` : (l.vm ? brl(l.vm) : '—')}</td>
+      <td class="n">${brl(l.lanc)}</td><td class="n">${brl(l.rat)}</td><td class="n"><b>${brl(l.frete)}</b></td><td class="n">${pctSpan(l.frete, l.vm)}</td><td class="n">${x.nota in vfMap ? brl(vfMap[x.nota]) : '—'}</td><td><span class="tag ${cc}">${ct}</span></td></tr>`; }).join('')}</tbody>
+    <tfoot><tr><td colspan="5">${int(det.length)} entrega(s)</td><td class="n">${brl(dt.vm)}</td><td class="n">${brl(det.reduce((s, l) => s + l.lanc, 0))}</td><td class="n">${brl(det.reduce((s, l) => s + l.rat, 0))}</td><td class="n">${brl(dt.frete)}</td><td class="n">${pctTxt(dt.pct)}</td><td class="n">${brl(det.reduce((s, l) => s + (vfMap[l.x.nota] || 0), 0))}</td><td></td></tr></tfoot></table></div>`
+      : '<div class="empty">Nenhuma entrega para o filtro.</div>'}
+    <div class="frnote">ℹ️ <b>Custo do frete</b> (${baseTxt}): custo lançado na entrega + parte dos custos da frente no mês (fixos, despesas, veículos, pessoal e seguros). Custos da Operação (galpão, materiais) não entram.
+      <b>% frete</b> = custo do frete ÷ valor da mercadoria. Valor da mercadoria e frete cobrado: base de vendas importada (VALOR_NF, FRETE_FAT + FRETE_LOJA); sem ela, valor gravado na entrega ou da base de notas do Dashboard de Expedição${vmCol ? ` (coluna <span class="mono">${esc(vmCol)}</span>)` : ''}.</div>
+  </div>`;
+}
+
+async function salvarVM(id, txt) {
+  if (!isAdmin()) return;
+  const v = num(txt) || null;
+  const { error } = await db.from('entregas').update({ valor_mercadoria: v }).eq('id', id);
+  if (error) { toast('❌ ' + error.message, 4000); return; }
+  const x = entregas.find(e => e.id === id); if (x) x.valor_mercadoria = v;
+  toast('✔ Valor da mercadoria salvo'); render();
+}
+
+function exportarFretes() {
+  const min = num(fretesCfg.min) || 1000;
+  const L = fretesCalc().filter(l => !fretesCfg.fr || l.f === fretesCfg.fr);
+  const wb = XLSX.utils.book_new(), R = '"R$" #,##0.00', P = '0.0%';
+  const fmt = (ws, rows, cols) => { for (let r = 1; r < rows; r++) for (const [c, z] of cols) { const a = XLSX.utils.encode_cell({ r, c }); if (ws[a] && ws[a].v !== '') ws[a].z = z; } };
+  const d = [['NF', 'DATA ENTREGA', 'FRENTE', 'CLIENTE', 'PEDIDO', 'ENTREGADOR', 'VOLUMES', 'VALOR MERCADORIA', 'CUSTO LANÇADO', 'RATEIO', 'FRETE', '% FRETE', 'CLASSIFICAÇÃO']];
+  L.forEach(l => d.push([l.x.nota, l.x.data_entrega ? new Date(l.x.data_entrega + 'T12:00:00') : '', FRENTES[l.f].nome, up(l.x.cliente || ''), l.x.loja || l.x.fat || '', l.x.responsavel || '',
+    l.x.volume || l.x.volume_nf || 0, l.vm || '', l.lanc, Math.round(l.rat * 100) / 100, Math.round(l.frete * 100) / 100, l.vm ? l.frete / l.vm : '', CAT_TXT[l.cat][1].replace(/^\W+\s*/, '')]));
+  const ws1 = XLSX.utils.aoa_to_sheet(d, { cellDates: true });
+  ws1['!cols'] = [11, 12, 16, 40, 14, 18, 8, 16, 14, 12, 12, 9, 18].map(w => ({ wch: w }));
+  fmt(ws1, d.length, [[1, 'dd/mm/yyyy'], [7, R], [8, R], [9, R], [10, R], [11, P]]);
+  XLSX.utils.book_append_sheet(wb, ws1, 'Frete por entrega');
+  const s = [['GRUPO', 'ENTREGAS', 'VALOR MERCADORIA', 'FRETE', '% FRETE', 'TICKET MÉDIO', 'FRETE MÉDIO']];
+  const add = (lb, S) => { const a = agrega(S); s.push([lb, a.n, a.vm, Math.round(a.frete * 100) / 100, a.vm ? a.freteC / a.vm : '', a.ticket, a.medio]); };
+  add('TOTAL', L); add(`Cortesia (≥ ${brl(min)})`, L.filter(l => l.cat === 'cort')); add(`Abaixo do mínimo (< ${brl(min)})`, L.filter(l => l.cat === 'min')); add('Sem valor de NF', L.filter(l => l.cat === 'sem'));
+  Object.keys(FRENTES).forEach(f => add('Frente: ' + FRENTES[f].nome, L.filter(l => l.f === f)));
+  const ws2 = XLSX.utils.aoa_to_sheet(s);
+  ws2['!cols'] = [34, 10, 18, 14, 9, 14, 14].map(w => ({ wch: w }));
+  fmt(ws2, s.length, [[2, R], [3, R], [4, P], [5, R], [6, R]]);
+  XLSX.utils.book_append_sheet(wb, ws2, 'Resumo fretes');
+  XLSX.writeFile(wb, `Fretes_${fretesCfg.fr ? FRENTES[fretesCfg.fr].nome.replace(/\s+/g, '_') + '_' : ''}${mes}.xlsx`);
+}
+
+// ══════════════════════════════════════════════════════════════
+// v3.2 — VENDAS: frete cobrado no pedido × valor da NF (base qry001 importada)
+// ══════════════════════════════════════════════════════════════
+async function carregarVendasMes() {
+  if (!vendasOk || vendasLoad) return;
+  vendasLoad = true; const alvo = mes;
+  const [y, m] = alvo.split('-').map(Number), fim = `${alvo}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
+  const out = [];
+  try {
+    for (let p = 0; p < 100; p++) {
+      const r = await db.from('vendas_nf').select('nota,cliente,uf,vendedor,transportadora,data_emissao,valor_nf,frete_fat,frete_loja,volume,fat,loja')
+        .gte('data_emissao', alvo + '-01').lte('data_emissao', fim).order('nota').range(p * 1000, p * 1000 + 999);
+      if (r.error) throw r.error;
+      out.push(...(r.data || [])); if ((r.data || []).length < 1000) break;
+    }
+  } catch (e) { toast('❌ Erro ao carregar vendas: ' + (e.message || e), 4000); }
+  vendas = out; vendasMes = alvo; vendasLoad = false;
+  if (aba === 'fretes') render();
+}
+// v3.4: classificação da lista "NFs do mês" — só pelo valor da NF: ≥ mínimo = Cortesia · < mínimo = Abaixo do mínimo
+const CLS_TXT = { cort: ['cort', '🎁 Cortesia'], min: ['minf', '⚠ Abaixo do mínimo'] };
+const VD_TXT = { cort: ['cort', '🎁 Cortesia'], acob: ['semv', 'Acima do mín. c/ frete'], bcob: ['fixo', 'Frete cobrado'], bsem: ['minf', '⚠ Abaixo do mín. sem frete'] };
+// v3.3/v3.5: transportadoras fora da análise de frete — modalidades internas / sem frete próprio
+const TRANSP_FORA = ['RETIRA', 'ENTREGA EM ONIBUS', 'EBAZAR', 'ALPYTRANS'];
+function semAcento(t) { return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim(); }
+function ehRetira(v) { const t = semAcento(v?.transportadora); return !t || TRANSP_FORA.some(x => t.includes(x)); }
+function vendasCalc(min) {
+  return vendas.filter(v => !ehRetira(v)).map(v => { const vn = num(v.valor_nf), fc = num(v.frete_fat) + num(v.frete_loja), ac = vn >= min;
+    return { v, vn, fc, pct: vn ? fc / vn * 100 : null, cls: ac ? 'cort' : 'min', cat: ac ? (fc > 0 ? 'acob' : 'cort') : (fc > 0 ? 'bcob' : 'bsem') }; });
+}
+function aggV(S) { const vn = S.reduce((s, l) => s + l.vn, 0), fc = S.reduce((s, l) => s + l.fc, 0), ncob = S.filter(l => l.fc > 0).length;
+  return { n: S.length, vn, fc, pct: vn ? fc / vn * 100 : null, ncob, nsem: S.length - ncob, ticket: S.length ? vn / S.length : 0, medio: ncob ? fc / ncob : 0 }; }
+
+function htmlFretesVendas(min) {
+  if (!vendasOk) return '';
+  if (vendasMes !== mes) { if (!vendasLoad) setTimeout(carregarVendasMes, 0); return `<div class="card"><div class="empty">⏳ Carregando vendas de ${mesNome(mes)}…</div></div>`; }
+  if (!vendas.length) return `<div class="card"><div class="empty">Nenhuma NF importada com emissão em ${mesNome(mes)}.${isAdmin() ? '<br><br><button class="btn pri" onclick="abrirImportar()">📤 Importar dados (qry001)</button>' : '<br>Peça ao administrador para importar a base de vendas.'}</div></div>`;
+  const V = vendasCalc(min), T = aggV(V), A = aggV(V.filter(l => l.vn >= min)), B = aggV(V.filter(l => l.vn < min));
+  const nC = V.filter(l => l.cat === 'cort'), nBS = V.filter(l => l.cat === 'bsem');
+  const ed = [...new Set([0, 500, 1000, 2000, 3000, 4000, min])].sort((a, b) => a - b).concat(Infinity);   // v3.3: faixas fixas + pedido mínimo
+  const nRet = vendas.filter(ehRetira).length;
+  const fx = ed.slice(0, -1).map((a, i) => { const b = ed[i + 1]; return { lb: b === Infinity ? `Acima de ${brl(a)}` : `${brl(a)} a ${brl(b - 0.01)}`, cort: a >= min, ...aggV(V.filter(l => l.vn >= a && l.vn < b)) }; });
+  const grp = k => { const o = {}; V.forEach(l => { const g = up(l.v[k] || '—'); (o[g] = o[g] || []).push(l); }); return Object.entries(o).map(([g, S]) => ({ g, ...aggV(S), nb: S.filter(l => l.vn < min).length, nbs: S.filter(l => l.cat === 'bsem').length, nc: S.filter(l => l.cat === 'cort').length })); };
+  const vend = grp('vendedor').sort((a, b) => b.nbs - a.nbs || b.n - a.n).slice(0, 20);
+  const transp = grp('transportadora').sort((a, b) => b.vn - a.vn).slice(0, 12);
+  const q = fretesCfg.busca.trim().toLowerCase();
+  const det = V.filter(l => (!fretesCfg.so || l.cls === fretesCfg.so) && (!q || [l.v.nota, l.v.cliente, l.v.vendedor, l.v.transportadora, l.v.uf, l.v.loja, l.v.fat].join(' ').toLowerCase().includes(q)))
+    .sort((a, b) => vdSort === 'pct' ? (b.pct ?? -1) - (a.pct ?? -1) : vdSort === 'fc' ? b.fc - a.fc : vdSort === 'vnA' ? a.vn - b.vn : b.vn - a.vn);
+  const dA = aggV(det), MAXL = 500;
+  const cmp = (lb, a, b, f) => `<tr><td>${lb}</td><td class="n">${f(a)}</td><td class="n">${f(b)}</td></tr>`;
+  const pv = (fc, vn) => pctSpan(fc, vn);
+  return `<div class="kpis">
+    <div class="kpi"><div class="l">NFs emitidas</div><div class="v">${int(T.n)}</div><div class="s">ticket médio ${brl(T.ticket)}${nRet ? ` · ${int(nRet)} fora da análise` : ''}</div></div>
+    <div class="kpi"><div class="l">Valor faturado (NF)</div><div class="v">${brl(T.vn)}</div></div>
+    <div class="kpi" style="border-left-color:#b45309"><div class="l">Frete cobrado</div><div class="v">${brl(T.fc)}</div><div class="s">${pv(T.fc, T.vn)} do faturado · ${int(T.ncob)} NF(s) com frete</div></div>
+    <div class="kpi" style="border-left-color:#15803d"><div class="l">🎁 Cortesia (≥ ${brl(min)} sem frete)</div><div class="v">${int(nC.length)}</div><div class="s">${A.n ? pctTxt(nC.length / A.n * 100) : '—'} das NFs ≥ mínimo · ${brl(nC.reduce((s, l) => s + l.vn, 0))}</div></div>
+    <div class="kpi" style="border-left-color:#b91c1c"><div class="l">⚠ Abaixo do mín. sem frete</div><div class="v" style="color:${nBS.length ? '#b91c1c' : 'inherit'}">${int(nBS.length)}</div><div class="s">${B.n ? pctTxt(nBS.length / B.n * 100) : '—'} das NFs &lt; mínimo · ${brl(nBS.reduce((s, l) => s + l.vn, 0))}</div></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>🎁 Acima × abaixo do pedido mínimo — ${mesNome(mes)}</h3>
+      <table class="cmp"><thead><tr><th></th><th class="n">🎁 ≥ ${brl(min)}</th><th class="n">⚠ &lt; ${brl(min)}</th></tr></thead><tbody>
+        ${cmp('NFs', A.n, B.n, int)}${cmp('Participação nas NFs', T.n ? A.n / T.n * 100 : null, T.n ? B.n / T.n * 100 : null, pctTxt)}
+        ${cmp('Valor faturado', A.vn, B.vn, brl)}${cmp('Ticket médio', A.ticket, B.ticket, brl)}
+        ${cmp('NFs com frete cobrado', A.ncob, B.ncob, int)}${cmp('NFs sem frete', A.nsem, B.nsem, int)}
+        ${cmp('Frete cobrado', A.fc, B.fc, brl)}${cmp('Frete médio (NFs com frete)', A.medio, B.medio, brl)}
+        <tr><td><b>% frete cobrado × NF</b></td><td class="n">${pv(A.fc, A.vn)}</td><td class="n">${pv(B.fc, B.vn)}</td></tr>
+      </tbody></table>
+      <div class="frnote">${nBS.length ? `💡 <b>${int(nBS.length)}</b> NF(s) abaixo de ${brl(min)} saíram <b>sem frete cobrado</b> (${brl(nBS.reduce((s, l) => s + l.vn, 0))} faturados). Se cobradas pelo frete médio dessa faixa (${brl(B.medio)}), seriam ≈ <b>${brl(nBS.length * B.medio)}</b>.` : '✔ Todas as NFs abaixo do mínimo tiveram frete cobrado.'}</div>
+    </div>
+    <div class="card"><h3>📊 Frete cobrado por faixa de valor da NF</h3>
+      <div class="tw" style="max-height:none"><table><thead><tr><th>Faixa</th><th class="n">NFs</th><th class="n">Valor NF</th><th class="n">C/ frete</th><th class="n">S/ frete</th><th class="n">Frete cobrado</th><th class="n">%</th></tr></thead>
+      <tbody>${fx.map(f => `<tr><td style="white-space:nowrap">${f.cort ? '🎁' : '⚠'} ${f.lb}</td><td class="n">${int(f.n)}</td><td class="n">${brl(f.vn)}</td><td class="n">${int(f.ncob)}</td><td class="n ${!f.cort && f.nsem ? 'div-alert' : ''}">${int(f.nsem)}</td><td class="n">${brl(f.fc)}</td><td class="n">${pv(f.fc, f.vn)}</td></tr>`).join('')}</tbody></table></div>
+      <div class="frnote">Frete cobrado = FRETE_FAT + FRETE_LOJA da base qry001. Cores do %: <span class="pct ok">até 5%</span> · <span class="pct at">5–10%</span> · <span class="pct al">acima de 10%</span>.</div>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>🧑‍💼 Vendedores — NFs abaixo do mínimo sem frete</h3>
+      <div class="tw" style="max-height:360px"><table><thead><tr><th>Vendedor</th><th class="n">NFs</th><th class="n">&lt; mín.</th><th class="n">&lt; mín. s/ frete</th><th class="n">🎁 Cortesia</th><th class="n">Valor NF</th><th class="n">Frete cobrado</th><th class="n">%</th></tr></thead>
+      <tbody>${vend.map(c => `<tr style="cursor:pointer" onclick="fretesCfg.busca=${esc(JSON.stringify(c.g))};render()"><td><span class="clip" title="${esc(c.g)}">${esc(c.g)}</span></td><td class="n">${int(c.n)}</td><td class="n">${int(c.nb)}</td><td class="n ${c.nbs ? 'div-alert' : ''}">${int(c.nbs)}</td><td class="n">${int(c.nc)}</td><td class="n">${brl(c.vn)}</td><td class="n">${brl(c.fc)}</td><td class="n">${pv(c.fc, c.vn)}</td></tr>`).join('')}</tbody></table></div>
+    </div>
+    <div class="card"><h3>🚛 Transportadoras</h3>
+      <div class="tw" style="max-height:360px"><table><thead><tr><th>Transportadora</th><th class="n">NFs</th><th class="n">Valor NF</th><th class="n">Frete cobrado</th><th class="n">%</th><th class="n">&lt; mín. s/ frete</th></tr></thead>
+      <tbody>${transp.map(c => `<tr style="cursor:pointer" onclick="fretesCfg.busca=${esc(JSON.stringify(c.g))};render()"><td><span class="clip" title="${esc(c.g)}">${esc(c.g)}</span></td><td class="n">${int(c.n)}</td><td class="n">${brl(c.vn)}</td><td class="n">${brl(c.fc)}</td><td class="n">${pv(c.fc, c.vn)}</td><td class="n ${c.nbs ? 'div-alert' : ''}">${int(c.nbs)}</td></tr>`).join('')}</tbody></table></div>
+    </div>
+  </div>
+  <div class="card"><h3>🧾 NFs do mês — ${mesNome(mes)}</h3>
+    <div class="tools">
+      <input type="text" placeholder="🔍 NF, cliente, vendedor, transportadora, UF, pedido…" value="${esc(fretesCfg.busca)}" onchange="fretesCfg.busca=this.value;render()">
+      <select onchange="fretesCfg.so=this.value;render()"><option value="">Todas</option>${Object.entries(CLS_TXT).map(([k, [, t]]) => `<option value="${k}" ${fretesCfg.so === k ? 'selected' : ''}>${t}</option>`).join('')}</select>
+      <select onchange="vdSort=this.value;render()">${[['vn', 'maior valor NF'], ['vnA', 'menor valor NF'], ['fc', 'maior frete cobrado'], ['pct', 'maior % frete']].map(([k, t]) => `<option value="${k}" ${vdSort === k ? 'selected' : ''}>Ordenar: ${t}</option>`).join('')}</select>
+      ${fretesCfg.busca || fretesCfg.so ? `<button class="btn sm" onclick="fretesCfg.busca='';fretesCfg.so='';render()">✕ Limpar filtro</button>` : ''}
+      <span style="font-size:12px;color:var(--muted)">${int(det.length)} NF(s)${det.length > MAXL ? ` — mostrando ${MAXL}; use o filtro ou exporte para ver todas` : ''}</span>
+    </div>
+    ${det.length ? `<div class="tw"><table><thead><tr><th>NF</th><th>Emissão</th><th>Cliente</th><th>UF</th><th>Vendedor</th><th>Transportadora</th><th class="n">Vol.</th><th class="n">Valor NF</th><th class="n">Frete cobrado</th><th class="n">%</th><th>Classificação</th></tr></thead>
+    <tbody>${det.slice(0, MAXL).map(l => { const v = l.v, [cc, ct] = CLS_TXT[l.cls]; return `<tr><td class="mono">${esc(v.nota)}</td><td>${dBR(v.data_emissao)}</td><td><span class="clip" title="${esc(v.cliente || '')}">${esc(up(v.cliente || ''))}</span></td><td>${esc(v.uf || '')}</td>
+      <td><span class="clip" style="max-width:140px">${esc(up(v.vendedor || ''))}</span></td><td><span class="clip" style="max-width:160px" title="${esc(v.transportadora || '')}">${esc(up(v.transportadora || ''))}</span></td><td class="n">${int(v.volume || 0)}</td>
+      <td class="n">${brl(l.vn)}</td><td class="n">${l.fc ? brl(l.fc) : '—'}</td><td class="n">${l.fc ? pv(l.fc, l.vn) : ''}</td><td><span class="tag ${cc}">${ct}</span></td></tr>`; }).join('')}</tbody>
+    <tfoot><tr><td colspan="7">${int(det.length)} NF(s)</td><td class="n">${brl(dA.vn)}</td><td class="n">${brl(dA.fc)}</td><td class="n">${pctTxt(dA.pct)}</td><td></td></tr></tfoot></table></div>` : '<div class="empty">Nenhuma NF para o filtro.</div>'}
+    <div class="frnote">ℹ️ NFs pela data de emissão no mês selecionado.${nRet ? ` <b>${int(nRet)}</b> NF(s) não entram na análise — transportadora Retira (loja/CD), Entrega em Ônibus, Ebazar, Alpytrans ou em branco.` : ''} Classificação: 🎁 Cortesia = NF ≥ ${brl(min)} · ⚠ Abaixo do mínimo = NF &lt; ${brl(min)}.</div>
+  </div>`;
+}
+
+function exportarVendasFrete() {
+  if (!vendas.length) { toast('Nenhuma venda carregada para o mês.'); return; }
+  const min = num(fretesCfg.min) || 1000, V = vendasCalc(min), R = '"R$" #,##0.00', P = '0.0%';
+  const wb = XLSX.utils.book_new();
+  const d = [['NF', 'EMISSÃO', 'CLIENTE', 'UF', 'VENDEDOR', 'TRANSPORTADORA', 'PEDIDO', 'VOLUMES', 'VALOR NF', 'FRETE COBRADO', '% FRETE', 'CLASSIFICAÇÃO']];
+  V.forEach(l => d.push([l.v.nota, l.v.data_emissao ? new Date(l.v.data_emissao + 'T12:00:00') : '', up(l.v.cliente || ''), l.v.uf || '', up(l.v.vendedor || ''), up(l.v.transportadora || ''), l.v.loja || l.v.fat || '',
+    num(l.v.volume), l.vn, l.fc, l.vn ? l.fc / l.vn : '', CLS_TXT[l.cls][1].replace(/^\W+\s*/, '')]));
+  const ws = XLSX.utils.aoa_to_sheet(d, { cellDates: true });
+  ws['!cols'] = [11, 11, 40, 5, 22, 30, 12, 8, 14, 14, 9, 24].map(w => ({ wch: w }));
+  for (let r = 1; r < d.length; r++) for (const [c, z] of [[1, 'dd/mm/yyyy'], [8, R], [9, R], [10, P]]) { const a = XLSX.utils.encode_cell({ r, c }); if (ws[a] && ws[a].v !== '') ws[a].z = z; }
+  XLSX.utils.book_append_sheet(wb, ws, 'NFs');
+  const s = [['GRUPO', 'NFs', 'VALOR NF', 'NFs C/ FRETE', 'NFs S/ FRETE', 'FRETE COBRADO', '% FRETE']];
+  const add = (lb, S) => { const a = aggV(S); s.push([lb, a.n, a.vn, a.ncob, a.nsem, a.fc, a.vn ? a.fc / a.vn : '']); };
+  add('TOTAL', V); add(`≥ ${brl(min)}`, V.filter(l => l.vn >= min)); add(`< ${brl(min)}`, V.filter(l => l.vn < min));
+  Object.entries(VD_TXT).forEach(([k, [, t]]) => add(t.replace(/^\W+\s*/, ''), V.filter(l => l.cat === k)));
+  const ws2 = XLSX.utils.aoa_to_sheet(s); ws2['!cols'] = [30, 9, 16, 12, 12, 15, 9].map(w => ({ wch: w }));
+  for (let r = 1; r < s.length; r++) for (const [c, z] of [[2, R], [5, R], [6, P]]) { const a = XLSX.utils.encode_cell({ r, c }); if (ws2[a] && ws2[a].v !== '') ws2[a].z = z; }
+  XLSX.utils.book_append_sheet(wb, ws2, 'Resumo');
+  XLSX.writeFile(wb, `Fretes_Vendas_${mes}.xlsx`);
+}
+
+// ══════════════════════════════════════════════════════════════
+// v3.2 — AÇÕES › IMPORTAR DADOS: base de vendas qry001 (Protheus) → vendas_nf
+// ══════════════════════════════════════════════════════════════
+let _impRows = null;
+function lerCSVVendas(txt) {
+  const L = txt.split(/\r?\n/).filter(l => l.trim());
+  if (!L.length) return [];
+  const H = L[0].split(';').map(h => h.trim().toUpperCase()), iMsg = H.indexOf('MENSAGEM_NOTA');
+  return L.slice(1).map(l => {
+    let c = l.split(';');
+    if (c.length > H.length && iMsg >= 0) c = [...c.slice(0, iMsg), c.slice(iMsg, c.length - (H.length - iMsg - 1)).join(';'), ...c.slice(c.length - (H.length - iMsg - 1))];
+    const o = {}; H.forEach((h, i) => o[h] = (c[i] ?? '').trim()); return o;
+  });
+}
+function mapVenda(o) {
+  const g = k => String(o[k] ?? '').trim();
+  const d8 = g('DATA_EMISSAO').replace(/\D/g, '');
+  const nota = g('NOTA'); if (!nota) return null;
+  return { id: [g('FILIAL'), nota, g('SERIE')].join('-'), filial: g('FILIAL') || null, nota, serie: g('SERIE') || null,
+    cod_cliente: g('COD_CLIENTE') || null, loja_cliente: g('LOJA_CLIENTE') || null, cliente: g('NOME_CLIENTE') || null, uf: g('UF') || null,
+    cod_vendedor: g('COD_VENDEDOR') || null, vendedor: g('NOME_VENDEDOR') || null, transportadora: g('TRANSPORTADORA') || null,
+    data_emissao: d8.length === 8 ? `${d8.slice(0, 4)}-${d8.slice(4, 6)}-${d8.slice(6, 8)}` : null, chave: g('CHAVE_NFE') || null,
+    volume: num(g('VOLUME1')), peso: num(g('PESO_BRUTO')), valor_nf: num(g('VALOR_NF')), fat: g('FAT') || null, loja: g('LOJA') || null,
+    frete_fat: num(g('FRETE_FAT')), frete_loja: num(g('FRETE_LOJA')), importado_por: usuario?.username || null, importado_em: new Date().toISOString() };
+}
+async function abrirImportar() {
+  if (!isAdmin()) return;
+  document.body.classList.remove('sbOpen'); _impRows = null;
+  let info = '';
+  if (vendasOk) { const r = await db.from('vendas_nf').select('data_emissao', { count: 'exact' }).order('data_emissao', { ascending: false }).limit(1);
+    if (!r.error) info = `Base atual: <b>${int(r.count || 0)}</b> NF(s)${r.data?.[0] ? ` · última emissão <b>${dBR(r.data[0].data_emissao)}</b>` : ''}.`; }
+  formModal('📤 Importar dados — base de vendas (qry001)', `
+    ${!vendasOk ? `<div class="alert warn">⚙️ A tabela de vendas ainda não existe. Rode o SQL da v3.2 no Supabase antes de importar. <button class="btn sm" onclick="fecha('ovForm');abrirConfig()">Ver SQL</button></div>` : ''}
+    <div style="font-size:13px;line-height:1.55;margin-bottom:12px">Selecione o CSV <b>qry001</b> exportado do Protheus (separado por <b>;</b>). Colunas usadas: NOTA, SERIE, NOME_CLIENTE, UF, NOME_VENDEDOR, TRANSPORTADORA, DATA_EMISSAO, CHAVE_NFE, VOLUME1, PESO_BRUTO, <b>VALOR_NF</b>, FAT, LOJA, <b>FRETE_FAT</b>, <b>FRETE_LOJA</b>.<br>
+      NFs que já existem são <b>atualizadas</b> (não duplica). ${info}</div>
+    <div class="f"><input type="file" id="impArq" accept=".csv,.txt,.xlsx,.xls" onchange="lerArqImport(this.files[0])" ${vendasOk ? '' : 'disabled'}></div>
+    <div id="impPrev" style="margin-top:12px"></div>`, importarVendas);
+}
+async function lerArqImport(file) {
+  const box = document.getElementById('impPrev'); _impRows = null; if (!file) return;
+  box.innerHTML = '⏳ Lendo arquivo…';
+  try {
+    let raw;
+    if (/\.xlsx?$/i.test(file.name)) {
+      const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+      raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '', raw: false }).map(o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k.trim().toUpperCase(), v])));
+    } else {
+      const buf = await file.arrayBuffer();
+      let txt = new TextDecoder('utf-8', { fatal: false }).decode(buf);
+      if (txt.includes('�')) txt = new TextDecoder('windows-1252').decode(buf);
+      raw = lerCSVVendas(txt);
+    }
+    if (!raw.length || !('NOTA' in raw[0]) || !('VALOR_NF' in raw[0])) { box.innerHTML = '<div class="alert err">❌ Arquivo sem as colunas NOTA e VALOR_NF — confira se é o qry001.</div>'; return; }
+    const m = new Map(); raw.forEach(o => { const v = mapVenda(o); if (v) m.set(v.id, v); });
+    _impRows = [...m.values()];
+    const ds = _impRows.map(v => v.data_emissao).filter(Boolean).sort();
+    const tv = _impRows.reduce((s, v) => s + v.valor_nf, 0), tf = _impRows.reduce((s, v) => s + v.frete_fat + v.frete_loja, 0);
+    box.innerHTML = `<div class="alert info">✔ <b>${int(_impRows.length)}</b> NF(s) · emissão de <b>${dBR(ds[0])}</b> a <b>${dBR(ds[ds.length - 1])}</b><br>
+      Valor total das NFs: <b>${brl(tv)}</b> · frete cobrado: <b>${brl(tf)}</b>${raw.length !== _impRows.length ? `<br>${int(raw.length - _impRows.length)} linha(s) repetida(s) agrupada(s).` : ''}</div>
+      <div class="bar" style="height:10px;margin-top:10px"><i id="impBar" style="width:0;background:var(--green)"></i></div><div id="impTxt" style="font-size:12px;color:var(--muted);margin-top:4px">Clique em Confirmar para importar.</div>`;
+  } catch (e) { box.innerHTML = `<div class="alert err">❌ Erro ao ler: ${esc(e.message || e)}</div>`; }
+}
+async function importarVendas() {
+  if (!vendasOk) { toast('⚙️ Rode o SQL da v3.2 primeiro.'); return false; }
+  if (!_impRows?.length) { toast('⚠ Selecione o arquivo qry001.'); return false; }
+  const bar = document.getElementById('impBar'), txt = document.getElementById('impTxt'), T = _impRows.length, LOTE = 1000;
+  for (let i = 0; i < T; i += LOTE) {
+    const { error } = await db.from('vendas_nf').upsert(_impRows.slice(i, i + LOTE), { onConflict: 'id' });
+    if (error) { txt.innerHTML = `<span style="color:#c0392b">❌ Erro no lote ${i / LOTE + 1}: ${esc(error.message)}</span>`; return false; }
+    const k = Math.min(T, i + LOTE); bar.style.width = (k / T * 100) + '%'; txt.textContent = `Importando… ${int(k)} de ${int(T)} NF(s)`;
+  }
+  toast(`✔ ${int(T)} NF(s) importadas`, 3500);
+  _impRows = null; vendasMes = ''; vmMap = {}; vfMap = {}; vmBusc = new Set();
+  await carregarValoresNF(); render();
+  return true;
+}
+
+// ══════════════════════════════════════════════════════════════
+// v3.5 — AÇÕES › USUÁRIOS FRETES: login que acessa apenas a tela de Fretes (role = 'fretes' em avacy_users)
+// ══════════════════════════════════════════════════════════════
+async function abrirUsuariosFretes() {
+  if (!isAdmin()) return;
+  document.body.classList.remove('sbOpen');
+  const { data, error } = await db.from('avacy_users').select('username,role').ilike('role', 'fretes').order('username');
+  formModal('👤 Usuários com acesso só a Fretes', `
+    <div style="font-size:13px;line-height:1.55;margin-bottom:12px">Estes usuários entram no Controle de Entregas e veem <b>apenas a tela de Fretes</b> (consulta e exportação em Excel) — sem entregas, custos, importação ou configurações.
+      O login fica na mesma base de usuários do Dashboard de Expedição.</div>
+    ${error ? `<div class="alert err">❌ ${esc(error.message)}</div>` : `<div class="tw" style="max-height:220px;margin-bottom:14px"><table><thead><tr><th>Usuário</th><th>Perfil</th><th class="acoes">Ações</th></tr></thead><tbody>
+      ${(data || []).length ? data.map(u => `<tr><td><b>${esc(u.username)}</b></td><td><span class="tag cort">Fretes</span></td><td class="acoes"><button class="btn sm" onclick="removerUsuarioFretes(${esc(JSON.stringify(u.username))})">🗑 Remover</button></td></tr>`).join('')
+        : '<tr><td colspan="3" class="empty">Nenhum usuário de Fretes cadastrado.</td></tr>'}</tbody></table></div>`}
+    <div class="frcfg"><div><label>Novo usuário</label><input id="ufU" autocomplete="off" style="width:200px"></div>
+      <div><label>Senha</label><input id="ufP" type="password" autocomplete="new-password" style="width:160px"></div></div>`, salvarUsuarioFretes);
+}
+async function salvarUsuarioFretes() {
+  const u = document.getElementById('ufU').value.trim(), p = document.getElementById('ufP').value.trim();
+  if (!u || !p) { toast('⚠ Informe usuário e senha.'); return false; }
+  const { data: ex } = await db.from('avacy_users').select('username,role').ilike('username', u);
+  const ja = (ex || []).find(x => x.username.trim().toLowerCase() === u.toLowerCase());
+  if (ja) { toast(`⚠ O usuário ${ja.username} já existe (perfil ${ja.role}). Escolha outro nome.`, 4000); return false; }
+  const { error } = await db.from('avacy_users').insert({ username: u, password: p, role: 'fretes' });
+  if (error) { toast('❌ ' + error.message, 5000); return false; }
+  toast(`✔ Usuário ${u} criado — acesso só a Fretes`); setTimeout(abrirUsuariosFretes, 50); return false;
+}
+async function removerUsuarioFretes(u) {
+  if (!confirm(`Remover o usuário ${u}? Ele deixa de acessar a tela de Fretes.`)) return;
+  const { error } = await db.from('avacy_users').delete().eq('username', u).eq('role', 'fretes');
+  if (error) { toast('❌ ' + error.message, 5000); return; }
+  toast('🗑 Usuário removido'); abrirUsuariosFretes();
+}
+
 function exportarExcel(fr) {
   const E = filtraEntregas(fr ? entregas.filter(x => x.frente === fr) : entregas);
   const C = fr ? custos.filter(x => x.frente === fr) : custos;
@@ -2059,10 +2538,10 @@ document.getElementById('hVer').textContent = APP_VERSION;
 document.getElementById('sbVer').textContent = APP_VERSION;
 function toggleSb(on) { document.body.classList.toggle('sbOpen', on); }
 function colapsaSb() { const m = document.body.classList.toggle('sbMini'); try { localStorage.setItem('ent_sbmini', m ? '1' : '0'); } catch {} }
-function abrirConfig() { document.body.classList.remove('sbOpen'); document.getElementById('sqlTxt').textContent = !fotosOk ? FOTOS_SQL : !veicOk ? V2_SQL : !ratOk ? RAT_SQL : !docsOk ? DOCS_SQL : SETUP_SQL; abre('ovSetup'); }
+function abrirConfig() { document.body.classList.remove('sbOpen'); document.getElementById('sqlTxt').textContent = !fotosOk ? FOTOS_SQL : !veicOk ? V2_SQL : !ratOk ? RAT_SQL : !docsOk ? DOCS_SQL : (!vmOk || !vendasOk) ? FRETE_SQL : SETUP_SQL; abre('ovSetup'); }
 function abrirSobre() {
   document.body.classList.remove('sbOpen');
-  alert(`Controle de Entregas AVACY — ${APP_VERSION}\n\nFrentes: Transporte Avacy, Carrinho e Agregados.\nBase de notas e usuários compartilhada com o Dashboard de Expedição.`);
+  alert(`Controle de Entregas AVACY — ${APP_VERSION}\n\nFrentes: Transporte Avacy, Carrinho e Agregados.\nFretes: percentual do frete x valor da mercadoria; base de vendas qry001 em Ações › Importar dados.\nBase de notas e usuários compartilhada com o Dashboard de Expedição.`);
 }
 (function () {
   try { const s = JSON.parse(sessionStorage.getItem('ent_sess') || 'null'); if (s) { usuario = s; iniciar(); return; } } catch {}
