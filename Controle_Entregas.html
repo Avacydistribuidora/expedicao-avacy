@@ -523,7 +523,7 @@ table.km td.n{min-width:70px}
 // ══════════════════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════════════════
-const APP_VERSION = 'v3.5';
+const APP_VERSION = 'v3.6';
 const SB_URL = 'https://wureelywtpcdxbmyblqj.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1cmVlbHl3dHBjZHhibXlibHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTQ0ODYsImV4cCI6MjA5NzIzMDQ4Nn0.iOeWR4D_l40TIB71BLp6ne76sg9P5JQsjjIi_VGGWMw';
 const BUCKET = 'entregas-docs';
@@ -643,8 +643,8 @@ let _nfAtual = null, _editEnt = null, _editCus = null, _cusFrente = null;
 let veiculos = [], vdiario = [], veicOk = true, _veicSel = null, _editVd = null, _editV = null, _editOp = null, operFiltro = '';
 let rateios = [], ratOk = true, _editRat = null, docsOk = true, _docsKeep = [], _docsBox = '';
 let vmOk = true, vmMap = {}, vmCol = '', frSort = 'frete';   // v3.1: valor da mercadoria (Fretes)
-let fretesCfg = { min: 1000, base: 'entrega', fr: '', so: '', busca: '' };
-try { Object.assign(fretesCfg, JSON.parse(localStorage.getItem('ent_fretes') || '{}'), { so: '', busca: '' }); } catch {}
+let fretesCfg = { min: 1000, base: 'entrega', fr: '', so: '', busca: '', vis: 'vendas' };
+try { Object.assign(fretesCfg, JSON.parse(localStorage.getItem('ent_fretes') || '{}'), { so: '', busca: '', vis: 'vendas' }); } catch {}   // v3.6: Fretes sempre abre em Vendas
 let fotosOk = true, _fotosNovas = [], _fotosExist = [], agregadosLista = [], _agregadoAtual = '', _pendRec = null;
 
 // ══════════════════════════════════════════════════════════════
@@ -791,6 +791,7 @@ function renderMeses() {
 }
 function setTab(t) {
   if (isFretes()) t = 'fretes';
+  if (t === 'fretes' && aba !== 'fretes') fretesCfg.vis = 'vendas';   // v3.6
   if (isOper() && ['geral', 'fretes', 'veiculos', 'custos', 'rateios'].includes(t)) t = 'avacy';
   aba = t;
   if (isOper()) { try { localStorage.setItem('ent_frente', t); } catch {} }
